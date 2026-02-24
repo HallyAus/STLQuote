@@ -1,10 +1,11 @@
 "use client";
 
-import { useEffect, useState, useCallback } from "react";
+import { useEffect, useState, useCallback, useRef } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card";
 import { roundCurrency } from "@/lib/utils";
+import { PRINTER_PRESETS } from "@/lib/presets";
 
 // ---------- Types ----------
 
@@ -108,6 +109,23 @@ export function PrintersPage() {
   const [editingId, setEditingId] = useState<string | null>(null);
   const [form, setForm] = useState<PrinterFormData>(emptyForm);
 
+  // Preset dropdown state
+  const [presetOpen, setPresetOpen] = useState(false);
+  const [presetLoading, setPresetLoading] = useState(false);
+  const presetRef = useRef<HTMLDivElement>(null);
+
+  // Close preset dropdown on outside click
+  useEffect(() => {
+    if (!presetOpen) return;
+    function handleClick(e: MouseEvent) {
+      if (presetRef.current && !presetRef.current.contains(e.target as Node)) {
+        setPresetOpen(false);
+      }
+    }
+    document.addEventListener("mousedown", handleClick);
+    return () => document.removeEventListener("mousedown", handleClick);
+  }, [presetOpen]);
+
   // --- Fetch printers ---
 
   const fetchPrinters = useCallback(async () => {
@@ -201,6 +219,32 @@ export function PrintersPage() {
     }
   }
 
+  // --- Preset handler ---
+
+  async function handleAddFromPreset(presetIndex: number) {
+    try {
+      setPresetLoading(true);
+      setError(null);
+      const res = await fetch("/api/printers/presets", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ presetIndex }),
+      });
+
+      if (!res.ok) {
+        const body = await res.json().catch(() => null);
+        throw new Error(body?.error || "Failed to create printer from preset");
+      }
+
+      setPresetOpen(false);
+      await fetchPrinters();
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Unknown error");
+    } finally {
+      setPresetLoading(false);
+    }
+  }
+
   // --- Render ---
 
   return (
@@ -213,7 +257,31 @@ export function PrintersPage() {
             Manage your 3D printer profiles for cost calculations.
           </p>
         </div>
-        <Button onClick={openAdd}>Add Printer</Button>
+        <div className="flex gap-2">
+          <div className="relative" ref={presetRef}>
+            <Button variant="secondary" onClick={() => setPresetOpen(!presetOpen)}>
+              Add from Preset
+            </Button>
+            {presetOpen && (
+              <div className="absolute right-0 top-full z-20 mt-1 w-72 rounded-lg border border-border bg-card shadow-lg">
+                <div className="max-h-80 overflow-y-auto p-1">
+                  {PRINTER_PRESETS.map((preset, index) => (
+                    <button
+                      key={index}
+                      className="flex w-full items-center justify-between rounded-md px-3 py-2 text-left text-sm hover:bg-muted transition-colors disabled:opacity-50"
+                      onClick={() => handleAddFromPreset(index)}
+                      disabled={presetLoading}
+                    >
+                      <span className="font-medium">{preset.name}</span>
+                      <span className="text-muted-foreground">${preset.purchasePrice}</span>
+                    </button>
+                  ))}
+                </div>
+              </div>
+            )}
+          </div>
+          <Button onClick={openAdd}>Add Printer</Button>
+        </div>
       </div>
 
       {/* Error banner */}

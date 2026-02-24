@@ -1,11 +1,12 @@
 "use client";
 
-import { useState, useEffect, useCallback } from "react";
+import { useState, useEffect, useCallback, useRef } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { cn } from "@/lib/utils";
 import { Plus, Pencil, Trash2, Package, Loader2 } from "lucide-react";
+import { MATERIAL_PRESETS } from "@/lib/presets";
 
 // ---------------------------------------------------------------------------
 // Types
@@ -429,6 +430,23 @@ export function MaterialsPage() {
   const [editingMaterial, setEditingMaterial] = useState<Material | null>(null);
   const [formData, setFormData] = useState<MaterialFormData>(EMPTY_FORM);
 
+  // Preset dropdown state
+  const [presetOpen, setPresetOpen] = useState(false);
+  const [presetLoading, setPresetLoading] = useState(false);
+  const presetRef = useRef<HTMLDivElement>(null);
+
+  // Close preset dropdown on outside click
+  useEffect(() => {
+    if (!presetOpen) return;
+    function handleClick(e: MouseEvent) {
+      if (presetRef.current && !presetRef.current.contains(e.target as Node)) {
+        setPresetOpen(false);
+      }
+    }
+    document.addEventListener("mousedown", handleClick);
+    return () => document.removeEventListener("mousedown", handleClick);
+  }, [presetOpen]);
+
   // ---- Fetch materials ----
   const fetchMaterials = useCallback(async () => {
     try {
@@ -530,6 +548,31 @@ export function MaterialsPage() {
     }
   }
 
+  // ---- Add from preset ----
+  async function handleAddFromPreset(presetIndex: number) {
+    try {
+      setPresetLoading(true);
+      const res = await fetch("/api/materials/presets", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ presetIndex }),
+      });
+
+      if (!res.ok) {
+        const err = await res.json().catch(() => null);
+        console.error("Preset add failed:", err);
+        return;
+      }
+
+      setPresetOpen(false);
+      await fetchMaterials();
+    } catch (err) {
+      console.error("Preset add error:", err);
+    } finally {
+      setPresetLoading(false);
+    }
+  }
+
   // ---- Delete ----
   async function handleDelete(id: string) {
     if (!confirm("Are you sure you want to delete this material?")) return;
@@ -570,10 +613,36 @@ export function MaterialsPage() {
             {filtered.length} material{filtered.length !== 1 ? "s" : ""}
           </span>
         </div>
-        <Button onClick={openAddForm}>
-          <Plus className="mr-2 h-4 w-4" />
-          Add Material
-        </Button>
+        <div className="flex gap-2">
+          <div className="relative" ref={presetRef}>
+            <Button variant="secondary" onClick={() => setPresetOpen(!presetOpen)}>
+              Add from Preset
+            </Button>
+            {presetOpen && (
+              <div className="absolute right-0 top-full z-20 mt-1 w-80 rounded-lg border border-border bg-card shadow-lg">
+                <div className="max-h-80 overflow-y-auto p-1">
+                  {MATERIAL_PRESETS.map((preset, index) => (
+                    <button
+                      key={index}
+                      className="flex w-full items-center justify-between rounded-md px-3 py-2 text-left text-sm hover:bg-muted transition-colors disabled:opacity-50"
+                      onClick={() => handleAddFromPreset(index)}
+                      disabled={presetLoading}
+                    >
+                      <span className="font-medium">
+                        {preset.materialType} &mdash; {preset.brand} &mdash; {preset.colour}
+                      </span>
+                      <span className="ml-2 shrink-0 text-muted-foreground">${preset.price}</span>
+                    </button>
+                  ))}
+                </div>
+              </div>
+            )}
+          </div>
+          <Button onClick={openAddForm}>
+            <Plus className="mr-2 h-4 w-4" />
+            Add Material
+          </Button>
+        </div>
       </div>
 
       {/* Empty state */}

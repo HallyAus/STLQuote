@@ -3,6 +3,7 @@
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import {
+  LayoutDashboard,
   Calculator,
   Printer,
   Palette,
@@ -15,6 +16,7 @@ import {
 import { cn } from "@/lib/utils";
 
 const navItems = [
+  { href: "/", label: "Dashboard", icon: LayoutDashboard },
   { href: "/calculator", label: "Calculator", icon: Calculator },
   { href: "/printers", label: "Printers", icon: Printer },
   { href: "/materials", label: "Materials", icon: Palette },
@@ -68,7 +70,10 @@ export function Sidebar({ open, onClose }: SidebarProps) {
         {/* Navigation */}
         <nav className="flex-1 space-y-1 p-3">
           {navItems.map((item) => {
-            const isActive = pathname === item.href || pathname?.startsWith(item.href + "/");
+            const isActive =
+              item.href === "/"
+                ? pathname === "/"
+                : pathname === item.href || pathname?.startsWith(item.href + "/");
             return (
               <Link
                 key={item.href}
