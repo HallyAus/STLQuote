@@ -1,0 +1,252 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+// --- Auth (NextAuth.js) ---
+
+model Account {
+  id                String  @id @default(cuid())
+  userId            String
+  type              String
+  provider          String
+  providerAccountId String
+  refresh_token     String? @db.Text
+  access_token      String? @db.Text
+  expires_at        Int?
+  token_type        String?
+  scope             String?
+  id_token          String? @db.Text
+  session_state     String?
+  user              User    @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([provider, providerAccountId])
+}
+
+model Session {
+  id           String   @id @default(cuid())
+  sessionToken String   @unique
+  userId       String
+  expires      DateTime
+  user         User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+}
+
+model VerificationToken {
+  identifier String
+  token      String   @unique
+  expires    DateTime
+
+  @@unique([identifier, token])
+}
+
+// --- Core Models ---
+
+model User {
+  id            String    @id @default(cuid())
+  name          String?
+  email         String?   @unique
+  emailVerified DateTime?
+  image         String?
+  passwordHash  String?
+  createdAt     DateTime  @default(now())
+  updatedAt     DateTime  @updatedAt
+
+  accounts          Account[]
+  sessions          Session[]
+  settings          Settings?
+  printers          Printer[]
+  materials         Material[]
+  clients           Client[]
+  quotes            Quote[]
+  jobs              Job[]
+  calculatorPresets CalculatorPreset[]
+}
+
+model Settings {
+  id                    String  @id @default(cuid())
+  userId                String  @unique
+  user                  User    @relation(fields: [userId], references: [id], onDelete: Cascade)
+  defaultCurrency       String  @default("AUD")
+  defaultElectricityRate Float  @default(0.30) // $/kWh
+  defaultMarkupPct      Float  @default(50.0)
+  defaultLabourRate     Float  @default(35.0) // $/hr
+  defaultOverheadMonthly Float @default(0.0)
+  estimatedMonthlyJobs  Int    @default(20)
+  minimumCharge         Float  @default(15.0)
+  businessName          String?
+  businessAddress       String?
+  businessAbn           String?
+  businessPhone         String?
+  businessEmail         String?
+  businessLogoUrl       String?
+  quoteTermsText        String? @db.Text
+  createdAt             DateTime @default(now())
+  updatedAt             DateTime @updatedAt
+}
+
+model Printer {
+  id              String   @id @default(cuid())
+  userId          String
+  user            User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  name            String
+  model           String?
+  purchasePrice   Float    @default(0)
+  lifetimeHours   Float    @default(5000)
+  powerWatts      Float    @default(200)
+  bedSizeX        Float?   // mm
+  bedSizeY        Float?   // mm
+  bedSizeZ        Float?   // mm
+  currentHours    Float    @default(0)
+  maintenanceCostPerHour Float @default(0.50)
+  notes           String?  @db.Text
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+
+  quoteLineItems QuoteLineItem[]
+  jobs           Job[]
+
+  @@index([userId])
+}
+
+model Material {
+  id                 String   @id @default(cuid())
+  userId             String
+  user               User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  type               String   @default("filament") // filament | resin
+  materialType       String   // PLA, PETG, ABS, TPU, ASA, Nylon, etc.
+  brand              String?
+  colour             String?
+  spoolWeightG       Float    @default(1000)
+  price              Float    // price per spool/bottle
+  density            Float?   // g/cm³
+  stockQty           Int      @default(0)
+  lowStockThreshold  Int      @default(2)
+  supplier           String?
+  notes              String?  @db.Text
+  createdAt          DateTime @default(now())
+  updatedAt          DateTime @updatedAt
+
+  quoteLineItems QuoteLineItem[]
+
+  @@index([userId])
+}
+
+model Client {
+  id        String   @id @default(cuid())
+  userId    String
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  name      String
+  email     String?
+  phone     String?
+  company   String?
+  address   String?  @db.Text
+  tags      String[] @default([])
+  notes     String?  @db.Text
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  quotes Quote[]
+
+  @@index([userId])
+}
+
+enum QuoteStatus {
+  DRAFT
+  SENT
+  ACCEPTED
+  REJECTED
+  EXPIRED
+}
+
+model Quote {
+  id          String      @id @default(cuid())
+  userId      String
+  user        User        @relation(fields: [userId], references: [id], onDelete: Cascade)
+  clientId    String?
+  client      Client?     @relation(fields: [clientId], references: [id])
+  quoteNumber String      @unique
+  status      QuoteStatus @default(DRAFT)
+  subtotal    Float       @default(0)
+  markupPct   Float       @default(0)
+  total       Float       @default(0)
+  currency    String      @default("AUD")
+  notes       String?     @db.Text
+  terms       String?     @db.Text
+  expiryDate  DateTime?
+  sentAt      DateTime?
+  createdAt   DateTime    @default(now())
+  updatedAt   DateTime    @updatedAt
+
+  lineItems QuoteLineItem[]
+  jobs      Job[]
+
+  @@index([userId])
+}
+
+model QuoteLineItem {
+  id              String   @id @default(cuid())
+  quoteId         String
+  quote           Quote    @relation(fields: [quoteId], references: [id], onDelete: Cascade)
+  description     String
+  printerId       String?
+  printer         Printer? @relation(fields: [printerId], references: [id])
+  materialId      String?
+  material        Material? @relation(fields: [materialId], references: [id])
+  printWeightG    Float    @default(0)
+  printTimeMinutes Float   @default(0)
+  materialCost    Float    @default(0)
+  machineCost     Float    @default(0)
+  labourCost      Float    @default(0)
+  overheadCost    Float    @default(0)
+  lineTotal       Float    @default(0)
+  quantity        Int      @default(1)
+  notes           String?  @db.Text
+
+  @@index([quoteId])
+}
+
+enum JobStatus {
+  QUEUED
+  PRINTING
+  POST_PROCESSING
+  QUALITY_CHECK
+  PACKING
+  SHIPPED
+  COMPLETE
+}
+
+model Job {
+  id                String    @id @default(cuid())
+  userId            String
+  user              User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  quoteId           String?
+  quote             Quote?    @relation(fields: [quoteId], references: [id])
+  printerId         String?
+  printer           Printer?  @relation(fields: [printerId], references: [id])
+  status            JobStatus @default(QUEUED)
+  actualTimeMinutes Float?
+  actualWeightG     Float?
+  notes             String?   @db.Text
+  startedAt         DateTime?
+  completedAt       DateTime?
+  createdAt         DateTime  @default(now())
+  updatedAt         DateTime  @updatedAt
+
+  @@index([userId])
+}
+
+model CalculatorPreset {
+  id         String   @id @default(cuid())
+  userId     String
+  user       User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  name       String
+  configJson String   @db.Text // JSON blob of calculator input values
+  createdAt  DateTime @default(now())
+  updatedAt  DateTime @updatedAt
+
+  @@index([userId])
+}

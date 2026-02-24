@@ -1,0 +1,81 @@
+{
+  "hooks": {
+    "SessionStart": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "echo '--- SESSION CONTEXT ---' && date && echo 'Branch:' $(git branch --show-current 2>/dev/null || echo 'not a git repo') && echo '' && echo 'Recent commits:' && git log --oneline -5 2>/dev/null || true && echo '' && if [ -f memory/HANDOFF.md ]; then echo '=== HANDOFF ===' && cat memory/HANDOFF.md && echo ''; fi && if command -v bd &>/dev/null && [ -d .beads ]; then echo '=== BEADS READY ===' && bd ready --json 2>/dev/null || true; fi && echo '--- END CONTEXT ---'",
+            "timeout": 10
+          }
+        ]
+      }
+    ],
+    "PreToolUse": [
+      {
+        "matcher": "Bash",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "BLOCKED_CMDS='rm -rf /|rm -rf ~|DROP TABLE|DROP DATABASE|:(){:|:&};:' && INPUT=$(cat) && CMD=$(echo \"$INPUT\" | grep -o '\"command\":\"[^\"]*\"' | head -1 | sed 's/\"command\":\"//;s/\"//') && for blocked in $BLOCKED_CMDS; do if echo \"$CMD\" | grep -qF \"$blocked\"; then echo '{\"block\": true, \"message\": \"Blocked dangerous command: '$blocked'\"}' >&2; exit 2; fi; done",
+            "timeout": 5
+          }
+        ]
+      },
+      {
+        "matcher": "Edit|Write|MultiEdit",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "INPUT=$(cat) && FILE=$(echo \"$INPUT\" | grep -o '\"file_path\":\"[^\"]*\"' | head -1 | sed 's/\"file_path\":\"//;s/\"//') && PROTECTED='.env .env.local .env.production secrets/' && for p in $PROTECTED; do if echo \"$FILE\" | grep -qF \"$p\"; then echo '{\"block\": true, \"message\": \"Protected file: '$p' - cannot be modified by agent\"}' >&2; exit 2; fi; done",
+            "timeout": 5
+          }
+        ]
+      }
+    ],
+    "Stop": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "CONTEXT=$(cat)\nSTRONG_PATTERNS=\"fixed|workaround|gotcha|that's wrong|check again|we already|should have|discovered|realized|turns out|actually it|the problem was|root cause\"\nWEAK_PATTERNS=\"error|bug|issue|problem|fail\"\n\nif echo \"$CONTEXT\" | grep -qiE \"$STRONG_PATTERNS\"; then\n    cat << 'EOF'\n{\n  \"systemMessage\": \"LEARNING DETECTED: This session involved fixes or discoveries. Update strategy/learnings.md and relevant memory files (.claude/rules/memory-*.md) before ending. Run /reflect if unsure.\"\n}\nEOF\nelif echo \"$CONTEXT\" | grep -qiE \"$WEAK_PATTERNS\"; then\n    echo '{\"systemMessage\":\"If you learned something non-obvious this session, update strategy/learnings.md and .claude/rules/memory-decisions.md.\"}'\nfi",
+            "timeout": 5
+          }
+        ]
+      },
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "if command -v bd &>/dev/null && [ -d .beads ]; then bd export 2>/dev/null || true; fi",
+            "timeout": 5
+          }
+        ]
+      }
+    ]
+  },
+  "permissions": {
+    "allow": [
+      "Read(**)",
+      "Edit(.claude/rules/memory-*.md)",
+      "Edit(strategy/*)",
+      "Edit(specs/*)",
+      "Edit(memory/*)",
+      "Bash(git *)",
+      "Bash(bd *)",
+      "Bash(cat *)",
+      "Bash(ls *)",
+      "Bash(find *)",
+      "Bash(grep *)"
+    ],
+    "deny": [
+      "Bash(rm -rf /)",
+      "Bash(rm -rf ~)",
+      "Edit(.env*)",
+      "Edit(secrets/*)"
+    ]
+  },
+  "env": {
+    "BEADS_ACTOR": "claude-agent"
+  }
+}

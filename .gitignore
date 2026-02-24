@@ -1,0 +1,47 @@
+# Environment
+.env
+.env.local
+.env.production
+secrets/
+
+# Private memory (sensitive info — never commit)
+.claude/rules/memory-private.md
+
+# Beads database (synced via JSONL, not the db)
+.beads/beads.db
+.beads/dolt/
+
+# OS
+.DS_Store
+Thumbs.db
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# Dependencies
+node_modules/
+
+# Next.js
+.next/
+out/
+
+# Build
+dist/
+build/
+
+# Testing
+coverage/
+
+# Prisma
+prisma/*.db
+prisma/*.db-journal
+
+# Docker
+docker-compose.override.yml
+
+# Misc
+*.tsbuildinfo
+next-env.d.ts
