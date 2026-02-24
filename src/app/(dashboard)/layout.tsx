@@ -15,6 +15,15 @@ const pageTitles: Record<string, string> = {
   "/settings": "Settings",
 };
 
+function resolveTitle(pathname: string): string {
+  if (pageTitles[pathname]) return pageTitles[pathname];
+  // Match sub-routes (e.g. /quotes/new, /quotes/abc123)
+  for (const [prefix, title] of Object.entries(pageTitles)) {
+    if (pathname.startsWith(prefix + "/")) return title;
+  }
+  return "Printforge Quote";
+}
+
 export default function DashboardLayout({
   children,
 }: {
@@ -22,7 +31,7 @@ export default function DashboardLayout({
 }) {
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const pathname = usePathname();
-  const title = pageTitles[pathname] || "Printforge Quote";
+  const title = resolveTitle(pathname);
 
   return (
     <div className="flex h-screen overflow-hidden">
