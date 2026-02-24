@@ -2,11 +2,14 @@
 
 import { type CostBreakdown } from "@/lib/calculator";
 import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card";
+import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
+import { FileText } from "lucide-react";
 
 interface CostBreakdownPanelProps {
   breakdown: CostBreakdown;
   markupPct: number;
+  onCreateQuote?: () => void;
 }
 
 function formatAUD(value: number): string {
@@ -43,6 +46,7 @@ function CostBar({ label, value, total, colour }: CostBarProps) {
 export function CostBreakdownPanel({
   breakdown,
   markupPct,
+  onCreateQuote,
 }: CostBreakdownPanelProps) {
   const {
     materialCost,
@@ -140,6 +144,16 @@ export function CostBreakdownPanel({
             </span>
           </div>
         </div>
+
+        {onCreateQuote && (
+          <Button
+            className="w-full mt-2"
+            onClick={onCreateQuote}
+          >
+            <FileText className="mr-2 h-4 w-4" />
+            Create Quote
+          </Button>
+        )}
       </CardContent>
     </Card>
   );

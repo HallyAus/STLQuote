@@ -1,5 +1,10 @@
+import { Suspense } from "react";
 import { NewQuote } from "@/components/quotes/new-quote";
 
 export default function NewQuoteRoute() {
-  return <NewQuote />;
+  return (
+    <Suspense>
+      <NewQuote />
+    </Suspense>
+  );
 }

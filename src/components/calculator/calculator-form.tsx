@@ -1,15 +1,21 @@
 "use client";
 
-import { useState, useEffect, useMemo } from "react";
+import { useState, useEffect, useMemo, useCallback } from "react";
+import { useRouter } from "next/navigation";
 import {
   type CalculatorInput,
   calculateTotalCost,
 } from "@/lib/calculator";
 import { Input } from "@/components/ui/input";
+import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { CostBreakdownPanel } from "@/components/calculator/cost-breakdown";
 import { cn } from "@/lib/utils";
-import { ChevronDown } from "lucide-react";
+import { ChevronDown, Save, FolderOpen, Trash2, Loader2 } from "lucide-react";
+
+// ---------------------------------------------------------------------------
+// Types
+// ---------------------------------------------------------------------------
 
 interface PrinterOption {
   id: string;
@@ -29,6 +35,18 @@ interface MaterialOption {
   price: number;
   spoolWeightG: number;
 }
+
+interface CalculatorPreset {
+  id: string;
+  name: string;
+  configJson: CalculatorInput;
+  createdAt: string;
+  updatedAt: string;
+}
+
+// ---------------------------------------------------------------------------
+// Defaults
+// ---------------------------------------------------------------------------
 
 const defaultInput: CalculatorInput = {
   material: {
@@ -69,6 +87,10 @@ const defaultInput: CalculatorInput = {
 const selectClasses =
   "flex h-9 w-full rounded-md border border-input bg-background px-3 py-1 text-sm text-foreground shadow-sm transition-colors focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring disabled:cursor-not-allowed disabled:opacity-50";
 
+// ---------------------------------------------------------------------------
+// Collapsible Section
+// ---------------------------------------------------------------------------
+
 interface SectionProps {
   title: string;
   defaultOpen?: boolean;
@@ -102,13 +124,150 @@ function Section({ title, defaultOpen = true, children }: SectionProps) {
   );
 }
 
+// ---------------------------------------------------------------------------
+// Preset Bar
+// ---------------------------------------------------------------------------
+
+interface PresetBarProps {
+  presets: CalculatorPreset[];
+  selectedPresetId: string;
+  onSelectPreset: (id: string) => void;
+  onSavePreset: (name: string) => Promise<void>;
+  onDeletePreset: (id: string) => Promise<void>;
+  saving: boolean;
+  deleting: boolean;
+}
+
+function PresetBar({
+  presets,
+  selectedPresetId,
+  onSelectPreset,
+  onSavePreset,
+  onDeletePreset,
+  saving,
+  deleting,
+}: PresetBarProps) {
+  const [showSaveForm, setShowSaveForm] = useState(false);
+  const [presetName, setPresetName] = useState("");
+
+  async function handleSave() {
+    const trimmed = presetName.trim();
+    if (!trimmed) return;
+    await onSavePreset(trimmed);
+    setPresetName("");
+    setShowSaveForm(false);
+  }
+
+  return (
+    <Card>
+      <CardContent className="p-4">
+        <div className="flex flex-col gap-3">
+          {/* Row 1: preset select + actions */}
+          <div className="flex items-center gap-2">
+            <FolderOpen className="h-4 w-4 shrink-0 text-muted-foreground" />
+            <select
+              value={selectedPresetId}
+              onChange={(e) => onSelectPreset(e.target.value)}
+              className={cn(selectClasses, "flex-1")}
+            >
+              <option value="">Load a preset...</option>
+              {presets.map((p) => (
+                <option key={p.id} value={p.id}>
+                  {p.name}
+                </option>
+              ))}
+            </select>
+
+            {selectedPresetId && (
+              <Button
+                variant="ghost"
+                size="icon"
+                onClick={() => onDeletePreset(selectedPresetId)}
+                disabled={deleting}
+                title="Delete preset"
+              >
+                {deleting ? (
+                  <Loader2 className="h-4 w-4 animate-spin" />
+                ) : (
+                  <Trash2 className="h-4 w-4 text-destructive" />
+                )}
+              </Button>
+            )}
+
+            <Button
+              variant="secondary"
+              size="sm"
+              onClick={() => setShowSaveForm(!showSaveForm)}
+            >
+              <Save className="mr-1.5 h-3.5 w-3.5" />
+              Save Preset
+            </Button>
+          </div>
+
+          {/* Row 2: inline save form */}
+          {showSaveForm && (
+            <div className="flex items-center gap-2">
+              <input
+                type="text"
+                placeholder="Preset name..."
+                value={presetName}
+                onChange={(e) => setPresetName(e.target.value)}
+                onKeyDown={(e) => {
+                  if (e.key === "Enter") handleSave();
+                  if (e.key === "Escape") setShowSaveForm(false);
+                }}
+                className="flex h-9 flex-1 rounded-md border border-input bg-background px-3 py-1 text-sm text-foreground shadow-sm placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring"
+                autoFocus
+              />
+              <Button
+                size="sm"
+                onClick={handleSave}
+                disabled={saving || !presetName.trim()}
+              >
+                {saving ? (
+                  <Loader2 className="mr-1.5 h-3.5 w-3.5 animate-spin" />
+                ) : (
+                  <Save className="mr-1.5 h-3.5 w-3.5" />
+                )}
+                Save
+              </Button>
+              <Button
+                variant="ghost"
+                size="sm"
+                onClick={() => {
+                  setShowSaveForm(false);
+                  setPresetName("");
+                }}
+              >
+                Cancel
+              </Button>
+            </div>
+          )}
+        </div>
+      </CardContent>
+    </Card>
+  );
+}
+
+// ---------------------------------------------------------------------------
+// Calculator Form
+// ---------------------------------------------------------------------------
+
 export function CalculatorForm() {
+  const router = useRouter();
   const [input, setInput] = useState<CalculatorInput>(defaultInput);
   const [printers, setPrinters] = useState<PrinterOption[]>([]);
   const [materials, setMaterials] = useState<MaterialOption[]>([]);
   const [selectedPrinterId, setSelectedPrinterId] = useState<string>("");
   const [selectedMaterialId, setSelectedMaterialId] = useState<string>("");
 
+  // Preset state
+  const [presets, setPresets] = useState<CalculatorPreset[]>([]);
+  const [selectedPresetId, setSelectedPresetId] = useState<string>("");
+  const [savingPreset, setSavingPreset] = useState(false);
+  const [deletingPreset, setDeletingPreset] = useState(false);
+
+  // Fetch printers, materials, and presets on mount
   useEffect(() => {
     fetch("/api/printers")
       .then((res) => res.json())
@@ -127,7 +286,24 @@ export function CalculatorForm() {
       .catch(() => {});
   }, []);
 
+  const fetchPresets = useCallback(() => {
+    fetch("/api/calculator-presets")
+      .then((res) => res.json())
+      .then((data) => {
+        if (Array.isArray(data)) setPresets(data);
+      })
+      .catch(() => {});
+  }, []);
+
+  useEffect(() => {
+    fetchPresets();
+  }, [fetchPresets]);
+
   const breakdown = useMemo(() => calculateTotalCost(input), [input]);
+
+  // -----------------------------------------------------------------------
+  // Field helpers
+  // -----------------------------------------------------------------------
 
   function updateField<
     S extends keyof CalculatorInput,
@@ -152,6 +328,10 @@ export function CalculatorForm() {
       updateField(section, key, e.target.value);
     };
   }
+
+  // -----------------------------------------------------------------------
+  // Printer / Material selectors
+  // -----------------------------------------------------------------------
 
   function handlePrinterSelect(e: React.ChangeEvent<HTMLSelectElement>) {
     const id = e.target.value;
@@ -200,10 +380,102 @@ export function CalculatorForm() {
     return parts.join(" - ");
   }
 
+  // -----------------------------------------------------------------------
+  // Preset handlers
+  // -----------------------------------------------------------------------
+
+  function handleSelectPreset(id: string) {
+    setSelectedPresetId(id);
+    if (!id) return;
+
+    const preset = presets.find((p) => p.id === id);
+    if (!preset) return;
+
+    setInput(preset.configJson);
+    // Clear printer/material selections since the preset has its own values
+    setSelectedPrinterId("");
+    setSelectedMaterialId("");
+  }
+
+  async function handleSavePreset(name: string) {
+    setSavingPreset(true);
+    try {
+      const res = await fetch("/api/calculator-presets", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ name, configJson: input }),
+      });
+
+      if (!res.ok) return;
+
+      const created: CalculatorPreset = await res.json();
+      setPresets((prev) => [created, ...prev]);
+      setSelectedPresetId(created.id);
+    } catch {
+      // silently fail — network error
+    } finally {
+      setSavingPreset(false);
+    }
+  }
+
+  async function handleDeletePreset(id: string) {
+    setDeletingPreset(true);
+    try {
+      const res = await fetch(`/api/calculator-presets/${id}`, {
+        method: "DELETE",
+      });
+
+      if (!res.ok) return;
+
+      setPresets((prev) => prev.filter((p) => p.id !== id));
+      setSelectedPresetId("");
+    } catch {
+      // silently fail
+    } finally {
+      setDeletingPreset(false);
+    }
+  }
+
+  // -----------------------------------------------------------------------
+  // Create Quote handler
+  // -----------------------------------------------------------------------
+
+  function handleCreateQuote() {
+    const quoteData = {
+      description: "Calculated print job",
+      printWeightG: input.material.printWeightG,
+      printTimeMinutes: input.machine.printTimeMinutes,
+      materialCost: breakdown.materialCost,
+      machineCost: breakdown.machineCost,
+      labourCost: breakdown.labourCost,
+      overheadCost: breakdown.overheadCost,
+      lineTotal: breakdown.unitPrice,
+      quantity: breakdown.quantity,
+    };
+
+    sessionStorage.setItem("calculatorToQuote", JSON.stringify(quoteData));
+    router.push("/quotes/new?fromCalculator=true");
+  }
+
+  // -----------------------------------------------------------------------
+  // Render
+  // -----------------------------------------------------------------------
+
   return (
     <div className="grid gap-6 lg:grid-cols-[1fr,380px]">
       {/* Left column: form */}
       <div className="space-y-4">
+        {/* Preset bar */}
+        <PresetBar
+          presets={presets}
+          selectedPresetId={selectedPresetId}
+          onSelectPreset={handleSelectPreset}
+          onSavePreset={handleSavePreset}
+          onDeletePreset={handleDeletePreset}
+          saving={savingPreset}
+          deleting={deletingPreset}
+        />
+
         <Section title="Material Costs">
           <div className="space-y-1 sm:col-span-2 lg:col-span-3">
             <label
@@ -438,6 +710,7 @@ export function CalculatorForm() {
         <CostBreakdownPanel
           breakdown={breakdown}
           markupPct={input.pricing.markupPct}
+          onCreateQuote={handleCreateQuote}
         />
       </div>
     </div>
