@@ -96,6 +96,9 @@ export function Sidebar({ open, onClose }: SidebarProps) {
         {/* Footer */}
         <div className="border-t border-sidebar-border p-4">
           <p className="text-xs text-muted-foreground">printforge.com.au</p>
+          <p className="mt-1 text-[10px] text-muted-foreground/60">
+            v{process.env.NEXT_PUBLIC_APP_VERSION}
+          </p>
         </div>
       </aside>
     </>
