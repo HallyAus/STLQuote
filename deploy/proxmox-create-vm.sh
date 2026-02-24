@@ -92,7 +92,7 @@ qm disk resize "${VMID}" scsi0 "${DISK_SIZE}"
 echo "[4/6] Configuring boot and cloud-init..."
 qm set "${VMID}" --boot order=scsi0
 qm set "${VMID}" --ide2 "${STORAGE}:cloudinit"
-qm set "${VMID}" --serial0 socket --vga serial0
+qm set "${VMID}" --vga std
 
 # --- Cloud-init settings ---
 echo "[5/6] Setting cloud-init config..."
