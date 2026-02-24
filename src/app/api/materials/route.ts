@@ -1,0 +1,65 @@
+import { NextRequest, NextResponse } from "next/server";
+import { z } from "zod";
+import { prisma } from "@/lib/prisma";
+
+const TEMP_USER_ID = "temp-user";
+
+const createMaterialSchema = z.object({
+  type: z.enum(["filament", "resin"]).default("filament"),
+  materialType: z.string().min(1, "Material type is required"),
+  brand: z.string().optional().nullable(),
+  colour: z.string().optional().nullable(),
+  spoolWeightG: z.number().positive("Spool weight must be positive").default(1000),
+  price: z.number().nonnegative("Price must be zero or positive"),
+  density: z.number().positive("Density must be positive").optional().nullable(),
+  stockQty: z.number().int().nonnegative("Stock quantity must be zero or positive").default(0),
+  lowStockThreshold: z.number().int().nonnegative("Threshold must be zero or positive").default(2),
+  supplier: z.string().optional().nullable(),
+  notes: z.string().optional().nullable(),
+});
+
+export async function GET() {
+  try {
+    const materials = await prisma.material.findMany({
+      where: { userId: TEMP_USER_ID },
+      orderBy: [{ materialType: "asc" }, { brand: "asc" }],
+    });
+
+    return NextResponse.json(materials);
+  } catch (error) {
+    console.error("Failed to fetch materials:", error);
+    return NextResponse.json(
+      { error: "Failed to fetch materials" },
+      { status: 500 }
+    );
+  }
+}
+
+export async function POST(request: NextRequest) {
+  try {
+    const body = await request.json();
+    const parsed = createMaterialSchema.safeParse(body);
+
+    if (!parsed.success) {
+      return NextResponse.json(
+        { error: "Validation failed", details: parsed.error.flatten() },
+        { status: 400 }
+      );
+    }
+
+    const material = await prisma.material.create({
+      data: {
+        ...parsed.data,
+        userId: TEMP_USER_ID,
+      },
+    });
+
+    return NextResponse.json(material, { status: 201 });
+  } catch (error) {
+    console.error("Failed to create material:", error);
+    return NextResponse.json(
+      { error: "Failed to create material" },
+      { status: 500 }
+    );
+  }
+}
