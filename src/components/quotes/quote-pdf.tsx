@@ -197,8 +197,9 @@ export function QuotePdf() {
             overflow: visible !important;
           }
 
-          /* Hide print action bar */
-          .print-action-bar {
+          /* Hide print action bar and debug panel */
+          .print-action-bar,
+          [title="Debug Panel (Ctrl+Shift+D)"] {
             display: none !important;
           }
 
@@ -236,7 +237,9 @@ export function QuotePdf() {
 
         @page {
           size: A4;
-          margin: 10mm;
+          /* Setting margin to 0 removes browser default headers/footers
+             (URL, date, page number). Content padding handled by .print-page. */
+          margin: 0;
         }
       `}</style>
 
