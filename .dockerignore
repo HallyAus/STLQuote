@@ -1,0 +1,15 @@
+node_modules
+.next
+.git
+.github
+.claude
+memory
+strategy
+specs
+docs
+deploy
+coverage
+*.md
+!README.md
+.env*
+env.example

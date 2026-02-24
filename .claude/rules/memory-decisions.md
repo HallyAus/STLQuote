@@ -11,6 +11,7 @@ Each entry: `[YYYY-MM-DD] Decision — Rationale`
 
 <!-- Claude: add new entries at the top -->
 
+- [2026-02-25] GitHub Actions deploy uses appleboy/ssh-action@v1 with concurrency group — simple, no Docker registry needed, cancel-in-progress disabled to avoid partial deploys
 - [2026-02-25] Project name: printforge-quote — ties to Printforge brand
 - [2026-02-25] Self-hosted Docker on Proxmox — full control, no recurring SaaS costs, fits existing infrastructure
 - [2026-02-25] pnpm as package manager — fast, disk-efficient, widely used with Next.js
