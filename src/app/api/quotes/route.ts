@@ -52,7 +52,7 @@ export async function GET() {
       where: { userId: TEMP_USER_ID },
       include: {
         client: { select: { name: true } },
-        _count: { select: { lineItems: true } },
+        lineItems: { select: { id: true } },
       },
       orderBy: { createdAt: "desc" },
     });
