@@ -19,4 +19,4 @@ ENV HOSTNAME="0.0.0.0"
 
 EXPOSE 3000
 
-CMD ["sh", "-c", "pnpm prisma db push --skip-generate && pnpm start"]
+CMD ["sh", "-c", "pnpm prisma db push --skip-generate && node prisma/seed-user.mjs && pnpm start"]

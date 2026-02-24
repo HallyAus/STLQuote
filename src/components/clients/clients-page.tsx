@@ -1,0 +1,537 @@
+"use client";
+
+import { useEffect, useState, useCallback } from "react";
+import { useRouter } from "next/navigation";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card";
+import { cn } from "@/lib/utils";
+
+// ---------- Types ----------
+
+interface Client {
+  id: string;
+  name: string;
+  email: string | null;
+  phone: string | null;
+  company: string | null;
+  address: string | null;
+  tags: string[];
+  notes: string | null;
+  createdAt: string;
+  updatedAt: string;
+  _count: { quotes: number };
+}
+
+interface ClientFormData {
+  name: string;
+  email: string;
+  phone: string;
+  company: string;
+  address: string;
+  tags: string;
+  notes: string;
+}
+
+const emptyForm: ClientFormData = {
+  name: "",
+  email: "",
+  phone: "",
+  company: "",
+  address: "",
+  tags: "",
+  notes: "",
+};
+
+// ---------- Tag colours ----------
+
+const TAG_FILTER_OPTIONS = ["All", "Tradie", "EV Owner", "Maker", "Commercial", "Other"] as const;
+
+function tagColour(tag: string): string {
+  const lower = tag.toLowerCase();
+  if (lower === "tradie") return "bg-orange-500/15 text-orange-600 dark:text-orange-400";
+  if (lower === "ev owner") return "bg-green-500/15 text-green-600 dark:text-green-400";
+  if (lower === "maker") return "bg-blue-500/15 text-blue-600 dark:text-blue-400";
+  if (lower === "commercial") return "bg-purple-500/15 text-purple-600 dark:text-purple-400";
+  return "bg-gray-500/15 text-gray-600 dark:text-gray-400";
+}
+
+// ---------- Helpers ----------
+
+function clientToFormData(client: Client): ClientFormData {
+  return {
+    name: client.name,
+    email: client.email ?? "",
+    phone: client.phone ?? "",
+    company: client.company ?? "",
+    address: client.address ?? "",
+    tags: client.tags.join(", "),
+    notes: client.notes ?? "",
+  };
+}
+
+function formDataToPayload(form: ClientFormData) {
+  return {
+    name: form.name.trim(),
+    email: form.email.trim() || null,
+    phone: form.phone.trim() || null,
+    company: form.company.trim() || null,
+    address: form.address.trim() || null,
+    tags: form.tags
+      .split(",")
+      .map((t) => t.trim())
+      .filter((t) => t.length > 0),
+    notes: form.notes.trim() || null,
+  };
+}
+
+// ---------- Component ----------
+
+export function ClientsPage() {
+  const router = useRouter();
+  const [clients, setClients] = useState<Client[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [saving, setSaving] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+
+  // Modal state
+  const [modalOpen, setModalOpen] = useState(false);
+  const [editingId, setEditingId] = useState<string | null>(null);
+  const [form, setForm] = useState<ClientFormData>(emptyForm);
+
+  // Filter state
+  const [tagFilter, setTagFilter] = useState<string>("All");
+  const [searchQuery, setSearchQuery] = useState("");
+
+  // --- Fetch clients ---
+
+  const fetchClients = useCallback(async () => {
+    try {
+      setLoading(true);
+      setError(null);
+      const res = await fetch("/api/clients");
+      if (!res.ok) throw new Error("Failed to fetch clients");
+      const data = await res.json();
+      setClients(data);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Unknown error");
+    } finally {
+      setLoading(false);
+    }
+  }, []);
+
+  useEffect(() => {
+    fetchClients();
+  }, [fetchClients]);
+
+  // --- Filtered clients ---
+
+  const filteredClients = clients.filter((client) => {
+    // Tag filter
+    if (tagFilter !== "All") {
+      if (tagFilter === "Other") {
+        const knownTags = ["tradie", "ev owner", "maker", "commercial"];
+        const hasKnown = client.tags.some((t) => knownTags.includes(t.toLowerCase()));
+        if (hasKnown || client.tags.length === 0) return false;
+      } else {
+        if (!client.tags.some((t) => t.toLowerCase() === tagFilter.toLowerCase())) {
+          return false;
+        }
+      }
+    }
+
+    // Search filter
+    if (searchQuery.trim()) {
+      const q = searchQuery.toLowerCase();
+      const searchable = [
+        client.name,
+        client.email,
+        client.phone,
+        client.company,
+      ]
+        .filter(Boolean)
+        .join(" ")
+        .toLowerCase();
+      if (!searchable.includes(q)) return false;
+    }
+
+    return true;
+  });
+
+  // --- Handlers ---
+
+  function openAdd() {
+    setEditingId(null);
+    setForm(emptyForm);
+    setModalOpen(true);
+  }
+
+  function openEdit(client: Client, e: React.MouseEvent) {
+    e.stopPropagation();
+    setEditingId(client.id);
+    setForm(clientToFormData(client));
+    setModalOpen(true);
+  }
+
+  function closeModal() {
+    setModalOpen(false);
+    setEditingId(null);
+    setForm(emptyForm);
+  }
+
+  function updateField(field: keyof ClientFormData, value: string) {
+    setForm((prev) => ({ ...prev, [field]: value }));
+  }
+
+  async function handleSave() {
+    if (!form.name.trim()) {
+      setError("Client name is required");
+      return;
+    }
+
+    try {
+      setSaving(true);
+      setError(null);
+      const payload = formDataToPayload(form);
+      const url = editingId ? `/api/clients/${editingId}` : "/api/clients";
+      const method = editingId ? "PUT" : "POST";
+
+      const res = await fetch(url, {
+        method,
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(payload),
+      });
+
+      if (!res.ok) {
+        const body = await res.json().catch(() => null);
+        throw new Error(
+          body?.error || `Failed to ${editingId ? "update" : "create"} client`
+        );
+      }
+
+      closeModal();
+      await fetchClients();
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Unknown error");
+    } finally {
+      setSaving(false);
+    }
+  }
+
+  async function handleDelete(client: Client, e: React.MouseEvent) {
+    e.stopPropagation();
+    if (!confirm(`Delete "${client.name}"? This cannot be undone.`)) return;
+
+    try {
+      setError(null);
+      const res = await fetch(`/api/clients/${client.id}`, {
+        method: "DELETE",
+      });
+      if (!res.ok && res.status !== 204) {
+        throw new Error("Failed to delete client");
+      }
+      await fetchClients();
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Unknown error");
+    }
+  }
+
+  // --- Render ---
+
+  return (
+    <div className="space-y-6">
+      {/* Header */}
+      <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+        <div>
+          <h2 className="text-lg font-semibold text-foreground">Clients</h2>
+          <p className="text-sm text-muted-foreground">
+            Manage your client contacts and view their quote history.
+          </p>
+        </div>
+        <Button onClick={openAdd}>Add Client</Button>
+      </div>
+
+      {/* Filters */}
+      <div className="flex flex-col gap-3 sm:flex-row sm:items-center">
+        <Input
+          placeholder="Search clients..."
+          value={searchQuery}
+          onChange={(e) => setSearchQuery(e.target.value)}
+          className="sm:max-w-xs"
+        />
+        <select
+          value={tagFilter}
+          onChange={(e) => setTagFilter(e.target.value)}
+          className={cn(
+            "flex h-9 rounded-md border border-input bg-background px-3 py-1 text-sm text-foreground shadow-sm transition-colors",
+            "focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring"
+          )}
+        >
+          {TAG_FILTER_OPTIONS.map((tag) => (
+            <option key={tag} value={tag}>
+              {tag === "All" ? "All Tags" : tag}
+            </option>
+          ))}
+        </select>
+      </div>
+
+      {/* Error banner */}
+      {error && (
+        <div className="rounded-md border border-red-300 bg-red-50 p-3 text-sm text-red-700 dark:border-red-800 dark:bg-red-950 dark:text-red-300">
+          {error}
+        </div>
+      )}
+
+      {/* Loading state */}
+      {loading && (
+        <p className="text-sm text-muted-foreground">Loading clients...</p>
+      )}
+
+      {/* Empty state */}
+      {!loading && clients.length === 0 && (
+        <Card>
+          <CardContent className="flex flex-col items-center justify-center py-12">
+            <p className="text-muted-foreground mb-4">
+              No clients yet. Add your first client to get started.
+            </p>
+            <Button onClick={openAdd}>Add Client</Button>
+          </CardContent>
+        </Card>
+      )}
+
+      {/* No results for filter */}
+      {!loading && clients.length > 0 && filteredClients.length === 0 && (
+        <Card>
+          <CardContent className="flex flex-col items-center justify-center py-12">
+            <p className="text-muted-foreground">
+              No clients match your current filters.
+            </p>
+          </CardContent>
+        </Card>
+      )}
+
+      {/* Client cards grid */}
+      {!loading && filteredClients.length > 0 && (
+        <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+          {filteredClients.map((client) => (
+            <ClientCard
+              key={client.id}
+              client={client}
+              onClick={() => router.push(`/clients/${client.id}`)}
+              onEdit={(e) => openEdit(client, e)}
+              onDelete={(e) => handleDelete(client, e)}
+            />
+          ))}
+        </div>
+      )}
+
+      {/* Add/Edit modal */}
+      {modalOpen && (
+        <ClientModal
+          title={editingId ? "Edit Client" : "Add Client"}
+          form={form}
+          saving={saving}
+          onFieldChange={updateField}
+          onSave={handleSave}
+          onClose={closeModal}
+        />
+      )}
+    </div>
+  );
+}
+
+// ---------- Client Card ----------
+
+function ClientCard({
+  client,
+  onClick,
+  onEdit,
+  onDelete,
+}: {
+  client: Client;
+  onClick: () => void;
+  onEdit: (e: React.MouseEvent) => void;
+  onDelete: (e: React.MouseEvent) => void;
+}) {
+  return (
+    <Card
+      className="cursor-pointer transition-colors hover:bg-muted/50"
+      onClick={onClick}
+    >
+      <CardHeader className="pb-3">
+        <div className="flex items-start justify-between">
+          <div className="min-w-0 flex-1">
+            <CardTitle className="truncate text-base">{client.name}</CardTitle>
+            {client.company && (
+              <p className="mt-0.5 truncate text-sm text-muted-foreground">
+                {client.company}
+              </p>
+            )}
+          </div>
+          <div className="ml-2 flex gap-1">
+            <Button variant="ghost" size="sm" onClick={onEdit}>
+              Edit
+            </Button>
+            <Button variant="ghost" size="sm" onClick={onDelete}>
+              Delete
+            </Button>
+          </div>
+        </div>
+      </CardHeader>
+      <CardContent className="space-y-3">
+        {/* Contact details */}
+        <div className="space-y-1 text-sm">
+          {client.email && (
+            <p className="truncate text-muted-foreground">{client.email}</p>
+          )}
+          {client.phone && (
+            <p className="text-muted-foreground">{client.phone}</p>
+          )}
+        </div>
+
+        {/* Tags */}
+        {client.tags.length > 0 && (
+          <div className="flex flex-wrap gap-1.5">
+            {client.tags.map((tag) => (
+              <span
+                key={tag}
+                className={cn(
+                  "rounded-full px-2 py-0.5 text-xs font-medium",
+                  tagColour(tag)
+                )}
+              >
+                {tag}
+              </span>
+            ))}
+          </div>
+        )}
+
+        {/* Quote count */}
+        <div className="flex items-center justify-between border-t border-border pt-2 text-sm">
+          <span className="text-muted-foreground">Quotes</span>
+          <span className="font-medium text-foreground">
+            {client._count.quotes}
+          </span>
+        </div>
+      </CardContent>
+    </Card>
+  );
+}
+
+// ---------- Modal ----------
+
+function ClientModal({
+  title,
+  form,
+  saving,
+  onFieldChange,
+  onSave,
+  onClose,
+}: {
+  title: string;
+  form: ClientFormData;
+  saving: boolean;
+  onFieldChange: (field: keyof ClientFormData, value: string) => void;
+  onSave: () => void;
+  onClose: () => void;
+}) {
+  // Close on Escape key
+  useEffect(() => {
+    function handleKey(e: KeyboardEvent) {
+      if (e.key === "Escape") onClose();
+    }
+    window.addEventListener("keydown", handleKey);
+    return () => window.removeEventListener("keydown", handleKey);
+  }, [onClose]);
+
+  return (
+    <div className="fixed inset-0 z-50 flex items-center justify-center">
+      {/* Backdrop */}
+      <div className="absolute inset-0 bg-black/50" onClick={onClose} />
+      {/* Panel */}
+      <div className="relative z-10 mx-4 max-h-[90vh] w-full max-w-lg overflow-y-auto rounded-xl border border-border bg-card p-6 shadow-lg">
+        <h2 className="mb-4 text-lg font-semibold text-foreground">{title}</h2>
+
+        <div className="space-y-4">
+          {/* Name */}
+          <Input
+            label="Name *"
+            value={form.name}
+            onChange={(e) => onFieldChange("name", e.target.value)}
+            placeholder="e.g. John Smith"
+          />
+
+          {/* Email & Phone */}
+          <div className="grid grid-cols-2 gap-4">
+            <Input
+              label="Email"
+              type="email"
+              value={form.email}
+              onChange={(e) => onFieldChange("email", e.target.value)}
+              placeholder="john@example.com"
+            />
+            <Input
+              label="Phone"
+              value={form.phone}
+              onChange={(e) => onFieldChange("phone", e.target.value)}
+              placeholder="0412 345 678"
+            />
+          </div>
+
+          {/* Company */}
+          <Input
+            label="Company"
+            value={form.company}
+            onChange={(e) => onFieldChange("company", e.target.value)}
+            placeholder="e.g. Smith Electrical"
+          />
+
+          {/* Address */}
+          <div className="space-y-1">
+            <label className="text-sm font-medium text-foreground">
+              Address
+            </label>
+            <textarea
+              className="flex min-h-[60px] w-full rounded-md border border-input bg-background px-3 py-2 text-sm text-foreground shadow-sm placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring"
+              value={form.address}
+              onChange={(e) => onFieldChange("address", e.target.value)}
+              placeholder="123 Main St, Sydney NSW 2000"
+            />
+          </div>
+
+          {/* Tags */}
+          <Input
+            label="Tags"
+            value={form.tags}
+            onChange={(e) => onFieldChange("tags", e.target.value)}
+            placeholder="Tradie, Commercial (comma-separated)"
+          />
+          <p className="!mt-1 text-xs text-muted-foreground">
+            Common tags: Tradie, EV Owner, Maker, Commercial
+          </p>
+
+          {/* Notes */}
+          <div className="space-y-1">
+            <label className="text-sm font-medium text-foreground">Notes</label>
+            <textarea
+              className="flex min-h-[80px] w-full rounded-md border border-input bg-background px-3 py-2 text-sm text-foreground shadow-sm placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring"
+              value={form.notes}
+              onChange={(e) => onFieldChange("notes", e.target.value)}
+              placeholder="Any notes about this client..."
+            />
+          </div>
+
+          {/* Actions */}
+          <div className="flex justify-end gap-3 pt-2">
+            <Button variant="secondary" onClick={onClose} disabled={saving}>
+              Cancel
+            </Button>
+            <Button onClick={onSave} disabled={saving}>
+              {saving ? "Saving..." : "Save Client"}
+            </Button>
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+}
