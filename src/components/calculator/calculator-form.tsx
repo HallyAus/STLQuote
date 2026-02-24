@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useMemo } from "react";
+import { useState, useEffect, useMemo } from "react";
 import {
   type CalculatorInput,
   calculateTotalCost,
@@ -10,6 +10,25 @@ import { Card, CardContent } from "@/components/ui/card";
 import { CostBreakdownPanel } from "@/components/calculator/cost-breakdown";
 import { cn } from "@/lib/utils";
 import { ChevronDown } from "lucide-react";
+
+interface PrinterOption {
+  id: string;
+  name: string;
+  model: string | null;
+  purchasePrice: number;
+  lifetimeHours: number;
+  powerWatts: number;
+  maintenanceCostPerHour: number;
+}
+
+interface MaterialOption {
+  id: string;
+  materialType: string;
+  brand: string | null;
+  colour: string | null;
+  price: number;
+  spoolWeightG: number;
+}
 
 const defaultInput: CalculatorInput = {
   material: {
@@ -47,6 +66,9 @@ const defaultInput: CalculatorInput = {
   },
 };
 
+const selectClasses =
+  "flex h-9 w-full rounded-md border border-input bg-background px-3 py-1 text-sm text-foreground shadow-sm transition-colors focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring disabled:cursor-not-allowed disabled:opacity-50";
+
 interface SectionProps {
   title: string;
   defaultOpen?: boolean;
@@ -82,6 +104,28 @@ function Section({ title, defaultOpen = true, children }: SectionProps) {
 
 export function CalculatorForm() {
   const [input, setInput] = useState<CalculatorInput>(defaultInput);
+  const [printers, setPrinters] = useState<PrinterOption[]>([]);
+  const [materials, setMaterials] = useState<MaterialOption[]>([]);
+  const [selectedPrinterId, setSelectedPrinterId] = useState<string>("");
+  const [selectedMaterialId, setSelectedMaterialId] = useState<string>("");
+
+  useEffect(() => {
+    fetch("/api/printers")
+      .then((res) => res.json())
+      .then((data) => {
+        if (Array.isArray(data)) setPrinters(data);
+      })
+      .catch(() => {});
+  }, []);
+
+  useEffect(() => {
+    fetch("/api/materials")
+      .then((res) => res.json())
+      .then((data) => {
+        if (Array.isArray(data)) setMaterials(data);
+      })
+      .catch(() => {});
+  }, []);
 
   const breakdown = useMemo(() => calculateTotalCost(input), [input]);
 
@@ -109,11 +153,83 @@ export function CalculatorForm() {
     };
   }
 
+  function handlePrinterSelect(e: React.ChangeEvent<HTMLSelectElement>) {
+    const id = e.target.value;
+    setSelectedPrinterId(id);
+
+    if (!id) return;
+
+    const printer = printers.find((p) => p.id === id);
+    if (!printer) return;
+
+    setInput((prev) => ({
+      ...prev,
+      machine: {
+        ...prev.machine,
+        purchasePrice: printer.purchasePrice,
+        lifetimeHours: printer.lifetimeHours,
+        powerWatts: printer.powerWatts,
+        maintenanceCostPerHour: printer.maintenanceCostPerHour,
+      },
+    }));
+  }
+
+  function handleMaterialSelect(e: React.ChangeEvent<HTMLSelectElement>) {
+    const id = e.target.value;
+    setSelectedMaterialId(id);
+
+    if (!id) return;
+
+    const material = materials.find((m) => m.id === id);
+    if (!material) return;
+
+    setInput((prev) => ({
+      ...prev,
+      material: {
+        ...prev.material,
+        spoolPrice: material.price,
+        spoolWeightG: material.spoolWeightG,
+      },
+    }));
+  }
+
+  function materialLabel(m: MaterialOption): string {
+    const parts = [m.materialType];
+    if (m.brand) parts.push(m.brand);
+    if (m.colour) parts.push(m.colour);
+    return parts.join(" - ");
+  }
+
   return (
     <div className="grid gap-6 lg:grid-cols-[1fr,380px]">
       {/* Left column: form */}
       <div className="space-y-4">
         <Section title="Material Costs">
+          <div className="space-y-1 sm:col-span-2 lg:col-span-3">
+            <label
+              htmlFor="material-select"
+              className="text-sm font-medium text-foreground"
+            >
+              Select a material
+            </label>
+            <select
+              id="material-select"
+              value={selectedMaterialId}
+              onChange={handleMaterialSelect}
+              className={selectClasses}
+            >
+              <option value="">Manual entry</option>
+              {materials.length === 0 ? (
+                <option disabled>No materials — add one</option>
+              ) : (
+                materials.map((m) => (
+                  <option key={m.id} value={m.id}>
+                    {materialLabel(m)}
+                  </option>
+                ))
+              )}
+            </select>
+          </div>
           <Input
             label="Spool price (AUD)"
             type="number"
@@ -152,6 +268,31 @@ export function CalculatorForm() {
         </Section>
 
         <Section title="Machine Costs">
+          <div className="space-y-1 sm:col-span-2 lg:col-span-3">
+            <label
+              htmlFor="printer-select"
+              className="text-sm font-medium text-foreground"
+            >
+              Select a printer
+            </label>
+            <select
+              id="printer-select"
+              value={selectedPrinterId}
+              onChange={handlePrinterSelect}
+              className={selectClasses}
+            >
+              <option value="">Manual entry</option>
+              {printers.length === 0 ? (
+                <option disabled>No printers — add one</option>
+              ) : (
+                printers.map((p) => (
+                  <option key={p.id} value={p.id}>
+                    {p.name}
+                  </option>
+                ))
+              )}
+            </select>
+          </div>
           <Input
             label="Printer purchase price"
             type="number"

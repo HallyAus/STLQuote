@@ -910,7 +910,7 @@ export function QuoteDetail() {
         <CardContent className="flex flex-wrap gap-3 pt-6">
           <Button
             variant="secondary"
-            onClick={() => alert("PDF export coming soon")}
+            onClick={() => router.push(`/quotes/${quoteId}/pdf`)}
           >
             <Download className="mr-2 h-4 w-4" />
             Export PDF
