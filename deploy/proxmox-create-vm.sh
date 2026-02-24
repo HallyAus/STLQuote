@@ -11,7 +11,13 @@
 set -euo pipefail
 
 # --- Defaults (override with flags) ---
-VMID="${VMID:-200}"
+# Auto-detect next available VMID (starting from 100)
+if [ -z "${VMID:-}" ]; then
+    VMID=$(pvesh get /cluster/resources --type vm --output-format json 2>/dev/null \
+        | grep -oP '"vmid"\s*:\s*\K[0-9]+' \
+        | sort -n | tail -1)
+    VMID=$(( ${VMID:-99} + 1 ))
+fi
 VM_NAME="stlquote"
 CORES=2
 MEMORY=2048
