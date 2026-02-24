@@ -83,7 +83,7 @@ function patchFetch() {
         requestBody =
           typeof init.body === "string"
             ? init.body
-            : JSON.stringify(JSON.parse(init.body as string), null, 2);
+            : JSON.stringify(JSON.parse(String(init.body)), null, 2);
       } catch {
         requestBody = String(init.body);
       }
