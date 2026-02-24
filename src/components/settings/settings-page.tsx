@@ -4,7 +4,8 @@ import { useState, useEffect, useCallback } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card";
-import { cn } from "@/lib/utils";
+import { Select } from "@/components/ui/select";
+import { Textarea } from "@/components/ui/textarea";
 import { Loader2, Save, Check } from "lucide-react";
 
 // ---------------------------------------------------------------------------
@@ -52,94 +53,6 @@ const CURRENCY_OPTIONS = [
   { value: "EUR", label: "EUR — Euro" },
   { value: "GBP", label: "GBP — British Pound" },
 ];
-
-// ---------------------------------------------------------------------------
-// Select component (styled to match Input)
-// ---------------------------------------------------------------------------
-
-function Select({
-  label,
-  value,
-  onChange,
-  options,
-  className,
-}: {
-  label?: string;
-  value: string;
-  onChange: (value: string) => void;
-  options: { value: string; label: string }[];
-  className?: string;
-}) {
-  const id = label?.toLowerCase().replace(/\s+/g, "-");
-  return (
-    <div className="space-y-1">
-      {label && (
-        <label htmlFor={id} className="text-sm font-medium text-foreground">
-          {label}
-        </label>
-      )}
-      <select
-        id={id}
-        value={value}
-        onChange={(e) => onChange(e.target.value)}
-        className={cn(
-          "flex h-9 w-full rounded-md border border-input bg-background px-3 py-1 text-sm text-foreground shadow-sm transition-colors",
-          "focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring",
-          "disabled:cursor-not-allowed disabled:opacity-50",
-          className
-        )}
-      >
-        {options.map((opt) => (
-          <option key={opt.value} value={opt.value}>
-            {opt.label}
-          </option>
-        ))}
-      </select>
-    </div>
-  );
-}
-
-// ---------------------------------------------------------------------------
-// Textarea component (styled to match Input)
-// ---------------------------------------------------------------------------
-
-function Textarea({
-  label,
-  value,
-  onChange,
-  rows = 3,
-  placeholder,
-}: {
-  label?: string;
-  value: string;
-  onChange: (value: string) => void;
-  rows?: number;
-  placeholder?: string;
-}) {
-  const id = label?.toLowerCase().replace(/\s+/g, "-");
-  return (
-    <div className="space-y-1">
-      {label && (
-        <label htmlFor={id} className="text-sm font-medium text-foreground">
-          {label}
-        </label>
-      )}
-      <textarea
-        id={id}
-        value={value}
-        rows={rows}
-        onChange={(e) => onChange(e.target.value)}
-        placeholder={placeholder}
-        className={cn(
-          "flex w-full rounded-md border border-input bg-background px-3 py-2 text-sm text-foreground shadow-sm transition-colors",
-          "placeholder:text-muted-foreground",
-          "focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring",
-          "disabled:cursor-not-allowed disabled:opacity-50"
-        )}
-      />
-    </div>
-  );
-}
 
 // ---------------------------------------------------------------------------
 // Helpers
@@ -373,7 +286,7 @@ export function SettingsPage() {
             <Select
               label="Default currency"
               value={form.defaultCurrency}
-              onChange={(v) => updateField("defaultCurrency", v)}
+              onChange={(e) => updateField("defaultCurrency", e.target.value)}
               options={CURRENCY_OPTIONS}
             />
           </div>
@@ -417,7 +330,7 @@ export function SettingsPage() {
               <Textarea
                 label="Business address"
                 value={form.businessAddress}
-                onChange={(v) => updateField("businessAddress", v)}
+                onChange={(e) => updateField("businessAddress", e.target.value)}
                 rows={2}
                 placeholder="Street address, suburb, state, postcode"
               />
@@ -435,7 +348,7 @@ export function SettingsPage() {
           <Textarea
             label="Default terms and conditions"
             value={form.quoteTermsText}
-            onChange={(v) => updateField("quoteTermsText", v)}
+            onChange={(e) => updateField("quoteTermsText", e.target.value)}
             rows={6}
             placeholder="Enter your default terms and conditions. This will be pre-filled on new quotes."
           />

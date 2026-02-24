@@ -5,7 +5,11 @@ import { useRouter, useParams } from "next/navigation";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card";
-import { cn, roundCurrency } from "@/lib/utils";
+import { Select } from "@/components/ui/select";
+import { Textarea } from "@/components/ui/textarea";
+import { Badge } from "@/components/ui/badge";
+import { Dialog, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
+import { roundCurrency } from "@/lib/utils";
 import {
   ArrowLeft,
   Loader2,
@@ -92,22 +96,21 @@ const ALL_STATUSES: QuoteStatus[] = [
   "EXPIRED",
 ];
 
-function statusBadge(status: QuoteStatus) {
-  const map: Record<QuoteStatus, { label: string; className: string }> = {
-    DRAFT: { label: "Draft", className: "bg-gray-500/15 text-gray-500" },
-    SENT: { label: "Sent", className: "bg-blue-500/15 text-blue-500" },
-    ACCEPTED: {
-      label: "Accepted",
-      className: "bg-green-500/15 text-green-500",
-    },
-    REJECTED: { label: "Rejected", className: "bg-red-500/15 text-red-500" },
-    EXPIRED: {
-      label: "Expired",
-      className: "bg-orange-500/15 text-orange-500",
-    },
-  };
-  return map[status];
-}
+const STATUS_LABEL: Record<QuoteStatus, string> = {
+  DRAFT: "Draft",
+  SENT: "Sent",
+  ACCEPTED: "Accepted",
+  REJECTED: "Rejected",
+  EXPIRED: "Expired",
+};
+
+const STATUS_VARIANT: Record<QuoteStatus, "default" | "info" | "success" | "destructive" | "warning"> = {
+  DRAFT: "default",
+  SENT: "info",
+  ACCEPTED: "success",
+  REJECTED: "destructive",
+  EXPIRED: "warning",
+};
 
 function formatDate(dateStr: string | null): string {
   if (!dateStr) return "\u2014";
@@ -132,52 +135,6 @@ function calcLineTotal(form: LineItemFormData): number {
 }
 
 // ---------------------------------------------------------------------------
-// Select component
-// ---------------------------------------------------------------------------
-
-function Select({
-  label,
-  value,
-  onChange,
-  options,
-  className,
-}: {
-  label?: string;
-  value: string;
-  onChange: (value: string) => void;
-  options: { value: string; label: string }[];
-  className?: string;
-}) {
-  const id = label?.toLowerCase().replace(/\s+/g, "-");
-  return (
-    <div className="space-y-1">
-      {label && (
-        <label htmlFor={id} className="text-sm font-medium text-foreground">
-          {label}
-        </label>
-      )}
-      <select
-        id={id}
-        value={value}
-        onChange={(e) => onChange(e.target.value)}
-        className={cn(
-          "flex h-9 w-full rounded-md border border-input bg-background px-3 py-1 text-sm text-foreground shadow-sm transition-colors",
-          "focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring",
-          "disabled:cursor-not-allowed disabled:opacity-50",
-          className
-        )}
-      >
-        {options.map((opt) => (
-          <option key={opt.value} value={opt.value}>
-            {opt.label}
-          </option>
-        ))}
-      </select>
-    </div>
-  );
-}
-
-// ---------------------------------------------------------------------------
 // Line Item Form Modal
 // ---------------------------------------------------------------------------
 
@@ -196,147 +153,134 @@ function LineItemModal({
   onClose: () => void;
   saving: boolean;
 }) {
-  useEffect(() => {
-    function handleKey(e: KeyboardEvent) {
-      if (e.key === "Escape") onClose();
-    }
-    window.addEventListener("keydown", handleKey);
-    return () => window.removeEventListener("keydown", handleKey);
-  }, [onClose]);
-
   const previewTotal = calcLineTotal(form);
   const qty = parseInt(form.quantity) || 1;
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center">
-      {/* Backdrop */}
-      <div className="absolute inset-0 bg-black/50" onClick={onClose} />
-      {/* Panel */}
-      <div className="relative z-10 mx-4 max-h-[90vh] w-full max-w-lg overflow-y-auto rounded-xl border border-border bg-card p-6 shadow-lg">
-        <h2 className="mb-4 text-lg font-semibold text-foreground">{title}</h2>
+    <Dialog open={true} onClose={onClose}>
+      <DialogHeader onClose={onClose}>
+        <DialogTitle>{title}</DialogTitle>
+      </DialogHeader>
 
-        <div className="space-y-4">
-          {/* Description */}
+      <div className="space-y-4">
+        {/* Description */}
+        <Input
+          label="Description *"
+          value={form.description}
+          onChange={(e) => onFieldChange("description", e.target.value)}
+          placeholder="e.g. Custom bracket — PLA"
+        />
+
+        {/* Print weight & time */}
+        <div className="grid grid-cols-2 gap-4">
           <Input
-            label="Description *"
-            value={form.description}
-            onChange={(e) => onFieldChange("description", e.target.value)}
-            placeholder="e.g. Custom bracket — PLA"
-          />
-
-          {/* Print weight & time */}
-          <div className="grid grid-cols-2 gap-4">
-            <Input
-              label="Print Weight (g)"
-              type="number"
-              min="0"
-              step="0.1"
-              value={form.printWeightG}
-              onChange={(e) => onFieldChange("printWeightG", e.target.value)}
-            />
-            <Input
-              label="Print Time (min)"
-              type="number"
-              min="0"
-              step="1"
-              value={form.printTimeMinutes}
-              onChange={(e) =>
-                onFieldChange("printTimeMinutes", e.target.value)
-              }
-            />
-          </div>
-
-          {/* Cost fields */}
-          <div className="grid grid-cols-2 gap-4">
-            <Input
-              label="Material Cost ($)"
-              type="number"
-              min="0"
-              step="0.01"
-              value={form.materialCost}
-              onChange={(e) => onFieldChange("materialCost", e.target.value)}
-            />
-            <Input
-              label="Machine Cost ($)"
-              type="number"
-              min="0"
-              step="0.01"
-              value={form.machineCost}
-              onChange={(e) => onFieldChange("machineCost", e.target.value)}
-            />
-          </div>
-          <div className="grid grid-cols-2 gap-4">
-            <Input
-              label="Labour Cost ($)"
-              type="number"
-              min="0"
-              step="0.01"
-              value={form.labourCost}
-              onChange={(e) => onFieldChange("labourCost", e.target.value)}
-            />
-            <Input
-              label="Overhead Cost ($)"
-              type="number"
-              min="0"
-              step="0.01"
-              value={form.overheadCost}
-              onChange={(e) => onFieldChange("overheadCost", e.target.value)}
-            />
-          </div>
-
-          {/* Quantity */}
-          <Input
-            label="Quantity"
+            label="Print Weight (g)"
             type="number"
-            min="1"
-            step="1"
-            value={form.quantity}
-            onChange={(e) => onFieldChange("quantity", e.target.value)}
+            min="0"
+            step="0.1"
+            value={form.printWeightG}
+            onChange={(e) => onFieldChange("printWeightG", e.target.value)}
           />
-
-          {/* Notes */}
-          <div className="space-y-1">
-            <label className="text-sm font-medium text-foreground">Notes</label>
-            <textarea
-              className="flex min-h-[60px] w-full rounded-md border border-input bg-background px-3 py-2 text-sm text-foreground shadow-sm placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring"
-              value={form.notes}
-              onChange={(e) => onFieldChange("notes", e.target.value)}
-              placeholder="Optional notes for this line item..."
-            />
-          </div>
-
-          {/* Preview total */}
-          <div className="rounded-md bg-primary/10 px-3 py-2 text-center">
-            <p className="text-xs text-muted-foreground">Line Total</p>
-            <p className="text-lg font-bold text-primary">
-              {formatCurrency(previewTotal)}
-              {qty > 1 && (
-                <span className="ml-2 text-sm font-normal text-muted-foreground">
-                  x {qty} = {formatCurrency(previewTotal * qty)}
-                </span>
-              )}
-            </p>
-          </div>
-
-          {/* Actions */}
-          <div className="flex justify-end gap-3 pt-2">
-            <Button variant="secondary" onClick={onClose} disabled={saving}>
-              Cancel
-            </Button>
-            <Button onClick={onSave} disabled={saving}>
-              {saving ? (
-                <>
-                  <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                  Saving...
-                </>
-              ) : (
-                "Save Line Item"
-              )}
-            </Button>
-          </div>
+          <Input
+            label="Print Time (min)"
+            type="number"
+            min="0"
+            step="1"
+            value={form.printTimeMinutes}
+            onChange={(e) =>
+              onFieldChange("printTimeMinutes", e.target.value)
+            }
+          />
         </div>
+
+        {/* Cost fields */}
+        <div className="grid grid-cols-2 gap-4">
+          <Input
+            label="Material Cost ($)"
+            type="number"
+            min="0"
+            step="0.01"
+            value={form.materialCost}
+            onChange={(e) => onFieldChange("materialCost", e.target.value)}
+          />
+          <Input
+            label="Machine Cost ($)"
+            type="number"
+            min="0"
+            step="0.01"
+            value={form.machineCost}
+            onChange={(e) => onFieldChange("machineCost", e.target.value)}
+          />
+        </div>
+        <div className="grid grid-cols-2 gap-4">
+          <Input
+            label="Labour Cost ($)"
+            type="number"
+            min="0"
+            step="0.01"
+            value={form.labourCost}
+            onChange={(e) => onFieldChange("labourCost", e.target.value)}
+          />
+          <Input
+            label="Overhead Cost ($)"
+            type="number"
+            min="0"
+            step="0.01"
+            value={form.overheadCost}
+            onChange={(e) => onFieldChange("overheadCost", e.target.value)}
+          />
+        </div>
+
+        {/* Quantity */}
+        <Input
+          label="Quantity"
+          type="number"
+          min="1"
+          step="1"
+          value={form.quantity}
+          onChange={(e) => onFieldChange("quantity", e.target.value)}
+        />
+
+        {/* Notes */}
+        <Textarea
+          label="Notes"
+          value={form.notes}
+          onChange={(e) => onFieldChange("notes", e.target.value)}
+          placeholder="Optional notes for this line item..."
+          className="min-h-[60px]"
+        />
+
+        {/* Preview total */}
+        <div className="rounded-md bg-primary/10 px-3 py-2 text-center">
+          <p className="text-xs text-muted-foreground">Line Total</p>
+          <p className="text-lg font-bold text-primary">
+            {formatCurrency(previewTotal)}
+            {qty > 1 && (
+              <span className="ml-2 text-sm font-normal text-muted-foreground">
+                x {qty} = {formatCurrency(previewTotal * qty)}
+              </span>
+            )}
+          </p>
+        </div>
+
+        {/* Actions */}
+        <DialogFooter>
+          <Button variant="secondary" onClick={onClose} disabled={saving}>
+            Cancel
+          </Button>
+          <Button onClick={onSave} disabled={saving}>
+            {saving ? (
+              <>
+                <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                Saving...
+              </>
+            ) : (
+              "Save Line Item"
+            )}
+          </Button>
+        </DialogFooter>
       </div>
-    </div>
+    </Dialog>
   );
 }
 
@@ -582,8 +526,6 @@ export function QuoteDetail() {
     );
   }
 
-  const badge = statusBadge(quote.status);
-
   return (
     <div className="space-y-6">
       {/* Back button */}
@@ -616,21 +558,16 @@ export function QuoteDetail() {
             <div className="flex items-center gap-3">
               <Select
                 value={quote.status}
-                onChange={handleStatusChange}
+                onChange={(e) => handleStatusChange(e.target.value)}
                 options={ALL_STATUSES.map((s) => ({
                   value: s,
-                  label: statusBadge(s).label,
+                  label: STATUS_LABEL[s],
                 }))}
                 className="w-36"
               />
-              <span
-                className={cn(
-                  "rounded-full px-2.5 py-1 text-xs font-medium",
-                  badge.className
-                )}
-              >
-                {badge.label}
-              </span>
+              <Badge variant={STATUS_VARIANT[quote.status]}>
+                {STATUS_LABEL[quote.status]}
+              </Badge>
             </div>
           </div>
         </CardHeader>
@@ -867,28 +804,18 @@ export function QuoteDetail() {
         </CardHeader>
         <CardContent>
           <div className="space-y-4">
-            <div className="space-y-1">
-              <label className="text-sm font-medium text-foreground">
-                Notes
-              </label>
-              <textarea
-                className="flex min-h-[80px] w-full rounded-md border border-input bg-background px-3 py-2 text-sm text-foreground shadow-sm placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring"
-                value={notes}
-                onChange={(e) => setNotes(e.target.value)}
-                placeholder="Internal notes about this quote..."
-              />
-            </div>
-            <div className="space-y-1">
-              <label className="text-sm font-medium text-foreground">
-                Terms & Conditions
-              </label>
-              <textarea
-                className="flex min-h-[80px] w-full rounded-md border border-input bg-background px-3 py-2 text-sm text-foreground shadow-sm placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring"
-                value={terms}
-                onChange={(e) => setTerms(e.target.value)}
-                placeholder="Terms and conditions for this quote..."
-              />
-            </div>
+            <Textarea
+              label="Notes"
+              value={notes}
+              onChange={(e) => setNotes(e.target.value)}
+              placeholder="Internal notes about this quote..."
+            />
+            <Textarea
+              label="Terms & Conditions"
+              value={terms}
+              onChange={(e) => setTerms(e.target.value)}
+              placeholder="Terms and conditions for this quote..."
+            />
             <div className="flex justify-end">
               <Button onClick={handleSaveQuote} disabled={saving}>
                 {saving ? (

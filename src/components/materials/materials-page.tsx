@@ -5,6 +5,10 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { cn } from "@/lib/utils";
+import { Select } from "@/components/ui/select";
+import { Textarea } from "@/components/ui/textarea";
+import { Badge } from "@/components/ui/badge";
+import { Dialog, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
 import { Plus, Pencil, Trash2, Package, Loader2 } from "lucide-react";
 import { MATERIAL_PRESETS } from "@/lib/presets";
 
@@ -82,94 +86,9 @@ function pricePerGram(price: number, weightG: number): string {
 }
 
 function stockStatus(qty: number, threshold: number) {
-  if (qty === 0) return { label: "Out of stock", className: "bg-red-500/15 text-red-500" };
-  if (qty <= threshold) return { label: "Low stock", className: "bg-orange-500/15 text-orange-500" };
-  return { label: "In stock", className: "bg-green-500/15 text-green-500" };
-}
-
-// ---------------------------------------------------------------------------
-// Select component (styled to match Input)
-// ---------------------------------------------------------------------------
-
-function Select({
-  label,
-  value,
-  onChange,
-  options,
-  className,
-}: {
-  label?: string;
-  value: string;
-  onChange: (value: string) => void;
-  options: { value: string; label: string }[];
-  className?: string;
-}) {
-  const id = label?.toLowerCase().replace(/\s+/g, "-");
-  return (
-    <div className="space-y-1">
-      {label && (
-        <label htmlFor={id} className="text-sm font-medium text-foreground">
-          {label}
-        </label>
-      )}
-      <select
-        id={id}
-        value={value}
-        onChange={(e) => onChange(e.target.value)}
-        className={cn(
-          "flex h-9 w-full rounded-md border border-input bg-background px-3 py-1 text-sm text-foreground shadow-sm transition-colors",
-          "focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring",
-          "disabled:cursor-not-allowed disabled:opacity-50",
-          className
-        )}
-      >
-        {options.map((opt) => (
-          <option key={opt.value} value={opt.value}>
-            {opt.label}
-          </option>
-        ))}
-      </select>
-    </div>
-  );
-}
-
-// ---------------------------------------------------------------------------
-// Textarea component (styled to match Input)
-// ---------------------------------------------------------------------------
-
-function Textarea({
-  label,
-  value,
-  onChange,
-  rows = 3,
-}: {
-  label?: string;
-  value: string;
-  onChange: (value: string) => void;
-  rows?: number;
-}) {
-  const id = label?.toLowerCase().replace(/\s+/g, "-");
-  return (
-    <div className="space-y-1">
-      {label && (
-        <label htmlFor={id} className="text-sm font-medium text-foreground">
-          {label}
-        </label>
-      )}
-      <textarea
-        id={id}
-        value={value}
-        rows={rows}
-        onChange={(e) => onChange(e.target.value)}
-        className={cn(
-          "flex w-full rounded-md border border-input bg-background px-3 py-2 text-sm text-foreground shadow-sm transition-colors",
-          "placeholder:text-muted-foreground",
-          "focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring",
-          "disabled:cursor-not-allowed disabled:opacity-50"
-        )}
-      />
-    </div>
-  );
+  if (qty === 0) return { label: "Out of stock", variant: "destructive" as const };
+  if (qty <= threshold) return { label: "Low stock", variant: "warning" as const };
+  return { label: "In stock", variant: "success" as const };
 }
 
 // ---------------------------------------------------------------------------
@@ -194,143 +113,139 @@ function MaterialFormModal({
   const isEdit = editingMaterial !== null;
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4">
-      <Card className="w-full max-w-2xl max-h-[90vh] overflow-y-auto">
-        <CardHeader>
-          <CardTitle>{isEdit ? "Edit Material" : "Add Material"}</CardTitle>
-        </CardHeader>
-        <CardContent>
-          <div className="grid gap-4 sm:grid-cols-2">
-            <Select
-              label="Type"
-              value={formData.type}
-              onChange={(v) => setFormData((prev) => ({ ...prev, type: v }))}
-              options={[
-                { value: "filament", label: "Filament" },
-                { value: "resin", label: "Resin" },
-              ]}
-            />
-            <Select
-              label="Material type"
-              value={formData.materialType}
-              onChange={(v) => setFormData((prev) => ({ ...prev, materialType: v }))}
-              options={MATERIAL_TYPES.map((t) => ({ value: t, label: t }))}
-            />
-            <Input
-              label="Brand"
-              value={formData.brand}
-              onChange={(e) =>
-                setFormData((prev) => ({ ...prev, brand: e.target.value }))
-              }
-              placeholder="e.g. eSun, Bambu Lab"
-            />
-            <Input
-              label="Colour"
-              value={formData.colour}
-              onChange={(e) =>
-                setFormData((prev) => ({ ...prev, colour: e.target.value }))
-              }
-              placeholder="e.g. Black, #FF5500"
-            />
-            <Input
-              label="Spool weight (g)"
-              type="number"
-              step="1"
-              min="1"
-              value={formData.spoolWeightG}
-              onChange={(e) =>
-                setFormData((prev) => ({
-                  ...prev,
-                  spoolWeightG: parseFloat(e.target.value) || 0,
-                }))
-              }
-            />
-            <Input
-              label="Price (AUD)"
-              type="number"
-              step="0.01"
-              min="0"
-              value={formData.price}
-              onChange={(e) =>
-                setFormData((prev) => ({
-                  ...prev,
-                  price: parseFloat(e.target.value) || 0,
-                }))
-              }
-            />
-            <Input
-              label="Density (g/cm3)"
-              type="number"
-              step="0.01"
-              min="0"
-              value={formData.density}
-              onChange={(e) =>
-                setFormData((prev) => ({ ...prev, density: e.target.value }))
-              }
-              placeholder="Optional"
-            />
-            <Input
-              label="Stock qty"
-              type="number"
-              step="1"
-              min="0"
-              value={formData.stockQty}
-              onChange={(e) =>
-                setFormData((prev) => ({
-                  ...prev,
-                  stockQty: parseInt(e.target.value) || 0,
-                }))
-              }
-            />
-            <Input
-              label="Low stock threshold"
-              type="number"
-              step="1"
-              min="0"
-              value={formData.lowStockThreshold}
-              onChange={(e) =>
-                setFormData((prev) => ({
-                  ...prev,
-                  lowStockThreshold: parseInt(e.target.value) || 0,
-                }))
-              }
-            />
-            <Input
-              label="Supplier"
-              value={formData.supplier}
-              onChange={(e) =>
-                setFormData((prev) => ({ ...prev, supplier: e.target.value }))
-              }
-              placeholder="Optional"
-            />
-            <div className="sm:col-span-2">
-              <Textarea
-                label="Notes"
-                value={formData.notes}
-                onChange={(v) => setFormData((prev) => ({ ...prev, notes: v }))}
-              />
-            </div>
-          </div>
-          <div className="mt-6 flex justify-end gap-3">
-            <Button variant="ghost" onClick={onClose} disabled={saving}>
-              Cancel
-            </Button>
-            <Button onClick={onSave} disabled={saving}>
-              {saving ? (
-                <>
-                  <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                  Saving...
-                </>
-              ) : isEdit ? (
-                "Save Changes"
-              ) : (
-                "Add Material"
-              )}
-            </Button>
-          </div>
-        </CardContent>
-      </Card>
-    </div>
+    <Dialog open={true} onClose={onClose} maxWidth="max-w-2xl">
+      <DialogHeader onClose={onClose}>
+        <DialogTitle>{isEdit ? "Edit Material" : "Add Material"}</DialogTitle>
+      </DialogHeader>
+      <div className="grid gap-4 sm:grid-cols-2">
+        <Select
+          label="Type"
+          value={formData.type}
+          onChange={(e) => setFormData((prev) => ({ ...prev, type: e.target.value }))}
+          options={[
+            { value: "filament", label: "Filament" },
+            { value: "resin", label: "Resin" },
+          ]}
+        />
+        <Select
+          label="Material type"
+          value={formData.materialType}
+          onChange={(e) => setFormData((prev) => ({ ...prev, materialType: e.target.value }))}
+          options={MATERIAL_TYPES.map((t) => ({ value: t, label: t }))}
+        />
+        <Input
+          label="Brand"
+          value={formData.brand}
+          onChange={(e) =>
+            setFormData((prev) => ({ ...prev, brand: e.target.value }))
+          }
+          placeholder="e.g. eSun, Bambu Lab"
+        />
+        <Input
+          label="Colour"
+          value={formData.colour}
+          onChange={(e) =>
+            setFormData((prev) => ({ ...prev, colour: e.target.value }))
+          }
+          placeholder="e.g. Black, #FF5500"
+        />
+        <Input
+          label="Spool weight (g)"
+          type="number"
+          step="1"
+          min="1"
+          value={formData.spoolWeightG}
+          onChange={(e) =>
+            setFormData((prev) => ({
+              ...prev,
+              spoolWeightG: parseFloat(e.target.value) || 0,
+            }))
+          }
+        />
+        <Input
+          label="Price (AUD)"
+          type="number"
+          step="0.01"
+          min="0"
+          value={formData.price}
+          onChange={(e) =>
+            setFormData((prev) => ({
+              ...prev,
+              price: parseFloat(e.target.value) || 0,
+            }))
+          }
+        />
+        <Input
+          label="Density (g/cm3)"
+          type="number"
+          step="0.01"
+          min="0"
+          value={formData.density}
+          onChange={(e) =>
+            setFormData((prev) => ({ ...prev, density: e.target.value }))
+          }
+          placeholder="Optional"
+        />
+        <Input
+          label="Stock qty"
+          type="number"
+          step="1"
+          min="0"
+          value={formData.stockQty}
+          onChange={(e) =>
+            setFormData((prev) => ({
+              ...prev,
+              stockQty: parseInt(e.target.value) || 0,
+            }))
+          }
+        />
+        <Input
+          label="Low stock threshold"
+          type="number"
+          step="1"
+          min="0"
+          value={formData.lowStockThreshold}
+          onChange={(e) =>
+            setFormData((prev) => ({
+              ...prev,
+              lowStockThreshold: parseInt(e.target.value) || 0,
+            }))
+          }
+        />
+        <Input
+          label="Supplier"
+          value={formData.supplier}
+          onChange={(e) =>
+            setFormData((prev) => ({ ...prev, supplier: e.target.value }))
+          }
+          placeholder="Optional"
+        />
+        <div className="sm:col-span-2">
+          <Textarea
+            label="Notes"
+            value={formData.notes}
+            onChange={(e) => setFormData((prev) => ({ ...prev, notes: e.target.value }))}
+          />
+        </div>
+      </div>
+      <DialogFooter>
+        <Button variant="ghost" onClick={onClose} disabled={saving}>
+          Cancel
+        </Button>
+        <Button onClick={onSave} disabled={saving}>
+          {saving ? (
+            <>
+              <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+              Saving...
+            </>
+          ) : isEdit ? (
+            "Save Changes"
+          ) : (
+            "Add Material"
+          )}
+        </Button>
+      </DialogFooter>
+    </Dialog>
   );
 }
 
@@ -377,14 +292,9 @@ function MaterialCard({
               )}
             </div>
           </div>
-          <span
-            className={cn(
-              "shrink-0 rounded-full px-2 py-0.5 text-xs font-medium",
-              status.className
-            )}
-          >
+          <Badge variant={status.variant}>
             {status.label}
-          </span>
+          </Badge>
         </div>
         <div className="mt-3 grid grid-cols-3 gap-2 text-sm">
           <div>
@@ -605,7 +515,7 @@ export function MaterialsPage() {
         <div className="flex items-center gap-3">
           <Select
             value={filter}
-            onChange={setFilter}
+            onChange={(e) => setFilter(e.target.value)}
             options={FILTER_OPTIONS.map((f) => ({ value: f, label: f }))}
             className="w-36"
           />
@@ -764,14 +674,9 @@ export function MaterialsPage() {
                           {material.stockQty}
                         </td>
                         <td className="px-4 py-3">
-                          <span
-                            className={cn(
-                              "rounded-full px-2 py-0.5 text-xs font-medium",
-                              status.className
-                            )}
-                          >
+                          <Badge variant={status.variant}>
                             {status.label}
-                          </span>
+                          </Badge>
                         </td>
                         <td className="px-4 py-3 text-right">
                           <div className="flex justify-end gap-1">

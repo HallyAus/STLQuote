@@ -83,3 +83,13 @@
     font-family: system-ui, -apple-system, sans-serif;
   }
 }
+
+@keyframes field-pulse {
+  0%, 100% { box-shadow: 0 0 0 0 oklch(0.6 0.2 265 / 0); }
+  50% { box-shadow: 0 0 0 3px oklch(0.6 0.2 265 / 0.3); }
+}
+
+:root.dark {
+  scrollbar-width: thin;
+  scrollbar-color: oklch(0.3 0 0) transparent;
+}

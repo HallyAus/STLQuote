@@ -5,6 +5,7 @@ import { useRouter, useSearchParams } from "next/navigation";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card";
+import { Textarea } from "@/components/ui/textarea";
 import { ArrowLeft, Loader2, Calculator } from "lucide-react";
 
 // ---------------------------------------------------------------------------
@@ -231,30 +232,20 @@ export function NewQuote() {
             />
 
             {/* Notes */}
-            <div className="space-y-1">
-              <label className="text-sm font-medium text-foreground">
-                Notes
-              </label>
-              <textarea
-                className="flex min-h-[80px] w-full rounded-md border border-input bg-background px-3 py-2 text-sm text-foreground shadow-sm placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring"
-                value={notes}
-                onChange={(e) => setNotes(e.target.value)}
-                placeholder="Optional notes about this quote..."
-              />
-            </div>
+            <Textarea
+              label="Notes"
+              value={notes}
+              onChange={(e) => setNotes(e.target.value)}
+              placeholder="Optional notes about this quote..."
+            />
 
             {/* Terms */}
-            <div className="space-y-1">
-              <label className="text-sm font-medium text-foreground">
-                Terms & Conditions
-              </label>
-              <textarea
-                className="flex min-h-[80px] w-full rounded-md border border-input bg-background px-3 py-2 text-sm text-foreground shadow-sm placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring"
-                value={terms}
-                onChange={(e) => setTerms(e.target.value)}
-                placeholder="Optional terms and conditions..."
-              />
-            </div>
+            <Textarea
+              label="Terms & Conditions"
+              value={terms}
+              onChange={(e) => setTerms(e.target.value)}
+              placeholder="Optional terms and conditions..."
+            />
 
             {!calcLineItem && (
               <p className="text-xs text-muted-foreground">

@@ -4,7 +4,9 @@ import { useState, useEffect, useCallback } from "react";
 import { useRouter } from "next/navigation";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
-import { cn, roundCurrency } from "@/lib/utils";
+import { roundCurrency } from "@/lib/utils";
+import { Select } from "@/components/ui/select";
+import { Badge } from "@/components/ui/badge";
 import { Plus, FileText, Loader2 } from "lucide-react";
 
 // ---------------------------------------------------------------------------
@@ -44,31 +46,21 @@ const STATUS_OPTIONS: { value: string; label: string }[] = [
   { value: "EXPIRED", label: "Expired" },
 ];
 
-function statusBadge(status: QuoteStatus) {
-  const map: Record<QuoteStatus, { label: string; className: string }> = {
-    DRAFT: {
-      label: "Draft",
-      className: "bg-gray-500/15 text-gray-500",
-    },
-    SENT: {
-      label: "Sent",
-      className: "bg-blue-500/15 text-blue-500",
-    },
-    ACCEPTED: {
-      label: "Accepted",
-      className: "bg-green-500/15 text-green-500",
-    },
-    REJECTED: {
-      label: "Rejected",
-      className: "bg-red-500/15 text-red-500",
-    },
-    EXPIRED: {
-      label: "Expired",
-      className: "bg-orange-500/15 text-orange-500",
-    },
-  };
-  return map[status];
-}
+const STATUS_LABEL: Record<QuoteStatus, string> = {
+  DRAFT: "Draft",
+  SENT: "Sent",
+  ACCEPTED: "Accepted",
+  REJECTED: "Rejected",
+  EXPIRED: "Expired",
+};
+
+const STATUS_VARIANT: Record<QuoteStatus, "default" | "info" | "success" | "destructive" | "warning"> = {
+  DRAFT: "default",
+  SENT: "info",
+  ACCEPTED: "success",
+  REJECTED: "destructive",
+  EXPIRED: "warning",
+};
 
 function formatDate(dateStr: string): string {
   return new Date(dateStr).toLocaleDateString("en-AU", {
@@ -83,52 +75,6 @@ function formatCurrency(value: number): string {
 }
 
 // ---------------------------------------------------------------------------
-// Select component (matches existing codebase pattern)
-// ---------------------------------------------------------------------------
-
-function Select({
-  label,
-  value,
-  onChange,
-  options,
-  className,
-}: {
-  label?: string;
-  value: string;
-  onChange: (value: string) => void;
-  options: { value: string; label: string }[];
-  className?: string;
-}) {
-  const id = label?.toLowerCase().replace(/\s+/g, "-");
-  return (
-    <div className="space-y-1">
-      {label && (
-        <label htmlFor={id} className="text-sm font-medium text-foreground">
-          {label}
-        </label>
-      )}
-      <select
-        id={id}
-        value={value}
-        onChange={(e) => onChange(e.target.value)}
-        className={cn(
-          "flex h-9 w-full rounded-md border border-input bg-background px-3 py-1 text-sm text-foreground shadow-sm transition-colors",
-          "focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring",
-          "disabled:cursor-not-allowed disabled:opacity-50",
-          className
-        )}
-      >
-        {options.map((opt) => (
-          <option key={opt.value} value={opt.value}>
-            {opt.label}
-          </option>
-        ))}
-      </select>
-    </div>
-  );
-}
-
-// ---------------------------------------------------------------------------
 // Mobile Card
 // ---------------------------------------------------------------------------
 
@@ -139,8 +85,6 @@ function QuoteCard({
   quote: Quote;
   onClick: () => void;
 }) {
-  const badge = statusBadge(quote.status);
-
   return (
     <Card
       className="cursor-pointer transition-colors hover:bg-muted/50"
@@ -154,14 +98,9 @@ function QuoteCard({
               {quote.client?.name ?? "\u2014"}
             </p>
           </div>
-          <span
-            className={cn(
-              "shrink-0 rounded-full px-2 py-0.5 text-xs font-medium",
-              badge.className
-            )}
-          >
-            {badge.label}
-          </span>
+          <Badge variant={STATUS_VARIANT[quote.status]}>
+            {STATUS_LABEL[quote.status]}
+          </Badge>
         </div>
         <div className="mt-3 grid grid-cols-3 gap-2 text-sm">
           <div>
@@ -235,7 +174,7 @@ export function QuotesPage() {
         <div className="flex items-center gap-3">
           <Select
             value={statusFilter}
-            onChange={setStatusFilter}
+            onChange={(e) => setStatusFilter(e.target.value)}
             options={STATUS_OPTIONS}
             className="w-36"
           />
@@ -310,8 +249,6 @@ export function QuotesPage() {
                 </thead>
                 <tbody>
                   {filtered.map((quote) => {
-                    const badge = statusBadge(quote.status);
-
                     return (
                       <tr
                         key={quote.id}
@@ -325,14 +262,9 @@ export function QuotesPage() {
                           {quote.client?.name ?? "\u2014"}
                         </td>
                         <td className="px-4 py-3">
-                          <span
-                            className={cn(
-                              "rounded-full px-2 py-0.5 text-xs font-medium",
-                              badge.className
-                            )}
-                          >
-                            {badge.label}
-                          </span>
+                          <Badge variant={STATUS_VARIANT[quote.status]}>
+                            {STATUS_LABEL[quote.status]}
+                          </Badge>
                         </td>
                         <td className="px-4 py-3 text-right tabular-nums">
                           {quote.lineItems.length}

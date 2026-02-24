@@ -5,6 +5,10 @@ import { useRouter } from "next/navigation";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card";
+import { Select } from "@/components/ui/select";
+import { Textarea } from "@/components/ui/textarea";
+import { Badge } from "@/components/ui/badge";
+import { Dialog, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
 import { cn } from "@/lib/utils";
 
 // ---------- Types ----------
@@ -259,20 +263,14 @@ export function ClientsPage() {
           onChange={(e) => setSearchQuery(e.target.value)}
           className="sm:max-w-xs"
         />
-        <select
+        <Select
           value={tagFilter}
           onChange={(e) => setTagFilter(e.target.value)}
-          className={cn(
-            "flex h-9 rounded-md border border-input bg-background px-3 py-1 text-sm text-foreground shadow-sm transition-colors",
-            "focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring"
-          )}
-        >
-          {TAG_FILTER_OPTIONS.map((tag) => (
-            <option key={tag} value={tag}>
-              {tag === "All" ? "All Tags" : tag}
-            </option>
-          ))}
-        </select>
+          options={TAG_FILTER_OPTIONS.map((tag) => ({
+            value: tag,
+            label: tag === "All" ? "All Tags" : tag,
+          }))}
+        />
       </div>
 
       {/* Error banner */}
@@ -393,15 +391,9 @@ function ClientCard({
         {client.tags.length > 0 && (
           <div className="flex flex-wrap gap-1.5">
             {client.tags.map((tag) => (
-              <span
-                key={tag}
-                className={cn(
-                  "rounded-full px-2 py-0.5 text-xs font-medium",
-                  tagColour(tag)
-                )}
-              >
+              <Badge key={tag} variant="outline" className={tagColour(tag)}>
                 {tag}
-              </span>
+              </Badge>
             ))}
           </div>
         )}
@@ -435,103 +427,84 @@ function ClientModal({
   onSave: () => void;
   onClose: () => void;
 }) {
-  // Close on Escape key
-  useEffect(() => {
-    function handleKey(e: KeyboardEvent) {
-      if (e.key === "Escape") onClose();
-    }
-    window.addEventListener("keydown", handleKey);
-    return () => window.removeEventListener("keydown", handleKey);
-  }, [onClose]);
-
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center">
-      {/* Backdrop */}
-      <div className="absolute inset-0 bg-black/50" onClick={onClose} />
-      {/* Panel */}
-      <div className="relative z-10 mx-4 max-h-[90vh] w-full max-w-lg overflow-y-auto rounded-xl border border-border bg-card p-6 shadow-lg">
-        <h2 className="mb-4 text-lg font-semibold text-foreground">{title}</h2>
+    <Dialog open={true} onClose={onClose}>
+      <DialogHeader onClose={onClose}>
+        <DialogTitle>{title}</DialogTitle>
+      </DialogHeader>
 
-        <div className="space-y-4">
-          {/* Name */}
+      <div className="space-y-4">
+        {/* Name */}
+        <Input
+          label="Name *"
+          value={form.name}
+          onChange={(e) => onFieldChange("name", e.target.value)}
+          placeholder="e.g. John Smith"
+        />
+
+        {/* Email & Phone */}
+        <div className="grid grid-cols-2 gap-4">
           <Input
-            label="Name *"
-            value={form.name}
-            onChange={(e) => onFieldChange("name", e.target.value)}
-            placeholder="e.g. John Smith"
+            label="Email"
+            type="email"
+            value={form.email}
+            onChange={(e) => onFieldChange("email", e.target.value)}
+            placeholder="john@example.com"
           />
-
-          {/* Email & Phone */}
-          <div className="grid grid-cols-2 gap-4">
-            <Input
-              label="Email"
-              type="email"
-              value={form.email}
-              onChange={(e) => onFieldChange("email", e.target.value)}
-              placeholder="john@example.com"
-            />
-            <Input
-              label="Phone"
-              value={form.phone}
-              onChange={(e) => onFieldChange("phone", e.target.value)}
-              placeholder="0412 345 678"
-            />
-          </div>
-
-          {/* Company */}
           <Input
-            label="Company"
-            value={form.company}
-            onChange={(e) => onFieldChange("company", e.target.value)}
-            placeholder="e.g. Smith Electrical"
+            label="Phone"
+            value={form.phone}
+            onChange={(e) => onFieldChange("phone", e.target.value)}
+            placeholder="0412 345 678"
           />
-
-          {/* Address */}
-          <div className="space-y-1">
-            <label className="text-sm font-medium text-foreground">
-              Address
-            </label>
-            <textarea
-              className="flex min-h-[60px] w-full rounded-md border border-input bg-background px-3 py-2 text-sm text-foreground shadow-sm placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring"
-              value={form.address}
-              onChange={(e) => onFieldChange("address", e.target.value)}
-              placeholder="123 Main St, Sydney NSW 2000"
-            />
-          </div>
-
-          {/* Tags */}
-          <Input
-            label="Tags"
-            value={form.tags}
-            onChange={(e) => onFieldChange("tags", e.target.value)}
-            placeholder="Tradie, Commercial (comma-separated)"
-          />
-          <p className="!mt-1 text-xs text-muted-foreground">
-            Common tags: Tradie, EV Owner, Maker, Commercial
-          </p>
-
-          {/* Notes */}
-          <div className="space-y-1">
-            <label className="text-sm font-medium text-foreground">Notes</label>
-            <textarea
-              className="flex min-h-[80px] w-full rounded-md border border-input bg-background px-3 py-2 text-sm text-foreground shadow-sm placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring"
-              value={form.notes}
-              onChange={(e) => onFieldChange("notes", e.target.value)}
-              placeholder="Any notes about this client..."
-            />
-          </div>
-
-          {/* Actions */}
-          <div className="flex justify-end gap-3 pt-2">
-            <Button variant="secondary" onClick={onClose} disabled={saving}>
-              Cancel
-            </Button>
-            <Button onClick={onSave} disabled={saving}>
-              {saving ? "Saving..." : "Save Client"}
-            </Button>
-          </div>
         </div>
+
+        {/* Company */}
+        <Input
+          label="Company"
+          value={form.company}
+          onChange={(e) => onFieldChange("company", e.target.value)}
+          placeholder="e.g. Smith Electrical"
+        />
+
+        {/* Address */}
+        <Textarea
+          label="Address"
+          value={form.address}
+          onChange={(e) => onFieldChange("address", e.target.value)}
+          placeholder="123 Main St, Sydney NSW 2000"
+          className="min-h-[60px]"
+        />
+
+        {/* Tags */}
+        <Input
+          label="Tags"
+          value={form.tags}
+          onChange={(e) => onFieldChange("tags", e.target.value)}
+          placeholder="Tradie, Commercial (comma-separated)"
+        />
+        <p className="!mt-1 text-xs text-muted-foreground">
+          Common tags: Tradie, EV Owner, Maker, Commercial
+        </p>
+
+        {/* Notes */}
+        <Textarea
+          label="Notes"
+          value={form.notes}
+          onChange={(e) => onFieldChange("notes", e.target.value)}
+          placeholder="Any notes about this client..."
+        />
+
+        {/* Actions */}
+        <DialogFooter>
+          <Button variant="secondary" onClick={onClose} disabled={saving}>
+            Cancel
+          </Button>
+          <Button onClick={onSave} disabled={saving}>
+            {saving ? "Saving..." : "Save Client"}
+          </Button>
+        </DialogFooter>
       </div>
-    </div>
+    </Dialog>
   );
 }

@@ -5,11 +5,14 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { cn } from "@/lib/utils";
+import { Select } from "@/components/ui/select";
+import { Textarea } from "@/components/ui/textarea";
+import { Badge } from "@/components/ui/badge";
+import { Dialog, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
 import {
   Plus,
   Loader2,
   ChevronRight,
-  X,
   Briefcase,
   LayoutGrid,
   List,
@@ -112,6 +115,16 @@ const STATUS_CONFIG: Record<
   },
 };
 
+const STATUS_BADGE_VARIANT: Record<JobStatus, "default" | "info" | "success" | "warning"> = {
+  QUEUED: "default",
+  PRINTING: "info",
+  POST_PROCESSING: "warning",
+  QUALITY_CHECK: "info",
+  PACKING: "warning",
+  SHIPPED: "success",
+  COMPLETE: "success",
+};
+
 type FilterMode = "ALL" | "ACTIVE" | "COMPLETE";
 
 const FILTER_OPTIONS: { value: FilterMode; label: string }[] = [
@@ -151,136 +164,6 @@ function getNextStatus(status: JobStatus): JobStatus | null {
   const idx = STATUS_ORDER.indexOf(status);
   if (idx < 0 || idx >= STATUS_ORDER.length - 1) return null;
   return STATUS_ORDER[idx + 1];
-}
-
-// ---------------------------------------------------------------------------
-// Select component (matches existing codebase pattern)
-// ---------------------------------------------------------------------------
-
-function Select({
-  label,
-  value,
-  onChange,
-  options,
-  className,
-}: {
-  label?: string;
-  value: string;
-  onChange: (value: string) => void;
-  options: { value: string; label: string }[];
-  className?: string;
-}) {
-  const id = label?.toLowerCase().replace(/\s+/g, "-");
-  return (
-    <div className="space-y-1">
-      {label && (
-        <label htmlFor={id} className="text-sm font-medium text-foreground">
-          {label}
-        </label>
-      )}
-      <select
-        id={id}
-        value={value}
-        onChange={(e) => onChange(e.target.value)}
-        className={cn(
-          "flex h-9 w-full rounded-md border border-input bg-background px-3 py-1 text-sm text-foreground shadow-sm transition-colors",
-          "focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring",
-          "disabled:cursor-not-allowed disabled:opacity-50",
-          className
-        )}
-      >
-        {options.map((opt) => (
-          <option key={opt.value} value={opt.value}>
-            {opt.label}
-          </option>
-        ))}
-      </select>
-    </div>
-  );
-}
-
-// ---------------------------------------------------------------------------
-// Textarea component (simple, matches input styling)
-// ---------------------------------------------------------------------------
-
-function Textarea({
-  label,
-  value,
-  onChange,
-  placeholder,
-  rows = 3,
-  className,
-}: {
-  label?: string;
-  value: string;
-  onChange: (value: string) => void;
-  placeholder?: string;
-  rows?: number;
-  className?: string;
-}) {
-  const id = label?.toLowerCase().replace(/\s+/g, "-");
-  return (
-    <div className="space-y-1">
-      {label && (
-        <label htmlFor={id} className="text-sm font-medium text-foreground">
-          {label}
-        </label>
-      )}
-      <textarea
-        id={id}
-        value={value}
-        onChange={(e) => onChange(e.target.value)}
-        placeholder={placeholder}
-        rows={rows}
-        className={cn(
-          "flex w-full rounded-md border border-input bg-background px-3 py-2 text-sm text-foreground shadow-sm transition-colors",
-          "placeholder:text-muted-foreground",
-          "focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring",
-          "disabled:cursor-not-allowed disabled:opacity-50",
-          className
-        )}
-      />
-    </div>
-  );
-}
-
-// ---------------------------------------------------------------------------
-// Modal overlay
-// ---------------------------------------------------------------------------
-
-function Modal({
-  open,
-  onClose,
-  title,
-  children,
-}: {
-  open: boolean;
-  onClose: () => void;
-  title: string;
-  children: React.ReactNode;
-}) {
-  if (!open) return null;
-
-  return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center">
-      <div
-        className="absolute inset-0 bg-black/50"
-        onClick={onClose}
-      />
-      <div className="relative z-10 mx-4 w-full max-w-lg rounded-xl border border-border bg-card p-6 shadow-lg max-h-[90vh] overflow-y-auto">
-        <div className="mb-4 flex items-center justify-between">
-          <h2 className="text-lg font-semibold">{title}</h2>
-          <button
-            onClick={onClose}
-            className="rounded-md p-1 text-muted-foreground hover:bg-muted hover:text-foreground transition-colors"
-          >
-            <X className="h-5 w-5" />
-          </button>
-        </div>
-        {children}
-      </div>
-    </div>
-  );
 }
 
 // ---------------------------------------------------------------------------
@@ -324,15 +207,9 @@ function JobCard({
               </p>
             )}
           </div>
-          <span
-            className={cn(
-              "shrink-0 rounded-full px-2 py-0.5 text-xs font-medium",
-              config.bgColour,
-              config.colour
-            )}
-          >
+          <Badge variant={STATUS_BADGE_VARIANT[job.status]}>
             {config.label}
-          </span>
+          </Badge>
         </div>
 
         {job.notes && (
@@ -499,15 +376,9 @@ function ListView({
                     {job.printer?.name ?? "\u2014"}
                   </td>
                   <td className="px-4 py-3">
-                    <span
-                      className={cn(
-                        "rounded-full px-2 py-0.5 text-xs font-medium",
-                        config.bgColour,
-                        config.colour
-                      )}
-                    >
+                    <Badge variant={STATUS_BADGE_VARIANT[job.status]}>
                       {config.label}
-                    </span>
+                    </Badge>
                   </td>
                   <td className="max-w-xs px-4 py-3 text-muted-foreground truncate">
                     {job.notes ? truncate(job.notes, 40) : "\u2014"}
@@ -606,7 +477,10 @@ function NewJobModal({
   }
 
   return (
-    <Modal open={open} onClose={onClose} title="New Job">
+    <Dialog open={open} onClose={onClose}>
+      <DialogHeader onClose={onClose}>
+        <DialogTitle>New Job</DialogTitle>
+      </DialogHeader>
       <div className="space-y-4">
         {error && (
           <div className="rounded-md border border-red-300 bg-red-50 p-3 text-sm text-red-700 dark:border-red-800 dark:bg-red-950 dark:text-red-300">
@@ -617,7 +491,7 @@ function NewJobModal({
         <Select
           label="Quote (optional)"
           value={quoteId}
-          onChange={setQuoteId}
+          onChange={(e) => setQuoteId(e.target.value)}
           options={[
             { value: "", label: "None" },
             ...acceptedQuotes.map((q) => ({
@@ -630,7 +504,7 @@ function NewJobModal({
         <Select
           label="Printer (optional)"
           value={printerId}
-          onChange={setPrinterId}
+          onChange={(e) => setPrinterId(e.target.value)}
           options={[
             { value: "", label: "None" },
             ...printers.map((p) => ({
@@ -643,12 +517,12 @@ function NewJobModal({
         <Textarea
           label="Notes"
           value={notes}
-          onChange={setNotes}
+          onChange={(e) => setNotes(e.target.value)}
           placeholder="Job notes..."
           rows={3}
         />
 
-        <div className="flex justify-end gap-2 pt-2">
+        <DialogFooter>
           <Button variant="secondary" onClick={onClose} disabled={saving}>
             Cancel
           </Button>
@@ -665,9 +539,9 @@ function NewJobModal({
               </>
             )}
           </Button>
-        </div>
+        </DialogFooter>
       </div>
-    </Modal>
+    </Dialog>
   );
 }
 
@@ -767,7 +641,10 @@ function JobDetailModal({
   if (!job) return null;
 
   return (
-    <Modal open={!!job} onClose={onClose} title="Job Details">
+    <Dialog open={!!job} onClose={onClose}>
+      <DialogHeader onClose={onClose}>
+        <DialogTitle>Job Details</DialogTitle>
+      </DialogHeader>
       <div className="space-y-4">
         {error && (
           <div className="rounded-md border border-red-300 bg-red-50 p-3 text-sm text-red-700 dark:border-red-800 dark:bg-red-950 dark:text-red-300">
@@ -807,7 +684,7 @@ function JobDetailModal({
         <Select
           label="Status"
           value={status}
-          onChange={(v) => setStatus(v as JobStatus)}
+          onChange={(e) => setStatus(e.target.value as JobStatus)}
           options={STATUS_ORDER.map((s) => ({
             value: s,
             label: STATUS_CONFIG[s].label,
@@ -817,7 +694,7 @@ function JobDetailModal({
         <Select
           label="Printer"
           value={printerId}
-          onChange={setPrinterId}
+          onChange={(e) => setPrinterId(e.target.value)}
           options={[
             { value: "", label: "None" },
             ...printers.map((p) => ({
@@ -851,7 +728,7 @@ function JobDetailModal({
         <Textarea
           label="Notes"
           value={notes}
-          onChange={setNotes}
+          onChange={(e) => setNotes(e.target.value)}
           placeholder="Job notes..."
           rows={3}
         />
@@ -891,7 +768,7 @@ function JobDetailModal({
           </div>
         </div>
       </div>
-    </Modal>
+    </Dialog>
   );
 }
 
@@ -1006,7 +883,7 @@ export function JobsPage() {
         <div className="flex items-center gap-3">
           <Select
             value={filter}
-            onChange={(v) => setFilter(v as FilterMode)}
+            onChange={(e) => setFilter(e.target.value as FilterMode)}
             options={FILTER_OPTIONS}
             className="w-32"
           />

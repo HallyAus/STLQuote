@@ -8,8 +8,11 @@ import {
 } from "@/lib/calculator";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
+import { Select } from "@/components/ui/select";
 import { Card, CardContent } from "@/components/ui/card";
 import { CostBreakdownPanel } from "@/components/calculator/cost-breakdown";
+import { STLUploadPanel } from "@/components/calculator/stl-upload-panel";
+import type { STLEstimates } from "@/lib/stl-parser";
 import { cn } from "@/lib/utils";
 import { ChevronDown, Save, FolderOpen, Trash2, Loader2 } from "lucide-react";
 
@@ -84,39 +87,49 @@ const defaultInput: CalculatorInput = {
   },
 };
 
-const selectClasses =
-  "flex h-9 w-full rounded-md border border-input bg-background px-3 py-1 text-sm text-foreground shadow-sm transition-colors focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring disabled:cursor-not-allowed disabled:opacity-50";
-
 // ---------------------------------------------------------------------------
 // Collapsible Section
 // ---------------------------------------------------------------------------
 
 interface SectionProps {
   title: string;
+  description?: string;
+  accentColor?: string;
   defaultOpen?: boolean;
   children: React.ReactNode;
 }
 
-function Section({ title, defaultOpen = true, children }: SectionProps) {
+function Section({
+  title,
+  description,
+  accentColor = "border-l-border",
+  defaultOpen = true,
+  children,
+}: SectionProps) {
   const [open, setOpen] = useState(defaultOpen);
 
   return (
-    <Card>
+    <Card className={cn("border-l-[3px] overflow-hidden", accentColor)}>
       <button
         type="button"
         onClick={() => setOpen(!open)}
         className="flex w-full items-center justify-between p-4 text-left"
       >
-        <h3 className="text-sm font-semibold">{title}</h3>
+        <div className="space-y-0.5">
+          <h3 className="text-sm font-medium">{title}</h3>
+          {description && (
+            <p className="text-xs text-muted-foreground">{description}</p>
+          )}
+        </div>
         <ChevronDown
           className={cn(
-            "h-4 w-4 text-muted-foreground transition-transform",
+            "h-4 w-4 shrink-0 text-muted-foreground transition-transform",
             open && "rotate-180"
           )}
         />
       </button>
       {open && (
-        <CardContent className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
+        <CardContent className="grid gap-3 border-t border-border pt-4 sm:grid-cols-2 lg:grid-cols-3">
           {children}
         </CardContent>
       )}
@@ -125,7 +138,7 @@ function Section({ title, defaultOpen = true, children }: SectionProps) {
 }
 
 // ---------------------------------------------------------------------------
-// Preset Bar
+// Preset Bar (compact)
 // ---------------------------------------------------------------------------
 
 interface PresetBarProps {
@@ -158,94 +171,93 @@ function PresetBar({
     setShowSaveForm(false);
   }
 
+  const presetOptions = [
+    { value: "", label: "Load a preset..." },
+    ...presets.map((p) => ({ value: p.id, label: p.name })),
+  ];
+
   return (
-    <Card>
-      <CardContent className="p-4">
-        <div className="flex flex-col gap-3">
-          {/* Row 1: preset select + actions */}
-          <div className="flex items-center gap-2">
-            <FolderOpen className="h-4 w-4 shrink-0 text-muted-foreground" />
-            <select
-              value={selectedPresetId}
-              onChange={(e) => onSelectPreset(e.target.value)}
-              className={cn(selectClasses, "flex-1")}
-            >
-              <option value="">Load a preset...</option>
-              {presets.map((p) => (
-                <option key={p.id} value={p.id}>
-                  {p.name}
-                </option>
-              ))}
-            </select>
-
-            {selectedPresetId && (
-              <Button
-                variant="ghost"
-                size="icon"
-                onClick={() => onDeletePreset(selectedPresetId)}
-                disabled={deleting}
-                title="Delete preset"
-              >
-                {deleting ? (
-                  <Loader2 className="h-4 w-4 animate-spin" />
-                ) : (
-                  <Trash2 className="h-4 w-4 text-destructive" />
-                )}
-              </Button>
-            )}
-
-            <Button
-              variant="secondary"
-              size="sm"
-              onClick={() => setShowSaveForm(!showSaveForm)}
-            >
-              <Save className="mr-1.5 h-3.5 w-3.5" />
-              Save Preset
-            </Button>
-          </div>
-
-          {/* Row 2: inline save form */}
-          {showSaveForm && (
-            <div className="flex items-center gap-2">
-              <input
-                type="text"
-                placeholder="Preset name..."
-                value={presetName}
-                onChange={(e) => setPresetName(e.target.value)}
-                onKeyDown={(e) => {
-                  if (e.key === "Enter") handleSave();
-                  if (e.key === "Escape") setShowSaveForm(false);
-                }}
-                className="flex h-9 flex-1 rounded-md border border-input bg-background px-3 py-1 text-sm text-foreground shadow-sm placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring"
-                autoFocus
-              />
-              <Button
-                size="sm"
-                onClick={handleSave}
-                disabled={saving || !presetName.trim()}
-              >
-                {saving ? (
-                  <Loader2 className="mr-1.5 h-3.5 w-3.5 animate-spin" />
-                ) : (
-                  <Save className="mr-1.5 h-3.5 w-3.5" />
-                )}
-                Save
-              </Button>
-              <Button
-                variant="ghost"
-                size="sm"
-                onClick={() => {
-                  setShowSaveForm(false);
-                  setPresetName("");
-                }}
-              >
-                Cancel
-              </Button>
-            </div>
-          )}
+    <div className="rounded-lg border border-border bg-card/50 px-4 py-3">
+      <div className="flex flex-wrap items-center gap-2">
+        <FolderOpen className="h-3.5 w-3.5 shrink-0 text-muted-foreground" />
+        <div className="w-48">
+          <Select
+            options={presetOptions}
+            value={selectedPresetId}
+            onChange={(e) => onSelectPreset(e.target.value)}
+          />
         </div>
-      </CardContent>
-    </Card>
+
+        {selectedPresetId && (
+          <Button
+            variant="ghost"
+            size="icon"
+            onClick={() => onDeletePreset(selectedPresetId)}
+            disabled={deleting}
+            title="Delete preset"
+            className="h-8 w-8"
+          >
+            {deleting ? (
+              <Loader2 className="h-3.5 w-3.5 animate-spin" />
+            ) : (
+              <Trash2 className="h-3.5 w-3.5 text-destructive" />
+            )}
+          </Button>
+        )}
+
+        <Button
+          variant="secondary"
+          size="sm"
+          onClick={() => setShowSaveForm(!showSaveForm)}
+        >
+          <Save className="mr-1.5 h-3 w-3" />
+          Save
+        </Button>
+
+        {/* Inline save form */}
+        {showSaveForm && (
+          <>
+            <div className="h-4 w-px bg-border" />
+            <input
+              type="text"
+              placeholder="Preset name..."
+              value={presetName}
+              onChange={(e) => setPresetName(e.target.value)}
+              onKeyDown={(e) => {
+                if (e.key === "Enter") handleSave();
+                if (e.key === "Escape") setShowSaveForm(false);
+              }}
+              className="flex h-8 w-40 rounded-md border border-input bg-background px-2.5 py-1 text-xs text-foreground shadow-sm placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring"
+              autoFocus
+            />
+            <Button
+              size="sm"
+              onClick={handleSave}
+              disabled={saving || !presetName.trim()}
+              className="h-8"
+            >
+              {saving ? (
+                <Loader2 className="mr-1 h-3 w-3 animate-spin" />
+              ) : (
+                <Save className="mr-1 h-3 w-3" />
+              )}
+              Save
+            </Button>
+            <Button
+              variant="ghost"
+              size="sm"
+              onClick={() => {
+                setShowSaveForm(false);
+                setPresetName("");
+              }}
+              className="h-8"
+            >
+              Cancel
+            </Button>
+          </>
+        )}
+      </div>
+    </div>
   );
 }
 
@@ -260,6 +272,7 @@ export function CalculatorForm() {
   const [materials, setMaterials] = useState<MaterialOption[]>([]);
   const [selectedPrinterId, setSelectedPrinterId] = useState<string>("");
   const [selectedMaterialId, setSelectedMaterialId] = useState<string>("");
+  const [stlEstimates, setStlEstimates] = useState<STLEstimates | null>(null);
 
   // Preset state
   const [presets, setPresets] = useState<CalculatorPreset[]>([]);
@@ -300,6 +313,19 @@ export function CalculatorForm() {
   }, [fetchPresets]);
 
   const breakdown = useMemo(() => calculateTotalCost(input), [input]);
+
+  // -----------------------------------------------------------------------
+  // STL handler
+  // -----------------------------------------------------------------------
+
+  function handleSTLEstimates(estimates: STLEstimates) {
+    setStlEstimates(estimates);
+    setInput((prev) => ({
+      ...prev,
+      material: { ...prev.material, printWeightG: estimates.weightG },
+      machine: { ...prev.machine, printTimeMinutes: estimates.printTimeMinutes },
+    }));
+  }
 
   // -----------------------------------------------------------------------
   // Field helpers
@@ -380,6 +406,21 @@ export function CalculatorForm() {
     return parts.join(" - ");
   }
 
+  // Build options arrays for Select components
+  const printerSelectOptions = [
+    { value: "", label: "Manual entry" },
+    ...(printers.length === 0
+      ? [{ value: "__no_printers", label: "No printers \u2014 add one" }]
+      : printers.map((p) => ({ value: p.id, label: p.name }))),
+  ];
+
+  const materialSelectOptions = [
+    { value: "", label: "Manual entry" },
+    ...(materials.length === 0
+      ? [{ value: "__no_materials", label: "No materials \u2014 add one" }]
+      : materials.map((m) => ({ value: m.id, label: materialLabel(m) }))),
+  ];
+
   // -----------------------------------------------------------------------
   // Preset handlers
   // -----------------------------------------------------------------------
@@ -441,8 +482,12 @@ export function CalculatorForm() {
   // -----------------------------------------------------------------------
 
   function handleCreateQuote() {
+    const description = stlEstimates
+      ? `${stlEstimates.filename} (${stlEstimates.dimensionsMm.x.toFixed(0)}\u00d7${stlEstimates.dimensionsMm.y.toFixed(0)}\u00d7${stlEstimates.dimensionsMm.z.toFixed(0)}mm)`
+      : "Calculated print job";
+
     const quoteData = {
-      description: "Calculated print job",
+      description,
       printWeightG: input.material.printWeightG,
       printTimeMinutes: input.machine.printTimeMinutes,
       materialCost: breakdown.materialCost,
@@ -462,256 +507,252 @@ export function CalculatorForm() {
   // -----------------------------------------------------------------------
 
   return (
-    <div className="grid gap-6 lg:grid-cols-[1fr,380px]">
-      {/* Left column: form */}
-      <div className="space-y-4">
-        {/* Preset bar */}
-        <PresetBar
-          presets={presets}
-          selectedPresetId={selectedPresetId}
-          onSelectPreset={handleSelectPreset}
-          onSavePreset={handleSavePreset}
-          onDeletePreset={handleDeletePreset}
-          saving={savingPreset}
-          deleting={deletingPreset}
-        />
+    <div className="space-y-6">
+      {/* STL Upload Panel — full width */}
+      <STLUploadPanel onEstimatesReady={handleSTLEstimates} />
 
-        <Section title="Material Costs">
-          <div className="space-y-1 sm:col-span-2 lg:col-span-3">
-            <label
-              htmlFor="material-select"
-              className="text-sm font-medium text-foreground"
-            >
-              Select a material
-            </label>
-            <select
-              id="material-select"
-              value={selectedMaterialId}
-              onChange={handleMaterialSelect}
-              className={selectClasses}
-            >
-              <option value="">Manual entry</option>
-              {materials.length === 0 ? (
-                <option disabled>No materials — add one</option>
-              ) : (
-                materials.map((m) => (
-                  <option key={m.id} value={m.id}>
-                    {materialLabel(m)}
-                  </option>
-                ))
-              )}
-            </select>
-          </div>
-          <Input
-            label="Spool price (AUD)"
-            type="number"
-            step="0.01"
-            value={input.material.spoolPrice}
-            onChange={handleChange("material", "spoolPrice")}
-          />
-          <Input
-            label="Spool weight (g)"
-            type="number"
-            step="1"
-            value={input.material.spoolWeightG}
-            onChange={handleChange("material", "spoolWeightG")}
-          />
-          <Input
-            label="Print weight (g)"
-            type="number"
-            step="0.1"
-            value={input.material.printWeightG}
-            onChange={handleChange("material", "printWeightG")}
-          />
-          <Input
-            label="Support weight (g)"
-            type="number"
-            step="0.1"
-            value={input.material.supportWeightG}
-            onChange={handleChange("material", "supportWeightG")}
-          />
-          <Input
-            label="Waste factor (%)"
-            type="number"
-            step="1"
-            value={input.material.wasteFactorPct}
-            onChange={handleChange("material", "wasteFactorPct")}
-          />
-        </Section>
+      {/* Preset bar — full width, compact */}
+      <PresetBar
+        presets={presets}
+        selectedPresetId={selectedPresetId}
+        onSelectPreset={handleSelectPreset}
+        onSavePreset={handleSavePreset}
+        onDeletePreset={handleDeletePreset}
+        saving={savingPreset}
+        deleting={deletingPreset}
+      />
 
-        <Section title="Machine Costs">
-          <div className="space-y-1 sm:col-span-2 lg:col-span-3">
-            <label
-              htmlFor="printer-select"
-              className="text-sm font-medium text-foreground"
-            >
-              Select a printer
-            </label>
-            <select
-              id="printer-select"
-              value={selectedPrinterId}
-              onChange={handlePrinterSelect}
-              className={selectClasses}
-            >
-              <option value="">Manual entry</option>
-              {printers.length === 0 ? (
-                <option disabled>No printers — add one</option>
-              ) : (
-                printers.map((p) => (
-                  <option key={p.id} value={p.id}>
-                    {p.name}
-                  </option>
-                ))
-              )}
-            </select>
-          </div>
-          <Input
-            label="Printer purchase price"
-            type="number"
-            step="1"
-            value={input.machine.purchasePrice}
-            onChange={handleChange("machine", "purchasePrice")}
-          />
-          <Input
-            label="Lifetime hours"
-            type="number"
-            step="1"
-            value={input.machine.lifetimeHours}
-            onChange={handleChange("machine", "lifetimeHours")}
-          />
-          <Input
-            label="Print time (minutes)"
-            type="number"
-            step="1"
-            value={input.machine.printTimeMinutes}
-            onChange={handleChange("machine", "printTimeMinutes")}
-          />
-          <Input
-            label="Power (watts)"
-            type="number"
-            step="1"
-            value={input.machine.powerWatts}
-            onChange={handleChange("machine", "powerWatts")}
-          />
-          <Input
-            label="Electricity rate ($/kWh)"
-            type="number"
-            step="0.01"
-            value={input.machine.electricityRate}
-            onChange={handleChange("machine", "electricityRate")}
-          />
-          <Input
-            label="Maintenance ($/hr)"
-            type="number"
-            step="0.01"
-            value={input.machine.maintenanceCostPerHour}
-            onChange={handleChange("machine", "maintenanceCostPerHour")}
-          />
-        </Section>
+      {/* Two-column layout */}
+      <div className="grid gap-6 lg:grid-cols-[1fr,380px]">
+        {/* Left column: form */}
+        <div className="space-y-4">
+          <Section
+            title="Material Costs"
+            description="Filament spool and waste costs"
+            accentColor="border-l-chart-1"
+          >
+            <div className="space-y-1 sm:col-span-2 lg:col-span-3">
+              <Select
+                label="Select a material"
+                id="material-select"
+                options={materialSelectOptions}
+                value={selectedMaterialId}
+                onChange={handleMaterialSelect}
+              />
+            </div>
+            <Input
+              label="Spool price (AUD)"
+              type="number"
+              step="0.01"
+              value={input.material.spoolPrice}
+              onChange={handleChange("material", "spoolPrice")}
+            />
+            <Input
+              label="Spool weight (g)"
+              type="number"
+              step="1"
+              value={input.material.spoolWeightG}
+              onChange={handleChange("material", "spoolWeightG")}
+            />
+            <Input
+              label="Print weight (g)"
+              type="number"
+              step="0.1"
+              value={input.material.printWeightG}
+              onChange={handleChange("material", "printWeightG")}
+            />
+            <Input
+              label="Support weight (g)"
+              type="number"
+              step="0.1"
+              value={input.material.supportWeightG}
+              onChange={handleChange("material", "supportWeightG")}
+            />
+            <Input
+              label="Waste factor (%)"
+              type="number"
+              step="1"
+              value={input.material.wasteFactorPct}
+              onChange={handleChange("material", "wasteFactorPct")}
+            />
+          </Section>
 
-        <Section title="Labour Costs">
-          <Input
-            label="Design time (min)"
-            type="number"
-            step="1"
-            value={input.labour.designTimeMinutes}
-            onChange={handleChange("labour", "designTimeMinutes")}
-          />
-          <Input
-            label="Design rate ($/hr)"
-            type="number"
-            step="0.01"
-            value={input.labour.designRate}
-            onChange={handleChange("labour", "designRate")}
-          />
-          <Input
-            label="Setup time (min)"
-            type="number"
-            step="1"
-            value={input.labour.setupTimeMinutes}
-            onChange={handleChange("labour", "setupTimeMinutes")}
-          />
-          <Input
-            label="Post-processing time (min)"
-            type="number"
-            step="1"
-            value={input.labour.postProcessingTimeMinutes}
-            onChange={handleChange("labour", "postProcessingTimeMinutes")}
-          />
-          <Input
-            label="Packing time (min)"
-            type="number"
-            step="1"
-            value={input.labour.packingTimeMinutes}
-            onChange={handleChange("labour", "packingTimeMinutes")}
-          />
-          <Input
-            label="Labour rate ($/hr)"
-            type="number"
-            step="0.01"
-            value={input.labour.labourRate}
-            onChange={handleChange("labour", "labourRate")}
-          />
-        </Section>
+          <Section
+            title="Machine Costs"
+            description="Printer depreciation and energy costs"
+            accentColor="border-l-chart-2"
+          >
+            <div className="space-y-1 sm:col-span-2 lg:col-span-3">
+              <Select
+                label="Select a printer"
+                id="printer-select"
+                options={printerSelectOptions}
+                value={selectedPrinterId}
+                onChange={handlePrinterSelect}
+              />
+            </div>
+            <Input
+              label="Printer purchase price"
+              type="number"
+              step="1"
+              value={input.machine.purchasePrice}
+              onChange={handleChange("machine", "purchasePrice")}
+            />
+            <Input
+              label="Lifetime hours"
+              type="number"
+              step="1"
+              value={input.machine.lifetimeHours}
+              onChange={handleChange("machine", "lifetimeHours")}
+            />
+            <Input
+              label="Print time (minutes)"
+              type="number"
+              step="1"
+              value={input.machine.printTimeMinutes}
+              onChange={handleChange("machine", "printTimeMinutes")}
+            />
+            <Input
+              label="Power (watts)"
+              type="number"
+              step="1"
+              value={input.machine.powerWatts}
+              onChange={handleChange("machine", "powerWatts")}
+            />
+            <Input
+              label="Electricity rate ($/kWh)"
+              type="number"
+              step="0.01"
+              value={input.machine.electricityRate}
+              onChange={handleChange("machine", "electricityRate")}
+            />
+            <Input
+              label="Maintenance ($/hr)"
+              type="number"
+              step="0.01"
+              value={input.machine.maintenanceCostPerHour}
+              onChange={handleChange("machine", "maintenanceCostPerHour")}
+            />
+          </Section>
 
-        <Section title="Overhead" defaultOpen={false}>
-          <Input
-            label="Monthly overhead ($)"
-            type="number"
-            step="1"
-            value={input.overhead.monthlyOverhead}
-            onChange={handleChange("overhead", "monthlyOverhead")}
-          />
-          <Input
-            label="Estimated monthly jobs"
-            type="number"
-            step="1"
-            value={input.overhead.estimatedMonthlyJobs}
-            onChange={handleChange("overhead", "estimatedMonthlyJobs")}
-          />
-        </Section>
+          <Section
+            title="Labour Costs"
+            description="Design, setup, and post-processing time"
+            accentColor="border-l-chart-4"
+          >
+            <Input
+              label="Design time (min)"
+              type="number"
+              step="1"
+              value={input.labour.designTimeMinutes}
+              onChange={handleChange("labour", "designTimeMinutes")}
+            />
+            <Input
+              label="Design rate ($/hr)"
+              type="number"
+              step="0.01"
+              value={input.labour.designRate}
+              onChange={handleChange("labour", "designRate")}
+            />
+            <Input
+              label="Setup time (min)"
+              type="number"
+              step="1"
+              value={input.labour.setupTimeMinutes}
+              onChange={handleChange("labour", "setupTimeMinutes")}
+            />
+            <Input
+              label="Post-processing time (min)"
+              type="number"
+              step="1"
+              value={input.labour.postProcessingTimeMinutes}
+              onChange={handleChange("labour", "postProcessingTimeMinutes")}
+            />
+            <Input
+              label="Packing time (min)"
+              type="number"
+              step="1"
+              value={input.labour.packingTimeMinutes}
+              onChange={handleChange("labour", "packingTimeMinutes")}
+            />
+            <Input
+              label="Labour rate ($/hr)"
+              type="number"
+              step="0.01"
+              value={input.labour.labourRate}
+              onChange={handleChange("labour", "labourRate")}
+            />
+          </Section>
 
-        <Section title="Pricing">
-          <Input
-            label="Markup (%)"
-            type="number"
-            step="1"
-            value={input.pricing.markupPct}
-            onChange={handleChange("pricing", "markupPct")}
-          />
-          <Input
-            label="Minimum charge ($)"
-            type="number"
-            step="0.01"
-            value={input.pricing.minimumCharge}
-            onChange={handleChange("pricing", "minimumCharge")}
-          />
-          <Input
-            label="Quantity"
-            type="number"
-            step="1"
-            min="1"
-            value={input.pricing.quantity}
-            onChange={handleChange("pricing", "quantity")}
-          />
-          <Input
-            label="Rush multiplier"
-            type="number"
-            step="0.1"
-            min="1"
-            value={input.pricing.rushMultiplier}
-            onChange={handleChange("pricing", "rushMultiplier")}
-          />
-        </Section>
-      </div>
+          <Section
+            title="Overhead"
+            description="Fixed monthly business costs"
+            accentColor="border-l-chart-3"
+            defaultOpen={false}
+          >
+            <Input
+              label="Monthly overhead ($)"
+              type="number"
+              step="1"
+              value={input.overhead.monthlyOverhead}
+              onChange={handleChange("overhead", "monthlyOverhead")}
+            />
+            <Input
+              label="Estimated monthly jobs"
+              type="number"
+              step="1"
+              value={input.overhead.estimatedMonthlyJobs}
+              onChange={handleChange("overhead", "estimatedMonthlyJobs")}
+            />
+          </Section>
 
-      {/* Right column: cost breakdown (sticky on desktop) */}
-      <div className="lg:sticky lg:top-20 lg:self-start">
-        <CostBreakdownPanel
-          breakdown={breakdown}
-          markupPct={input.pricing.markupPct}
-          onCreateQuote={handleCreateQuote}
-        />
+          <Section
+            title="Pricing"
+            description="Markup, quantity, and rush pricing"
+            accentColor="border-l-primary"
+          >
+            <Input
+              label="Markup (%)"
+              type="number"
+              step="1"
+              value={input.pricing.markupPct}
+              onChange={handleChange("pricing", "markupPct")}
+            />
+            <Input
+              label="Minimum charge ($)"
+              type="number"
+              step="0.01"
+              value={input.pricing.minimumCharge}
+              onChange={handleChange("pricing", "minimumCharge")}
+            />
+            <Input
+              label="Quantity"
+              type="number"
+              step="1"
+              min="1"
+              value={input.pricing.quantity}
+              onChange={handleChange("pricing", "quantity")}
+            />
+            <Input
+              label="Rush multiplier"
+              type="number"
+              step="0.1"
+              min="1"
+              value={input.pricing.rushMultiplier}
+              onChange={handleChange("pricing", "rushMultiplier")}
+            />
+          </Section>
+        </div>
+
+        {/* Right column: cost breakdown (sticky on desktop) */}
+        <div className="lg:sticky lg:top-20 lg:self-start">
+          <CostBreakdownPanel
+            breakdown={breakdown}
+            markupPct={input.pricing.markupPct}
+            onCreateQuote={handleCreateQuote}
+            stlFilename={stlEstimates?.filename}
+          />
+        </div>
       </div>
     </div>
   );

@@ -4,6 +4,8 @@ import { useEffect, useState, useCallback, useRef } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card";
+import { Textarea } from "@/components/ui/textarea";
+import { Dialog, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
 import { roundCurrency } from "@/lib/utils";
 import { PRINTER_PRESETS } from "@/lib/presets";
 
@@ -451,15 +453,6 @@ function PrinterModal({
   onSave: () => void;
   onClose: () => void;
 }) {
-  // Close on Escape key
-  useEffect(() => {
-    function handleKey(e: KeyboardEvent) {
-      if (e.key === "Escape") onClose();
-    }
-    window.addEventListener("keydown", handleKey);
-    return () => window.removeEventListener("keydown", handleKey);
-  }, [onClose]);
-
   // Preview hourly rate in the form
   const previewRate = roundCurrency(
     (parseFloat(form.purchasePrice) || 0) / (parseFloat(form.lifetimeHours) || 5000) +
@@ -468,139 +461,130 @@ function PrinterModal({
   );
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center">
-      {/* Backdrop */}
-      <div
-        className="absolute inset-0 bg-black/50"
-        onClick={onClose}
-      />
-      {/* Panel */}
-      <div className="relative z-10 mx-4 max-h-[90vh] w-full max-w-lg overflow-y-auto rounded-xl border border-border bg-card p-6 shadow-lg">
-        <h2 className="mb-4 text-lg font-semibold text-foreground">{title}</h2>
+    <Dialog open={true} onClose={onClose}>
+      <DialogHeader onClose={onClose}>
+        <DialogTitle>{title}</DialogTitle>
+      </DialogHeader>
 
-        <div className="space-y-4">
-          {/* Name */}
+      <div className="space-y-4">
+        {/* Name */}
+        <Input
+          label="Name *"
+          value={form.name}
+          onChange={(e) => onFieldChange("name", e.target.value)}
+          placeholder="e.g. Bambu Lab X1 Carbon"
+        />
+
+        {/* Model */}
+        <Input
+          label="Model"
+          value={form.model}
+          onChange={(e) => onFieldChange("model", e.target.value)}
+          placeholder="e.g. X1C"
+        />
+
+        {/* Purchase Price & Lifetime Hours */}
+        <div className="grid grid-cols-2 gap-4">
           <Input
-            label="Name *"
-            value={form.name}
-            onChange={(e) => onFieldChange("name", e.target.value)}
-            placeholder="e.g. Bambu Lab X1 Carbon"
-          />
-
-          {/* Model */}
-          <Input
-            label="Model"
-            value={form.model}
-            onChange={(e) => onFieldChange("model", e.target.value)}
-            placeholder="e.g. X1C"
-          />
-
-          {/* Purchase Price & Lifetime Hours */}
-          <div className="grid grid-cols-2 gap-4">
-            <Input
-              label="Purchase Price ($)"
-              type="number"
-              min="0"
-              step="0.01"
-              value={form.purchasePrice}
-              onChange={(e) => onFieldChange("purchasePrice", e.target.value)}
-            />
-            <Input
-              label="Lifetime Hours"
-              type="number"
-              min="1"
-              step="1"
-              value={form.lifetimeHours}
-              onChange={(e) => onFieldChange("lifetimeHours", e.target.value)}
-            />
-          </div>
-
-          {/* Power Watts & Current Hours */}
-          <div className="grid grid-cols-2 gap-4">
-            <Input
-              label="Power (Watts)"
-              type="number"
-              min="0"
-              step="1"
-              value={form.powerWatts}
-              onChange={(e) => onFieldChange("powerWatts", e.target.value)}
-            />
-            <Input
-              label="Current Hours"
-              type="number"
-              min="0"
-              step="1"
-              value={form.currentHours}
-              onChange={(e) => onFieldChange("currentHours", e.target.value)}
-            />
-          </div>
-
-          {/* Maintenance Cost */}
-          <Input
-            label="Maintenance Cost ($/hr)"
+            label="Purchase Price ($)"
             type="number"
             min="0"
             step="0.01"
-            value={form.maintenanceCostPerHour}
-            onChange={(e) => onFieldChange("maintenanceCostPerHour", e.target.value)}
+            value={form.purchasePrice}
+            onChange={(e) => onFieldChange("purchasePrice", e.target.value)}
           />
+          <Input
+            label="Lifetime Hours"
+            type="number"
+            min="1"
+            step="1"
+            value={form.lifetimeHours}
+            onChange={(e) => onFieldChange("lifetimeHours", e.target.value)}
+          />
+        </div>
 
-          {/* Bed Size */}
-          <div>
-            <p className="mb-1 text-sm font-medium text-foreground">Bed Size (mm)</p>
-            <div className="grid grid-cols-3 gap-3">
-              <Input
-                placeholder="X"
-                type="number"
-                min="0"
-                value={form.bedSizeX}
-                onChange={(e) => onFieldChange("bedSizeX", e.target.value)}
-              />
-              <Input
-                placeholder="Y"
-                type="number"
-                min="0"
-                value={form.bedSizeY}
-                onChange={(e) => onFieldChange("bedSizeY", e.target.value)}
-              />
-              <Input
-                placeholder="Z"
-                type="number"
-                min="0"
-                value={form.bedSizeZ}
-                onChange={(e) => onFieldChange("bedSizeZ", e.target.value)}
-              />
-            </div>
-          </div>
+        {/* Power Watts & Current Hours */}
+        <div className="grid grid-cols-2 gap-4">
+          <Input
+            label="Power (Watts)"
+            type="number"
+            min="0"
+            step="1"
+            value={form.powerWatts}
+            onChange={(e) => onFieldChange("powerWatts", e.target.value)}
+          />
+          <Input
+            label="Current Hours"
+            type="number"
+            min="0"
+            step="1"
+            value={form.currentHours}
+            onChange={(e) => onFieldChange("currentHours", e.target.value)}
+          />
+        </div>
 
-          {/* Notes */}
-          <div className="space-y-1">
-            <label className="text-sm font-medium text-foreground">Notes</label>
-            <textarea
-              className="flex min-h-[80px] w-full rounded-md border border-input bg-background px-3 py-2 text-sm text-foreground shadow-sm placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring"
-              value={form.notes}
-              onChange={(e) => onFieldChange("notes", e.target.value)}
-              placeholder="Any additional notes about this printer..."
+        {/* Maintenance Cost */}
+        <Input
+          label="Maintenance Cost ($/hr)"
+          type="number"
+          min="0"
+          step="0.01"
+          value={form.maintenanceCostPerHour}
+          onChange={(e) => onFieldChange("maintenanceCostPerHour", e.target.value)}
+        />
+
+        {/* Bed Size */}
+        <div>
+          <p className="mb-1 text-sm font-medium text-foreground">Bed Size (mm)</p>
+          <div className="grid grid-cols-3 gap-3">
+            <Input
+              placeholder="X"
+              type="number"
+              min="0"
+              value={form.bedSizeX}
+              onChange={(e) => onFieldChange("bedSizeX", e.target.value)}
+            />
+            <Input
+              placeholder="Y"
+              type="number"
+              min="0"
+              value={form.bedSizeY}
+              onChange={(e) => onFieldChange("bedSizeY", e.target.value)}
+            />
+            <Input
+              placeholder="Z"
+              type="number"
+              min="0"
+              value={form.bedSizeZ}
+              onChange={(e) => onFieldChange("bedSizeZ", e.target.value)}
             />
           </div>
-
-          {/* Hourly rate preview */}
-          <div className="rounded-md bg-primary/10 px-3 py-2 text-center">
-            <p className="text-xs text-muted-foreground">Calculated Hourly Rate</p>
-            <p className="text-lg font-bold text-primary">${previewRate.toFixed(2)}/hr</p>
-          </div>
-
-          {/* Actions */}
-          <div className="flex justify-end gap-3 pt-2">
-            <Button variant="secondary" onClick={onClose} disabled={saving}>
-              Cancel
-            </Button>
-            <Button onClick={onSave} disabled={saving}>
-              {saving ? "Saving..." : "Save Printer"}
-            </Button>
-          </div>
         </div>
+
+        {/* Notes */}
+        <Textarea
+          label="Notes"
+          value={form.notes}
+          onChange={(e) => onFieldChange("notes", e.target.value)}
+          placeholder="Any additional notes about this printer..."
+        />
+
+        {/* Hourly rate preview */}
+        <div className="rounded-md bg-primary/10 px-3 py-2 text-center">
+          <p className="text-xs text-muted-foreground">Calculated Hourly Rate</p>
+          <p className="text-lg font-bold text-primary">${previewRate.toFixed(2)}/hr</p>
+        </div>
+
+        {/* Actions */}
+        <DialogFooter>
+          <Button variant="secondary" onClick={onClose} disabled={saving}>
+            Cancel
+          </Button>
+          <Button onClick={onSave} disabled={saving}>
+            {saving ? "Saving..." : "Save Printer"}
+          </Button>
+        </DialogFooter>
       </div>
-    </div>
+    </Dialog>
   );
 }

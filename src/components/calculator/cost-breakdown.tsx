@@ -3,6 +3,7 @@
 import { type CostBreakdown } from "@/lib/calculator";
 import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
+import { Badge } from "@/components/ui/badge";
 import { cn } from "@/lib/utils";
 import { FileText } from "lucide-react";
 
@@ -10,6 +11,7 @@ interface CostBreakdownPanelProps {
   breakdown: CostBreakdown;
   markupPct: number;
   onCreateQuote?: () => void;
+  stlFilename?: string;
 }
 
 function formatAUD(value: number): string {
@@ -47,6 +49,7 @@ export function CostBreakdownPanel({
   breakdown,
   markupPct,
   onCreateQuote,
+  stlFilename,
 }: CostBreakdownPanelProps) {
   const {
     materialCost,
@@ -64,7 +67,12 @@ export function CostBreakdownPanel({
   return (
     <Card>
       <CardHeader>
-        <CardTitle className="text-base">Cost Breakdown</CardTitle>
+        <div className="space-y-2">
+          <CardTitle className="text-base">Cost Breakdown</CardTitle>
+          {stlFilename && (
+            <Badge variant="info">STL: {stlFilename}</Badge>
+          )}
+        </div>
       </CardHeader>
       <CardContent className="space-y-6">
         {/* Cost bar chart */}
@@ -137,22 +145,28 @@ export function CostBreakdownPanel({
             </div>
           )}
 
-          <div className="flex items-center justify-between rounded-lg bg-primary/10 p-3 mt-2">
+          <div className="flex items-center justify-between rounded-lg bg-primary/15 p-4 mt-2">
             <span className="text-xl font-bold">Total</span>
-            <span className="text-2xl font-bold font-mono text-primary">
+            <span className="text-3xl font-bold font-mono text-primary">
               {formatAUD(totalPrice)}
             </span>
           </div>
         </div>
 
         {onCreateQuote && (
-          <Button
-            className="w-full mt-2"
-            onClick={onCreateQuote}
-          >
-            <FileText className="mr-2 h-4 w-4" />
-            Create Quote
-          </Button>
+          <div className="space-y-2">
+            <Button
+              className="w-full"
+              size="lg"
+              onClick={onCreateQuote}
+            >
+              <FileText className="mr-2 h-4 w-4" />
+              Create Quote
+            </Button>
+            <p className="text-center text-xs text-muted-foreground">
+              Generate a professional quote from this calculation
+            </p>
+          </div>
         )}
       </CardContent>
     </Card>

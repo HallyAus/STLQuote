@@ -13,6 +13,7 @@ import {
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card";
+import { Badge } from "@/components/ui/badge";
 import { cn } from "@/lib/utils";
 
 // --- Types ---
@@ -58,22 +59,21 @@ interface DashboardData {
 
 // --- Status badge ---
 
-function statusBadge(status: QuoteStatus) {
-  const map: Record<QuoteStatus, { label: string; className: string }> = {
-    DRAFT: { label: "Draft", className: "bg-gray-500/15 text-gray-500" },
-    SENT: { label: "Sent", className: "bg-blue-500/15 text-blue-500" },
-    ACCEPTED: {
-      label: "Accepted",
-      className: "bg-green-500/15 text-green-500",
-    },
-    REJECTED: { label: "Rejected", className: "bg-red-500/15 text-red-500" },
-    EXPIRED: {
-      label: "Expired",
-      className: "bg-orange-500/15 text-orange-500",
-    },
-  };
-  return map[status];
-}
+const STATUS_LABEL: Record<QuoteStatus, string> = {
+  DRAFT: "Draft",
+  SENT: "Sent",
+  ACCEPTED: "Accepted",
+  REJECTED: "Rejected",
+  EXPIRED: "Expired",
+};
+
+const STATUS_VARIANT: Record<QuoteStatus, "default" | "info" | "success" | "destructive" | "warning"> = {
+  DRAFT: "default",
+  SENT: "info",
+  ACCEPTED: "success",
+  REJECTED: "destructive",
+  EXPIRED: "warning",
+};
 
 // --- Currency formatter ---
 
@@ -301,7 +301,6 @@ export function DashboardPage() {
             ) : (
               <div className="space-y-2">
                 {recentQuotes.map((quote) => {
-                  const badge = statusBadge(quote.status);
                   return (
                     <Link
                       key={quote.id}
@@ -313,14 +312,9 @@ export function DashboardPage() {
                           <span className="text-sm font-medium">
                             {quote.quoteNumber}
                           </span>
-                          <span
-                            className={cn(
-                              "rounded-full px-2 py-0.5 text-xs font-medium",
-                              badge.className
-                            )}
-                          >
-                            {badge.label}
-                          </span>
+                          <Badge variant={STATUS_VARIANT[quote.status]}>
+                            {STATUS_LABEL[quote.status]}
+                          </Badge>
                         </div>
                         <p className="mt-0.5 truncate text-sm text-muted-foreground">
                           {quote.client?.name ?? "No client"}
@@ -349,9 +343,9 @@ export function DashboardPage() {
                 </span>
               </CardTitle>
               {lowStockAlerts.length > 0 && (
-                <span className="rounded-full bg-orange-500/15 px-2 py-0.5 text-xs font-medium text-orange-500">
+                <Badge variant="warning">
                   {lowStockAlerts.length}
-                </span>
+                </Badge>
               )}
             </CardHeader>
             <CardContent>

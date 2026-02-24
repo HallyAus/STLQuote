@@ -25,6 +25,18 @@ function resolveTitle(pathname: string): string {
   return "Printforge Quote";
 }
 
+function resolveBreadcrumb(
+  pathname: string
+): { label: string; href: string } | undefined {
+  // Only show breadcrumb for sub-routes, not top-level pages
+  for (const [prefix, title] of Object.entries(pageTitles)) {
+    if (pathname.startsWith(prefix + "/")) {
+      return { label: title, href: prefix };
+    }
+  }
+  return undefined;
+}
+
 export default function DashboardLayout({
   children,
 }: {
@@ -33,6 +45,7 @@ export default function DashboardLayout({
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const pathname = usePathname();
   const title = resolveTitle(pathname);
+  const breadcrumb = resolveBreadcrumb(pathname);
 
   return (
     <div className="flex h-screen overflow-hidden">
@@ -40,6 +53,7 @@ export default function DashboardLayout({
       <div className="flex flex-1 flex-col overflow-hidden">
         <Header
           title={title}
+          breadcrumb={breadcrumb}
           onMenuToggle={() => setSidebarOpen((prev) => !prev)}
         />
         <main className="flex-1 overflow-y-auto p-4 md:p-6">{children}</main>
