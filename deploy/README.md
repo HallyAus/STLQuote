@@ -1,38 +1,33 @@
 # Auto-Deploy Setup
 
-Pushes to `main` trigger a GitHub Actions workflow that SSHes into the VM and redeploys the Docker stack.
+The VM polls GitHub every minute and automatically rebuilds when new commits are detected on `main`.
 
-## 1. Generate an SSH key on the VM
+## Install
 
-```bash
-ssh-keygen -t ed25519 -f ~/.ssh/github_deploy -C "github-actions-deploy" -N ""
-```
-
-Add the public key to authorised keys:
+On the VM, after the initial setup:
 
 ```bash
-cat ~/.ssh/github_deploy.pub >> ~/.ssh/authorized_keys
-chmod 600 ~/.ssh/authorized_keys
+cd ~/STLQuote
+bash deploy/auto-pull.sh --install
 ```
 
-## 2. Add GitHub secrets
+That's it. A cron job will check for new commits every minute and redeploy if changes are found.
 
-Go to **Settings > Secrets and variables > Actions** in the repo and add these three secrets:
+## How it works
 
-| Secret | Value |
-|--------|-------|
-| `DEPLOY_HOST` | IP address or hostname of the VM |
-| `DEPLOY_USER` | SSH username on the VM |
-| `DEPLOY_KEY` | Contents of `~/.ssh/github_deploy` (the **private** key) |
+1. Cron runs `deploy/auto-pull.sh` every minute
+2. Script does `git fetch` and compares local HEAD to `origin/main`
+3. If there are new commits: `git pull` + `docker compose up -d --build`
+4. If no changes: exits silently
 
-Copy the private key:
+## Logs
 
 ```bash
-cat ~/.ssh/github_deploy
+journalctl -t stlquote-deploy -f
 ```
 
-Paste the entire output — including the `-----BEGIN` and `-----END` lines — into the `DEPLOY_KEY` secret.
+## Uninstall
 
-## 3. Verify
-
-Push a commit to `main` and check the **Actions** tab. The workflow uses a concurrency group so multiple pushes won't trigger overlapping deploys.
+```bash
+bash ~/STLQuote/deploy/auto-pull.sh --uninstall
+```

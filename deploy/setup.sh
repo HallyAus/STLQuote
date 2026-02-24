@@ -21,16 +21,16 @@ echo "============================================"
 echo ""
 
 # --- System updates ---
-echo "[1/5] Updating system packages..."
+echo "[1/6] Updating system packages..."
 sudo apt update -qq
 sudo apt upgrade -y -qq
 sudo apt install -y -qq ca-certificates curl git
 
 # --- Install Docker ---
 if command -v docker &> /dev/null; then
-    echo "[2/5] Docker already installed, skipping."
+    echo "[2/6] Docker already installed, skipping."
 else
-    echo "[2/5] Installing Docker..."
+    echo "[2/6] Installing Docker..."
     sudo install -m 0755 -d /etc/apt/keyrings
 
     # Detect distro (Ubuntu or Debian)
@@ -55,17 +55,17 @@ fi
 
 # --- Clone repo ---
 if [ -d "${APP_DIR}" ]; then
-    echo "[3/5] Repo already exists, pulling latest..."
+    echo "[3/6] Repo already exists, pulling latest..."
     cd "${APP_DIR}"
     git pull
 else
-    echo "[3/5] Cloning STLQuote..."
+    echo "[3/6] Cloning STLQuote..."
     git clone "${REPO}" "${APP_DIR}"
     cd "${APP_DIR}"
 fi
 
 # --- Configure environment ---
-echo "[4/5] Configuring environment..."
+echo "[4/6] Configuring environment..."
 if [ ! -f .env ]; then
     cp env.example .env
 
@@ -89,7 +89,7 @@ else
 fi
 
 # --- Start services ---
-echo "[5/5] Starting STLQuote..."
+echo "[5/6] Starting STLQuote..."
 
 # Use sudo for docker if group hasn't taken effect yet
 DOCKER_CMD="docker"
@@ -98,6 +98,11 @@ if ! docker info &> /dev/null 2>&1; then
 fi
 
 ${DOCKER_CMD} compose up -d --build
+
+# --- Install auto-deploy cron ---
+echo "[6/6] Setting up auto-deploy..."
+chmod +x "${APP_DIR}/deploy/auto-pull.sh"
+bash "${APP_DIR}/deploy/auto-pull.sh" --install
 
 echo ""
 echo "============================================"
@@ -109,6 +114,9 @@ echo "  Status:  ${DOCKER_CMD} compose ps"
 echo "  Logs:    ${DOCKER_CMD} compose logs -f"
 echo "  Stop:    ${DOCKER_CMD} compose down"
 echo "  Update:  git pull && ${DOCKER_CMD} compose up -d --build"
+echo ""
+echo "  Auto-deploy: enabled (checks GitHub every minute)"
+echo "  Deploy logs: journalctl -t stlquote-deploy -f"
 echo ""
 echo "  To expose publicly, add a Cloudflare Tunnel:"
 echo "    cloudflared tunnel --url http://localhost:3000"
