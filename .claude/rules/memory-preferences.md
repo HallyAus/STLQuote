@@ -26,6 +26,7 @@
 ## Workflow
 
 - Prefer small focused commits over big ones
+- Always bump version in package.json when committing features
 - pnpm as package manager
 - Docker for dev and deployment
 - Self-hosted infrastructure (Proxmox)
