@@ -1,7 +1,7 @@
 "use client";
 
-import { useState, useRef, useCallback } from "react";
-import { Upload, Loader2, FileText, X, Weight, Clock } from "lucide-react";
+import { useState, useRef, useCallback, lazy, Suspense } from "react";
+import { Upload, Loader2, FileText, X, Weight, Clock, Eye } from "lucide-react";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Select } from "@/components/ui/select";
@@ -17,6 +17,10 @@ import {
   type STLParseResult,
 } from "@/lib/stl-parser";
 import { parseGcode, isGcodeFile } from "@/lib/gcode-parser";
+
+const STLViewer = lazy(() =>
+  import("./stl-viewer").then((m) => ({ default: m.STLViewer }))
+);
 
 export interface FileEstimates {
   type: "stl" | "gcode";
@@ -39,6 +43,7 @@ interface ProcessedFile {
   file: File;
   estimates: FileEstimates;
   stlParseResult?: STLParseResult;
+  stlBuffer?: ArrayBuffer;
 }
 
 interface STLUploadPanelProps {
@@ -96,6 +101,7 @@ export function STLUploadPanel({ onFileAdded, onFileRemoved }: STLUploadPanelPro
   const [materialType, setMaterialType] = useState("PLA");
 
   const [dragActive, setDragActive] = useState(false);
+  const [viewerFile, setViewerFile] = useState<string | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   const buildSTLEstimates = useCallback(
@@ -150,6 +156,7 @@ export function STLUploadPanel({ onFileAdded, onFileRemoved }: STLUploadPanelPro
       try {
         let estimates: FileEstimates;
         let stlParseResult: STLParseResult | undefined;
+        let stlBuffer: ArrayBuffer | undefined;
 
         if (isGcodeFile(selectedFile.name)) {
           const text = await selectedFile.text();
@@ -175,12 +182,14 @@ export function STLUploadPanel({ onFileAdded, onFileRemoved }: STLUploadPanelPro
             speed,
             selectedFile.name
           );
+          stlBuffer = buffer;
         }
 
         const processed: ProcessedFile = {
           file: selectedFile,
           estimates,
           stlParseResult,
+          stlBuffer,
         };
 
         setProcessedFiles((prev) => {
@@ -438,10 +447,34 @@ export function STLUploadPanel({ onFileAdded, onFileRemoved }: STLUploadPanelPro
                     {formatTime(pf.estimates.printTimeMinutes)}
                   </span>
                 </div>
+                {pf.stlBuffer && (
+                  <Button
+                    variant="ghost"
+                    size="icon"
+                    onClick={() =>
+                      setViewerFile(
+                        viewerFile === pf.estimates.filename
+                          ? null
+                          : pf.estimates.filename
+                      )
+                    }
+                    className={`h-7 w-7 shrink-0 ${
+                      viewerFile === pf.estimates.filename
+                        ? "text-primary"
+                        : "text-muted-foreground hover:text-foreground"
+                    }`}
+                    title="View 3D model"
+                  >
+                    <Eye className="h-3.5 w-3.5" />
+                  </Button>
+                )}
                 <Button
                   variant="ghost"
                   size="icon"
-                  onClick={() => removeFile(pf.estimates.filename)}
+                  onClick={() => {
+                    if (viewerFile === pf.estimates.filename) setViewerFile(null);
+                    removeFile(pf.estimates.filename);
+                  }}
                   className="h-7 w-7 shrink-0 text-muted-foreground hover:text-foreground"
                   aria-label={`Remove ${pf.estimates.filename}`}
                 >
@@ -451,6 +484,28 @@ export function STLUploadPanel({ onFileAdded, onFileRemoved }: STLUploadPanelPro
             ))}
           </div>
         )}
+
+        {/* 3D viewer */}
+        {viewerFile && (() => {
+          const pf = processedFiles.find((p) => p.estimates.filename === viewerFile);
+          if (!pf?.stlBuffer) return null;
+          return (
+            <Suspense
+              fallback={
+                <div className="flex h-64 items-center justify-center rounded-lg border border-border bg-muted/50">
+                  <Loader2 className="h-5 w-5 animate-spin text-muted-foreground" />
+                  <span className="ml-2 text-sm text-muted-foreground">Loading 3D viewer...</span>
+                </div>
+              }
+            >
+              <STLViewer
+                buffer={pf.stlBuffer}
+                filename={pf.estimates.filename}
+                onClose={() => setViewerFile(null)}
+              />
+            </Suspense>
+          );
+        })()}
 
         {/* STL estimation controls — shown when any STL files exist */}
         {hasStlFiles && (
