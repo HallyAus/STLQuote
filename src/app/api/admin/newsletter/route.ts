@@ -35,7 +35,7 @@ export async function GET() {
 // POST: send newsletter
 export async function POST(request: NextRequest) {
   try {
-    await requireAdmin();
+    const admin = await requireAdmin();
 
     const body = await request.json();
     const parsed = newsletterSchema.safeParse(body);
@@ -76,7 +76,7 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    const result = await sendBulkEmail({ recipients, subject, html });
+    const result = await sendBulkEmail({ recipients, subject, html, type: "newsletter", userId: admin.id });
 
     return NextResponse.json({
       message: `Newsletter sent to ${result.sent} of ${recipients.length} recipients`,

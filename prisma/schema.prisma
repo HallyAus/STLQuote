@@ -298,6 +298,22 @@ model EmailVerificationToken {
   @@index([email])
 }
 
+// --- Email Logs ---
+
+model EmailLog {
+  id        String   @id @default(cuid())
+  to        String
+  subject   String
+  type      String   // quote | password_reset | verification | welcome | account_created | newsletter | test | other
+  status    String   // sent | failed | skipped
+  error     String?  @db.Text
+  userId    String?  // admin/user who triggered the send (null for system emails)
+  createdAt DateTime @default(now())
+
+  @@index([createdAt])
+  @@index([type])
+}
+
 // --- Webhooks ---
 
 model Webhook {

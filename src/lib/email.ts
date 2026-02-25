@@ -1,4 +1,5 @@
 import { Resend } from "resend";
+import { prisma } from "@/lib/prisma";
 
 // Lazy-init — Resend constructor throws if API key is missing (breaks Docker build)
 let resend: Resend | null = null;
@@ -10,30 +11,82 @@ function getResend(): Resend | null {
 }
 
 const fromAddress = process.env.RESEND_FROM || "Printforge <noreply@printforge.com.au>";
+const replyToAddress = process.env.RESEND_REPLY_TO || undefined;
+
+// Strip HTML to plain text for multipart emails (reduces spam score)
+function htmlToText(html: string): string {
+  return html
+    .replace(/<br\s*\/?>/gi, "\n")
+    .replace(/<\/p>/gi, "\n\n")
+    .replace(/<\/li>/gi, "\n")
+    .replace(/<li[^>]*>/gi, "  - ")
+    .replace(/<\/h[1-6]>/gi, "\n\n")
+    .replace(/<a[^>]*href="([^"]*)"[^>]*>[^<]*<\/a>/gi, "$1")
+    .replace(/<hr[^>]*>/gi, "\n---\n")
+    .replace(/<[^>]+>/g, "")
+    .replace(/&rsquo;/g, "'")
+    .replace(/&mdash;/g, "—")
+    .replace(/&nbsp;/g, " ")
+    .replace(/&amp;/g, "&")
+    .replace(/&lt;/g, "<")
+    .replace(/&gt;/g, ">")
+    .replace(/\n{3,}/g, "\n\n")
+    .trim();
+}
+
+function logEmail(entry: {
+  to: string;
+  subject: string;
+  type: string;
+  status: "sent" | "failed" | "skipped";
+  error?: string;
+  userId?: string;
+}) {
+  // Fire-and-forget — never block email sending on logging
+  prisma.emailLog
+    .create({
+      data: {
+        to: entry.to,
+        subject: entry.subject,
+        type: entry.type,
+        status: entry.status,
+        error: entry.error || null,
+        userId: entry.userId || null,
+      },
+    })
+    .catch((err) => console.error("Failed to log email:", err));
+}
 
 export async function sendEmail({
   to,
   subject,
   html,
   attachments,
+  type = "other",
+  userId,
 }: {
   to: string;
   subject: string;
   html: string;
   attachments?: { filename: string; content: Buffer; contentType?: string }[];
+  type?: string;
+  userId?: string;
 }): Promise<boolean> {
   const client = getResend();
   if (!client) {
     console.warn("RESEND_API_KEY not configured — skipping email to", to);
+    logEmail({ to, subject, type, status: "skipped", error: "RESEND_API_KEY not configured", userId });
     return false;
   }
 
   try {
     const { error } = await client.emails.send({
       from: fromAddress,
+      replyTo: replyToAddress,
       to,
       subject,
       html,
+      text: htmlToText(html),
       attachments: attachments?.map((a) => ({
         filename: a.filename,
         content: a.content,
@@ -43,22 +96,27 @@ export async function sendEmail({
 
     if (error) {
       console.error("Resend error:", error);
+      logEmail({ to, subject, type, status: "failed", error: error.message, userId });
       return false;
     }
+    logEmail({ to, subject, type, status: "sent", userId });
     return true;
   } catch (error) {
     console.error("Failed to send email:", error);
+    logEmail({ to, subject, type, status: "failed", error: error instanceof Error ? error.message : String(error), userId });
     return false;
   }
 }
 
-export async function sendPasswordResetEmail(email: string, token: string): Promise<boolean> {
+export async function sendPasswordResetEmail(email: string, token: string, userId?: string): Promise<boolean> {
   const appUrl = process.env.NEXT_PUBLIC_APP_URL || "http://localhost:3000";
   const resetUrl = `${appUrl}/reset-password?token=${token}`;
 
   return sendEmail({
     to: email,
     subject: "Reset your Printforge password",
+    type: "password_reset",
+    userId,
     html: `
       <div style="font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; max-width: 600px; margin: 0 auto;">
         <h2 style="color: #171717;">Reset your password</h2>
@@ -77,13 +135,15 @@ export async function sendPasswordResetEmail(email: string, token: string): Prom
   });
 }
 
-export async function sendVerificationEmail(email: string, token: string): Promise<boolean> {
+export async function sendVerificationEmail(email: string, token: string, userId?: string): Promise<boolean> {
   const appUrl = process.env.NEXT_PUBLIC_APP_URL || "http://localhost:3000";
   const verifyUrl = `${appUrl}/api/auth/verify-email?token=${token}`;
 
   return sendEmail({
     to: email,
     subject: "Verify your Printforge email",
+    type: "verification",
+    userId,
     html: `
       <div style="font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; max-width: 600px; margin: 0 auto;">
         <h2 style="color: #171717;">Verify your email</h2>
@@ -101,12 +161,14 @@ export async function sendVerificationEmail(email: string, token: string): Promi
   });
 }
 
-export async function sendWelcomeEmail(email: string, name: string): Promise<boolean> {
+export async function sendWelcomeEmail(email: string, name: string, userId?: string): Promise<boolean> {
   const appUrl = process.env.NEXT_PUBLIC_APP_URL || "http://localhost:3000";
 
   return sendEmail({
     to: email,
     subject: "Welcome to Printforge!",
+    type: "welcome",
+    userId,
     html: `
       <div style="font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; max-width: 600px; margin: 0 auto;">
         <h2 style="color: #171717;">Welcome, ${name}!</h2>
@@ -133,7 +195,8 @@ export async function sendWelcomeEmail(email: string, name: string): Promise<boo
 export async function sendAccountCreatedEmail(
   email: string,
   name: string,
-  resetToken: string
+  resetToken: string,
+  userId?: string
 ): Promise<boolean> {
   const appUrl = process.env.NEXT_PUBLIC_APP_URL || "http://localhost:3000";
   const resetUrl = `${appUrl}/reset-password?token=${resetToken}`;
@@ -141,6 +204,8 @@ export async function sendAccountCreatedEmail(
   return sendEmail({
     to: email,
     subject: "Your Printforge account is ready",
+    type: "account_created",
+    userId,
     html: `
       <div style="font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; max-width: 600px; margin: 0 auto;">
         <h2 style="color: #171717;">Welcome to Printforge, ${name}!</h2>
@@ -164,16 +229,20 @@ export async function sendBulkEmail({
   recipients,
   subject,
   html,
+  type = "newsletter",
+  userId,
 }: {
   recipients: string[];
   subject: string;
   html: string;
+  type?: string;
+  userId?: string;
 }): Promise<{ sent: number; failed: number }> {
   let sent = 0;
   let failed = 0;
 
   for (const to of recipients) {
-    const ok = await sendEmail({ to, subject, html });
+    const ok = await sendEmail({ to, subject, html, type, userId });
     if (ok) sent++;
     else failed++;
   }
@@ -189,6 +258,7 @@ export async function sendQuoteEmail({
   portalUrl,
   businessName,
   pdfBuffer,
+  userId,
 }: {
   to: string;
   quoteNumber: string;
@@ -197,6 +267,7 @@ export async function sendQuoteEmail({
   portalUrl: string;
   businessName?: string;
   pdfBuffer?: Buffer;
+  userId?: string;
 }): Promise<boolean> {
   const from = businessName || "Printforge";
   const attachments = pdfBuffer
@@ -206,6 +277,8 @@ export async function sendQuoteEmail({
   return sendEmail({
     to,
     subject: `Quote ${quoteNumber} from ${from}`,
+    type: "quote",
+    userId,
     html: `
       <div style="font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; max-width: 600px; margin: 0 auto;">
         <h2 style="color: #171717;">Quote ${quoteNumber}</h2>

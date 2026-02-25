@@ -66,7 +66,7 @@ export async function POST(request: Request) {
     if (sendEmail) {
       try {
         const resetToken = await createPasswordResetToken(email);
-        await sendAccountCreatedEmail(email, name, resetToken);
+        await sendAccountCreatedEmail(email, name, resetToken, admin.id);
       } catch (emailError) {
         console.error("Failed to send account created email:", emailError);
       }

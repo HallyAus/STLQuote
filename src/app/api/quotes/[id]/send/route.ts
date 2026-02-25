@@ -118,6 +118,7 @@ export async function POST(
       portalUrl,
       businessName: settings?.businessName || undefined,
       pdfBuffer,
+      userId: user.id,
     });
 
     // Update quote: set portal token, status to SENT, sentAt

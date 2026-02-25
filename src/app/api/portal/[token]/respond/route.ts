@@ -65,6 +65,7 @@ export async function POST(
         await sendEmail({
           to: quote.user.email,
           subject: `Quote ${quote.quoteNumber} ${actionText}`,
+          type: "notification",
           html: `
             <div style="font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; max-width: 600px; margin: 0 auto;">
               <h2 style="color: #171717;">Quote ${quote.quoteNumber} ${actionText}</h2>

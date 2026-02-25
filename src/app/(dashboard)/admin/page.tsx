@@ -24,6 +24,10 @@ import {
   Trash2,
   AlertTriangle,
   Megaphone,
+  ChevronLeft,
+  ChevronRight,
+  XCircle,
+  SkipForward,
 } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import { Select } from "@/components/ui/select";
@@ -98,6 +102,20 @@ export default function AdminPage() {
   const [testEmailTo, setTestEmailTo] = useState("");
   const [testEmailLoading, setTestEmailLoading] = useState(false);
   const [testEmailResult, setTestEmailResult] = useState<{ ok: boolean; message: string } | null>(null);
+
+  // Email logs
+  const [emailLogs, setEmailLogs] = useState<{
+    id: string;
+    to: string;
+    subject: string;
+    type: string;
+    status: string;
+    error: string | null;
+    createdAt: string;
+  }[]>([]);
+  const [emailLogsPagination, setEmailLogsPagination] = useState({ page: 1, total: 0, totalPages: 1 });
+  const [emailLogsLoading, setEmailLogsLoading] = useState(false);
+  const [emailLogsFilter, setEmailLogsFilter] = useState("all");
 
   // Newsletter
   const [nlSubject, setNlSubject] = useState("");
@@ -326,6 +344,29 @@ export default function AdminPage() {
     fetchCounts();
   }, [activeTab, nlCounts]);
 
+  // Fetch email logs when tab is opened or filter/page changes
+  const fetchEmailLogs = useCallback(async (page = 1, type = "all") => {
+    setEmailLogsLoading(true);
+    try {
+      const params = new URLSearchParams({ page: String(page), limit: "25" });
+      if (type !== "all") params.set("type", type);
+      const res = await fetch(`/api/admin/email-logs?${params}`);
+      if (res.ok) {
+        const data = await res.json();
+        setEmailLogs(data.logs);
+        setEmailLogsPagination(data.pagination);
+      }
+    } catch { /* ignore */ } finally {
+      setEmailLogsLoading(false);
+    }
+  }, []);
+
+  useEffect(() => {
+    if (activeTab !== "email") return;
+    fetchEmailLogs(emailLogsPagination.page, emailLogsFilter);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [activeTab]);
+
   async function handleSendNewsletter(e: React.FormEvent) {
     e.preventDefault();
     setNlLoading(true);
@@ -394,53 +435,232 @@ export default function AdminPage() {
 
       {/* Email tab */}
       {activeTab === "email" && (
-        <Card>
-          <CardHeader>
-            <CardTitle className="flex items-center gap-2">
-              <Mail className="h-5 w-5" />
-              Test Email
-            </CardTitle>
-          </CardHeader>
-          <CardContent>
-            <p className="mb-4 text-sm text-muted-foreground">
-              Send a test email to verify your Resend configuration is working.
-              Leave the address blank to send to your admin email.
-            </p>
-            <form onSubmit={handleTestEmail} className="space-y-4">
-              {testEmailResult && (
-                <div
-                  className={cn(
-                    "flex items-center gap-2 rounded-md px-3 py-2 text-sm",
-                    testEmailResult.ok
-                      ? "bg-success/10 text-success-foreground"
-                      : "bg-destructive/10 text-destructive-foreground"
-                  )}
-                >
-                  {testEmailResult.ok && <CheckCircle2 className="h-4 w-4 shrink-0" />}
-                  {testEmailResult.message}
+        <div className="space-y-6">
+          {/* Test email card */}
+          <Card>
+            <CardHeader>
+              <CardTitle className="flex items-center gap-2">
+                <Send className="h-5 w-5" />
+                Test Email
+              </CardTitle>
+            </CardHeader>
+            <CardContent>
+              <p className="mb-4 text-sm text-muted-foreground">
+                Send a test email to verify your Resend configuration is working.
+                Leave the address blank to send to your admin email.
+              </p>
+              <form onSubmit={(e) => { handleTestEmail(e).then(() => fetchEmailLogs(1, emailLogsFilter)); }} className="space-y-4">
+                {testEmailResult && (
+                  <div
+                    className={cn(
+                      "flex items-center gap-2 rounded-md px-3 py-2 text-sm",
+                      testEmailResult.ok
+                        ? "bg-success/10 text-success-foreground"
+                        : "bg-destructive/10 text-destructive-foreground"
+                    )}
+                  >
+                    {testEmailResult.ok && <CheckCircle2 className="h-4 w-4 shrink-0" />}
+                    {testEmailResult.message}
+                  </div>
+                )}
+                <div className="flex gap-2">
+                  <div className="flex-1">
+                    <Input
+                      type="email"
+                      value={testEmailTo}
+                      onChange={(e) => setTestEmailTo(e.target.value)}
+                      placeholder="recipient@example.com (optional)"
+                    />
+                  </div>
+                  <Button type="submit" disabled={testEmailLoading}>
+                    {testEmailLoading ? (
+                      <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                    ) : (
+                      <Send className="mr-2 h-4 w-4" />
+                    )}
+                    Send Test
+                  </Button>
                 </div>
-              )}
-              <div className="flex gap-2">
-                <div className="flex-1">
-                  <Input
-                    type="email"
-                    value={testEmailTo}
-                    onChange={(e) => setTestEmailTo(e.target.value)}
-                    placeholder="recipient@example.com (optional)"
+              </form>
+            </CardContent>
+          </Card>
+
+          {/* Email logs card */}
+          <Card>
+            <CardHeader>
+              <div className="flex items-center justify-between">
+                <CardTitle className="flex items-center gap-2">
+                  <Mail className="h-5 w-5" />
+                  Email Log
+                </CardTitle>
+                <div className="flex items-center gap-2">
+                  <Select
+                    options={[
+                      { value: "all", label: "All types" },
+                      { value: "quote", label: "Quote" },
+                      { value: "newsletter", label: "Newsletter" },
+                      { value: "welcome", label: "Welcome" },
+                      { value: "account_created", label: "Account created" },
+                      { value: "password_reset", label: "Password reset" },
+                      { value: "verification", label: "Verification" },
+                      { value: "notification", label: "Notification" },
+                      { value: "test", label: "Test" },
+                    ]}
+                    value={emailLogsFilter}
+                    onChange={(e) => {
+                      setEmailLogsFilter(e.target.value);
+                      fetchEmailLogs(1, e.target.value);
+                    }}
                   />
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    onClick={() => fetchEmailLogs(emailLogsPagination.page, emailLogsFilter)}
+                    disabled={emailLogsLoading}
+                  >
+                    {emailLogsLoading ? <Loader2 className="h-4 w-4 animate-spin" /> : "Refresh"}
+                  </Button>
                 </div>
-                <Button type="submit" disabled={testEmailLoading}>
-                  {testEmailLoading ? (
-                    <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                  ) : (
-                    <Send className="mr-2 h-4 w-4" />
-                  )}
-                  Send Test
-                </Button>
               </div>
-            </form>
-          </CardContent>
-        </Card>
+            </CardHeader>
+            <CardContent>
+              {emailLogsLoading && emailLogs.length === 0 ? (
+                <div className="flex items-center justify-center py-8">
+                  <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
+                </div>
+              ) : emailLogs.length === 0 ? (
+                <div className="py-8 text-center text-muted-foreground">
+                  No emails logged yet.
+                </div>
+              ) : (
+                <>
+                  {/* Desktop table */}
+                  <div className="hidden md:block overflow-x-auto">
+                    <table className="w-full text-sm">
+                      <thead>
+                        <tr className="border-b border-border text-left text-muted-foreground">
+                          <th className="pb-3 pr-4 font-medium">Time</th>
+                          <th className="pb-3 pr-4 font-medium">To</th>
+                          <th className="pb-3 pr-4 font-medium">Subject</th>
+                          <th className="pb-3 pr-4 font-medium">Type</th>
+                          <th className="pb-3 font-medium">Status</th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {emailLogs.map((log) => (
+                          <tr key={log.id} className="border-b border-border/50 last:border-0">
+                            <td className="py-3 pr-4 whitespace-nowrap text-muted-foreground">
+                              {formatRelativeTime(log.createdAt)}
+                            </td>
+                            <td className="py-3 pr-4 max-w-[200px] truncate" title={log.to}>
+                              {log.to}
+                            </td>
+                            <td className="py-3 pr-4 max-w-[250px] truncate" title={log.subject}>
+                              {log.subject}
+                            </td>
+                            <td className="py-3 pr-4">
+                              <span className="inline-flex rounded-full bg-muted px-2 py-0.5 text-xs font-medium text-muted-foreground">
+                                {log.type.replace(/_/g, " ")}
+                              </span>
+                            </td>
+                            <td className="py-3">
+                              <span
+                                className={cn(
+                                  "inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-xs font-medium",
+                                  log.status === "sent"
+                                    ? "bg-success/15 text-success-foreground"
+                                    : log.status === "skipped"
+                                      ? "bg-amber-500/15 text-amber-600 dark:text-amber-400"
+                                      : "bg-destructive/10 text-destructive-foreground"
+                                )}
+                                title={log.error || undefined}
+                              >
+                                {log.status === "sent" && <CheckCircle2 className="h-3 w-3" />}
+                                {log.status === "failed" && <XCircle className="h-3 w-3" />}
+                                {log.status === "skipped" && <SkipForward className="h-3 w-3" />}
+                                {log.status}
+                              </span>
+                              {log.error && (
+                                <p className="mt-0.5 text-xs text-destructive-foreground/70 truncate max-w-[200px]" title={log.error}>
+                                  {log.error}
+                                </p>
+                              )}
+                            </td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  </div>
+
+                  {/* Mobile cards */}
+                  <div className="space-y-3 md:hidden">
+                    {emailLogs.map((log) => (
+                      <div key={log.id} className="rounded-lg border border-border p-3 space-y-2">
+                        <div className="flex items-start justify-between gap-2">
+                          <div className="min-w-0 flex-1">
+                            <p className="font-medium text-sm truncate">{log.subject}</p>
+                            <p className="text-xs text-muted-foreground truncate">{log.to}</p>
+                          </div>
+                          <span
+                            className={cn(
+                              "inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-xs font-medium shrink-0",
+                              log.status === "sent"
+                                ? "bg-success/15 text-success-foreground"
+                                : log.status === "skipped"
+                                  ? "bg-amber-500/15 text-amber-600 dark:text-amber-400"
+                                  : "bg-destructive/10 text-destructive-foreground"
+                            )}
+                          >
+                            {log.status}
+                          </span>
+                        </div>
+                        <div className="flex items-center gap-2 text-xs text-muted-foreground">
+                          <span className="rounded-full bg-muted px-2 py-0.5 font-medium">
+                            {log.type.replace(/_/g, " ")}
+                          </span>
+                          <span>{formatRelativeTime(log.createdAt)}</span>
+                        </div>
+                        {log.error && (
+                          <p className="text-xs text-destructive-foreground/70">{log.error}</p>
+                        )}
+                      </div>
+                    ))}
+                  </div>
+
+                  {/* Pagination */}
+                  {emailLogsPagination.totalPages > 1 && (
+                    <div className="flex items-center justify-between pt-4 border-t border-border mt-4">
+                      <p className="text-sm text-muted-foreground">
+                        {emailLogsPagination.total} email{emailLogsPagination.total !== 1 ? "s" : ""} total
+                      </p>
+                      <div className="flex items-center gap-1">
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          onClick={() => fetchEmailLogs(emailLogsPagination.page - 1, emailLogsFilter)}
+                          disabled={emailLogsPagination.page <= 1 || emailLogsLoading}
+                        >
+                          <ChevronLeft className="h-4 w-4" />
+                        </Button>
+                        <span className="text-sm text-muted-foreground px-2">
+                          {emailLogsPagination.page} / {emailLogsPagination.totalPages}
+                        </span>
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          onClick={() => fetchEmailLogs(emailLogsPagination.page + 1, emailLogsFilter)}
+                          disabled={emailLogsPagination.page >= emailLogsPagination.totalPages || emailLogsLoading}
+                        >
+                          <ChevronRight className="h-4 w-4" />
+                        </Button>
+                      </div>
+                    </div>
+                  )}
+                </>
+              )}
+            </CardContent>
+          </Card>
+        </div>
       )}
 
       {/* Newsletter tab */}

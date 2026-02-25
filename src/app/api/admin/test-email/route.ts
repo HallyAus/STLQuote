@@ -16,6 +16,8 @@ export async function POST(request: NextRequest) {
     const sent = await sendEmail({
       to: email,
       subject: "Printforge Test Email",
+      type: "test",
+      userId: admin.id,
       html: `
         <div style="font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; max-width: 600px; margin: 0 auto;">
           <h2 style="color: #171717;">Test Email</h2>
