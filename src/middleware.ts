@@ -24,8 +24,11 @@ export default auth((req) => {
     return NextResponse.next();
   }
 
-  // Landing page is public
+  // Landing page: public for guests, redirect logged-in users to dashboard
   if (pathname === "/") {
+    if (req.auth?.user) {
+      return NextResponse.redirect(new URL("/dashboard", req.url));
+    }
     return NextResponse.next();
   }
 
