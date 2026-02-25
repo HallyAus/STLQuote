@@ -3,7 +3,7 @@ import { prisma } from "@/lib/prisma";
 import { getSessionUser } from "@/lib/auth-helpers";
 import { renderToBuffer } from "@react-pdf/renderer";
 import { QuoteDocument } from "@/lib/pdf/quote-document";
-import React from "react";
+import React, { type ReactElement } from "react";
 
 type RouteContext = { params: Promise<{ id: string }> };
 
@@ -78,7 +78,7 @@ export async function GET(
     };
 
     const buffer = await renderToBuffer(
-      React.createElement(QuoteDocument, { data: pdfData })
+      React.createElement(QuoteDocument, { data: pdfData }) as unknown as ReactElement
     );
 
     return new NextResponse(buffer, {
