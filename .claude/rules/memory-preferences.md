@@ -26,7 +26,7 @@
 ## Workflow
 
 - Prefer small focused commits over big ones
-- Always bump version in package.json when committing features
+- Always bump version in package.json on every commit: features = minor (0.1.0), fixes/tweaks = patch (0.0.1)
 - pnpm as package manager
 - Docker for dev and deployment
 - Self-hosted infrastructure (Proxmox)
