@@ -27,13 +27,13 @@ function parseTimeString(timeStr: string): number | null {
     const hours = parseInt(hmsMatch[1] || "0", 10);
     const minutes = parseInt(hmsMatch[2] || "0", 10);
     const seconds = parseInt(hmsMatch[3] || "0", 10);
-    return hours * 60 + minutes + seconds / 60;
+    return Math.round(hours * 60 + minutes + seconds / 60);
   }
 
   // Format: plain seconds
   const secondsMatch = timeStr.match(/^(\d+)$/);
   if (secondsMatch) {
-    return parseInt(secondsMatch[1], 10) / 60;
+    return Math.round(parseInt(secondsMatch[1], 10) / 60);
   }
 
   return null;
@@ -106,7 +106,7 @@ export function parseGcode(text: string, filename: string): GcodeEstimates {
     else if (lower.startsWith("time:")) {
       const match = comment.match(/time:\s*(\d+)/i);
       if (match && !result.printTimeMinutes) {
-        result.printTimeMinutes = parseInt(match[1], 10) / 60;
+        result.printTimeMinutes = Math.round(parseInt(match[1], 10) / 60);
       }
     }
 

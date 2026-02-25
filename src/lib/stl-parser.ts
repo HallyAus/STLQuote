@@ -283,7 +283,7 @@ export function estimateFromSTL(
   return {
     volumeCm3: result.volumeCm3,
     weightG: Math.round(weightG * 10) / 10,
-    printTimeMinutes,
+    printTimeMinutes: Math.round(printTimeMinutes),
     dimensionsMm: result.dimensionsMm,
     triangleCount: result.triangleCount,
     filename: options.filename,
