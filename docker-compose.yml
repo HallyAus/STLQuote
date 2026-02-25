@@ -3,6 +3,8 @@ services:
     build: .
     ports:
       - "3000:3000"
+    volumes:
+      - ./deploy/logs:/app/deploy-logs:ro
     environment:
       - DATABASE_URL=postgresql://printforge:printforge@db:5432/printforge_quote?schema=public
       - NEXTAUTH_URL=http://localhost:3000

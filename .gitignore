@@ -42,6 +42,9 @@ prisma/*.db-journal
 # Docker
 docker-compose.override.yml
 
+# Deploy logs (runtime data)
+deploy/logs/
+
 # Misc
 *.tsbuildinfo
 next-env.d.ts

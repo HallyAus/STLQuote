@@ -39,6 +39,24 @@ export function formatDateTime(dateStr: string | null): string {
 }
 
 /**
+ * Format a date string as relative time (e.g. "2m ago", "3h ago").
+ */
+export function formatRelativeTime(dateStr: string): string {
+  const now = Date.now();
+  const then = new Date(dateStr).getTime();
+  const diffSec = Math.floor((now - then) / 1000);
+  const diffMin = Math.floor(diffSec / 60);
+  const diffHr = Math.floor(diffMin / 60);
+  const diffDay = Math.floor(diffHr / 24);
+
+  if (diffSec < 60) return "just now";
+  if (diffMin < 60) return `${diffMin}m ago`;
+  if (diffHr < 24) return `${diffHr}h ago`;
+  if (diffDay < 30) return `${diffDay}d ago`;
+  return formatDate(dateStr);
+}
+
+/**
  * Return Tailwind colour classes for a client tag.
  */
 export function tagColour(tag: string): string {

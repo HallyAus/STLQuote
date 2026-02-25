@@ -13,6 +13,8 @@ set -euo pipefail
 APP_DIR="${HOME}/STLQuote"
 LOCKFILE="/tmp/stlquote-deploy.lock"
 LOG_TAG="stlquote-deploy"
+DEPLOY_LOG_DIR="${APP_DIR}/deploy/logs"
+DEPLOY_LOG="${DEPLOY_LOG_DIR}/deploys.jsonl"
 
 # --- Install mode: set up the cron job ---
 if [[ "${1:-}" == "--install" ]]; then
@@ -60,12 +62,62 @@ logger -t "${LOG_TAG}" "New commits detected (${LOCAL:0:7} → ${REMOTE:0:7}). D
 
 git pull --quiet
 
+# Grab commit list before building
+COMMITS=""
+if command -v jq &> /dev/null; then
+    COMMITS=$(git log --oneline "${LOCAL}..${REMOTE}" | head -20 | jq -R -s 'split("\n") | map(select(. != ""))')
+else
+    COMMITS="[]"
+fi
+
 # Use sudo for docker if needed
 DOCKER_CMD="docker"
 if ! docker info &> /dev/null 2>&1; then
     DOCKER_CMD="sudo docker"
 fi
 
-${DOCKER_CMD} compose up -d --build --quiet-pull 2>&1 | logger -t "${LOG_TAG}"
+DEPLOY_START=$(date -u +"%Y-%m-%dT%H:%M:%SZ")
 
-logger -t "${LOG_TAG}" "Deploy complete. Now running ${REMOTE:0:7}."
+# Capture docker output and exit code
+DOCKER_OUTPUT=$(${DOCKER_CMD} compose up -d --build --quiet-pull 2>&1) || true
+DOCKER_EXIT=${PIPESTATUS[0]:-$?}
+
+DEPLOY_END=$(date -u +"%Y-%m-%dT%H:%M:%SZ")
+
+# Log to journalctl as before
+echo "${DOCKER_OUTPUT}" | logger -t "${LOG_TAG}"
+
+if [ "${DOCKER_EXIT}" -eq 0 ]; then
+    logger -t "${LOG_TAG}" "Deploy complete. Now running ${REMOTE:0:7}."
+    SUCCESS="true"
+else
+    logger -t "${LOG_TAG}" "Deploy FAILED (exit ${DOCKER_EXIT}). Check logs."
+    SUCCESS="false"
+fi
+
+# --- Write structured deploy record ---
+mkdir -p "${DEPLOY_LOG_DIR}"
+
+# Rotate if over 500 entries
+if [ -f "${DEPLOY_LOG}" ] && [ "$(wc -l < "${DEPLOY_LOG}")" -gt 500 ]; then
+    tail -200 "${DEPLOY_LOG}" > "${DEPLOY_LOG}.tmp" && mv "${DEPLOY_LOG}.tmp" "${DEPLOY_LOG}"
+fi
+
+# Build JSON record
+if command -v jq &> /dev/null; then
+    ESCAPED_OUTPUT=$(echo "${DOCKER_OUTPUT}" | head -50 | jq -R -s '.')
+    jq -n -c \
+        --arg ts "${DEPLOY_END}" \
+        --arg from "${LOCAL:0:7}" \
+        --arg to "${REMOTE:0:7}" \
+        --argjson success "${SUCCESS}" \
+        --arg start "${DEPLOY_START}" \
+        --arg end "${DEPLOY_END}" \
+        --argjson commits "${COMMITS}" \
+        --argjson output "${ESCAPED_OUTPUT}" \
+        '{timestamp:$ts,fromHash:$from,toHash:$to,success:$success,startedAt:$start,endedAt:$end,commits:$commits,dockerOutput:$output}' \
+        >> "${DEPLOY_LOG}"
+else
+    # Fallback without jq — minimal JSON
+    echo "{\"timestamp\":\"${DEPLOY_END}\",\"fromHash\":\"${LOCAL:0:7}\",\"toHash\":\"${REMOTE:0:7}\",\"success\":${SUCCESS},\"startedAt\":\"${DEPLOY_START}\",\"endedAt\":\"${DEPLOY_END}\",\"commits\":[],\"dockerOutput\":\"\"}" >> "${DEPLOY_LOG}"
+fi

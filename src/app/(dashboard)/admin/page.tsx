@@ -12,7 +12,10 @@ import {
   UserCheck,
   Eye,
   Loader2,
+  Rocket,
 } from "lucide-react";
+import { cn } from "@/lib/utils";
+import { DeployLogs } from "@/components/admin/deploy-logs";
 
 interface UserStats {
   totalUsers: number;
@@ -43,6 +46,7 @@ export default function AdminPage() {
   const [users, setUsers] = useState<AdminUser[]>([]);
   const [loading, setLoading] = useState(true);
   const [actionLoading, setActionLoading] = useState<string | null>(null);
+  const [activeTab, setActiveTab] = useState<"users" | "deploys">("users");
 
   const fetchUsers = useCallback(async () => {
     try {
@@ -128,8 +132,38 @@ export default function AdminPage() {
 
   return (
     <div className="space-y-6">
+      {/* Tabs */}
+      <div className="flex gap-1 border-b border-border">
+        <button
+          onClick={() => setActiveTab("users")}
+          className={cn(
+            "flex items-center gap-1.5 px-4 py-2 text-sm font-medium border-b-2 -mb-px transition-colors",
+            activeTab === "users"
+              ? "border-primary text-primary"
+              : "border-transparent text-muted-foreground hover:text-foreground"
+          )}
+        >
+          <Users className="h-4 w-4" />
+          Users
+        </button>
+        <button
+          onClick={() => setActiveTab("deploys")}
+          className={cn(
+            "flex items-center gap-1.5 px-4 py-2 text-sm font-medium border-b-2 -mb-px transition-colors",
+            activeTab === "deploys"
+              ? "border-primary text-primary"
+              : "border-transparent text-muted-foreground hover:text-foreground"
+          )}
+        >
+          <Rocket className="h-4 w-4" />
+          Deploys
+        </button>
+      </div>
+
+      {activeTab === "deploys" && <DeployLogs />}
+
       {/* Stats */}
-      {stats && (
+      {activeTab === "users" && stats && (
         <div className="grid grid-cols-2 gap-4 md:grid-cols-4">
           <Card>
             <CardContent className="p-4">
@@ -159,7 +193,7 @@ export default function AdminPage() {
       )}
 
       {/* Users table */}
-      <Card>
+      {activeTab === "users" && <Card>
         <CardHeader>
           <CardTitle className="flex items-center gap-2">
             <Users className="h-5 w-5" />
@@ -391,7 +425,7 @@ export default function AdminPage() {
             </div>
           )}
         </CardContent>
-      </Card>
+      </Card>}
     </div>
   );
 }
