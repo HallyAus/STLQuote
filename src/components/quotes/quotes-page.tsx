@@ -48,8 +48,8 @@ const STATUS_OPTIONS: { value: string; label: string }[] = [
 
 function formatDate(dateStr: string): string {
   return new Date(dateStr).toLocaleDateString("en-AU", {
-    day: "numeric",
-    month: "short",
+    day: "2-digit",
+    month: "2-digit",
     year: "numeric",
   });
 }

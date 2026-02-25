@@ -13,25 +13,25 @@ export function formatCurrency(value: number): string {
 }
 
 /**
- * Format a date string to short Australian format (e.g. "25 Feb 2026").
+ * Format a date string to Australian dd/mm/yyyy (e.g. "25/02/2026").
  */
 export function formatDate(dateStr: string | null): string {
   if (!dateStr) return "\u2014";
   return new Date(dateStr).toLocaleDateString("en-AU", {
-    day: "numeric",
-    month: "short",
+    day: "2-digit",
+    month: "2-digit",
     year: "numeric",
   });
 }
 
 /**
- * Format a date string to Australian date + time (e.g. "25 Feb 2026, 02:30 pm").
+ * Format a date string to Australian dd/mm/yyyy + time (e.g. "25/02/2026, 02:30 pm").
  */
 export function formatDateTime(dateStr: string | null): string {
   if (!dateStr) return "\u2014";
   return new Date(dateStr).toLocaleString("en-AU", {
-    day: "numeric",
-    month: "short",
+    day: "2-digit",
+    month: "2-digit",
     year: "numeric",
     hour: "2-digit",
     minute: "2-digit",

@@ -102,16 +102,16 @@ const FILTER_OPTIONS: { value: FilterMode; label: string }[] = [
 
 function formatDate(dateStr: string): string {
   return new Date(dateStr).toLocaleDateString("en-AU", {
-    day: "numeric",
-    month: "short",
+    day: "2-digit",
+    month: "2-digit",
     year: "numeric",
   });
 }
 
 function formatDateTime(dateStr: string): string {
   return new Date(dateStr).toLocaleString("en-AU", {
-    day: "numeric",
-    month: "short",
+    day: "2-digit",
+    month: "2-digit",
     year: "numeric",
     hour: "2-digit",
     minute: "2-digit",

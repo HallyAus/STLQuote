@@ -214,14 +214,14 @@ interface QuotePDFData {
 
 export function QuoteDocument({ data }: { data: QuotePDFData }) {
   const dateStr = new Date(data.createdAt).toLocaleDateString("en-AU", {
-    day: "numeric",
-    month: "long",
+    day: "2-digit",
+    month: "2-digit",
     year: "numeric",
   });
   const expiryStr = data.expiryDate
     ? new Date(data.expiryDate).toLocaleDateString("en-AU", {
-        day: "numeric",
-        month: "long",
+        day: "2-digit",
+        month: "2-digit",
         year: "numeric",
       })
     : null;

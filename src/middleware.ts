@@ -47,12 +47,8 @@ export default auth((req) => {
     return NextResponse.redirect(loginUrl);
   }
 
-  // Block disabled users
-  if (req.auth.user.role === "DISABLED") {
-    const loginUrl = new URL("/login", req.url);
-    loginUrl.searchParams.set("error", "AccountDisabled");
-    return NextResponse.redirect(loginUrl);
-  }
+  // Disabled users are blocked at login (auth.ts authorize callback).
+  // No mid-session check needed — JWT doesn't carry disabled state.
 
   // Protect admin routes
   if (pathname.startsWith("/admin") || pathname.startsWith("/api/admin")) {

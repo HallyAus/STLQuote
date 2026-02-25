@@ -15,8 +15,9 @@ interface JobEvent {
 
 function formatDateTime(dateStr: string): string {
   return new Date(dateStr).toLocaleString("en-AU", {
-    day: "numeric",
-    month: "short",
+    day: "2-digit",
+    month: "2-digit",
+    year: "numeric",
     hour: "2-digit",
     minute: "2-digit",
   });

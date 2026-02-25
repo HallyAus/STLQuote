@@ -39,8 +39,8 @@ function formatCurrency(value: number): string {
 
 function formatDate(dateStr: string): string {
   return new Date(dateStr).toLocaleDateString("en-AU", {
-    day: "numeric",
-    month: "long",
+    day: "2-digit",
+    month: "2-digit",
     year: "numeric",
   });
 }

@@ -14,7 +14,7 @@ export async function GET() {
     for (let i = 11; i >= 0; i--) {
       const start = new Date(now.getFullYear(), now.getMonth() - i, 1);
       const end = new Date(now.getFullYear(), now.getMonth() - i + 1, 1);
-      const label = start.toLocaleDateString("en-AU", { month: "short", year: "2-digit" });
+      const label = start.toLocaleDateString("en-AU", { month: "2-digit", year: "numeric" });
 
       const acceptedQuotes = await prisma.quote.findMany({
         where: {

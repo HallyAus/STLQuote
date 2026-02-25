@@ -524,7 +524,7 @@ export default function AdminPage() {
                       </span>
                     </td>
                     <td className="py-3 pr-4 text-muted-foreground">
-                      {new Date(user.createdAt).toLocaleDateString()}
+                      {new Date(user.createdAt).toLocaleDateString("en-AU", { day: "2-digit", month: "2-digit", year: "numeric" })}
                     </td>
                     <td className="py-3 pr-4 text-muted-foreground">
                       {user.lastLogin
@@ -645,7 +645,7 @@ export default function AdminPage() {
                 </div>
                 <div className="flex flex-wrap items-center gap-x-4 gap-y-1 text-sm text-muted-foreground">
                   <span>
-                    Joined {new Date(user.createdAt).toLocaleDateString()}
+                    Joined {new Date(user.createdAt).toLocaleDateString("en-AU", { day: "2-digit", month: "2-digit", year: "numeric" })}
                   </span>
                   <span>
                     Login{" "}
