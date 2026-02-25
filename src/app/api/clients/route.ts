@@ -9,7 +9,9 @@ const createClientSchema = z.object({
   email: z.string().email("Invalid email").optional().nullable().or(z.literal("")),
   phone: z.string().optional().nullable(),
   company: z.string().optional().nullable(),
-  address: z.string().optional().nullable(),
+  billingAddress: z.string().optional().nullable(),
+  shippingAddress: z.string().optional().nullable(),
+  shippingSameAsBilling: z.boolean().default(true),
   tags: z.array(z.string()).default([]),
   notes: z.string().optional().nullable(),
 });
@@ -52,7 +54,10 @@ export async function POST(request: NextRequest) {
       email: parsed.data.email?.trim() || null,
       phone: parsed.data.phone?.trim() || null,
       company: parsed.data.company?.trim() || null,
-      address: parsed.data.address?.trim() || null,
+      billingAddress: parsed.data.billingAddress?.trim() || null,
+      shippingAddress: parsed.data.shippingSameAsBilling
+        ? null
+        : (parsed.data.shippingAddress?.trim() || null),
       notes: parsed.data.notes?.trim() || null,
       tags: parsed.data.tags.filter((t) => t.trim().length > 0),
     };

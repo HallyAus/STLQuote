@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect, useCallback } from "react";
+import { useState, useEffect, useCallback, useRef } from "react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
@@ -17,7 +17,20 @@ import {
   LayoutGrid,
   List,
   Trash2,
+  GripVertical,
 } from "lucide-react";
+import {
+  DndContext,
+  DragOverlay,
+  closestCorners,
+  PointerSensor,
+  useSensor,
+  useSensors,
+  useDroppable,
+  useDraggable,
+  type DragStartEvent,
+  type DragEndEvent,
+} from "@dnd-kit/core";
 
 // ---------------------------------------------------------------------------
 // Types
@@ -167,10 +180,100 @@ function getNextStatus(status: JobStatus): JobStatus | null {
 }
 
 // ---------------------------------------------------------------------------
-// Job Card (Kanban)
+// Job Card (Kanban) — static version for overlay and list
 // ---------------------------------------------------------------------------
 
-function JobCard({
+function JobCardContent({
+  job,
+  onClick,
+  onMoveNext,
+  movingId,
+  dragHandle,
+}: {
+  job: Job;
+  onClick?: () => void;
+  onMoveNext?: () => void;
+  movingId?: string | null;
+  dragHandle?: React.ReactNode;
+}) {
+  const config = STATUS_CONFIG[job.status];
+  const nextStatus = getNextStatus(job.status);
+  const isMoving = movingId === job.id;
+
+  return (
+    <Card
+      className={cn("transition-colors", onClick && "cursor-pointer hover:bg-muted/50")}
+      onClick={onClick}
+    >
+      <CardContent className="p-3">
+        <div className="flex items-start gap-1.5">
+          {dragHandle}
+          <div className="min-w-0 flex-1">
+            <div className="flex items-start justify-between gap-2">
+              <div className="min-w-0 flex-1">
+                {job.quote && (
+                  <p className="text-sm font-semibold">{job.quote.quoteNumber}</p>
+                )}
+                {job.printer && (
+                  <p className="text-xs text-muted-foreground">
+                    {job.printer.name}
+                  </p>
+                )}
+                {!job.quote && !job.printer && (
+                  <p className="text-sm font-medium text-muted-foreground">
+                    Unlinked job
+                  </p>
+                )}
+              </div>
+              <Badge variant={STATUS_BADGE_VARIANT[job.status]}>
+                {config.label}
+              </Badge>
+            </div>
+
+            {job.notes && (
+              <p className="mt-2 text-xs text-muted-foreground">
+                {truncate(job.notes, 60)}
+              </p>
+            )}
+
+            <div className="mt-2 flex items-center justify-between">
+              <span className="text-xs text-muted-foreground">
+                {formatDate(job.createdAt)}
+              </span>
+              {nextStatus && onMoveNext && (
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  className="h-6 px-2 text-xs"
+                  disabled={isMoving}
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    onMoveNext();
+                  }}
+                >
+                  {isMoving ? (
+                    <Loader2 className="h-3 w-3 animate-spin" />
+                  ) : (
+                    <>
+                      <ChevronRight className="mr-1 h-3 w-3" />
+                      {STATUS_CONFIG[nextStatus].label}
+                    </>
+                  )}
+                </Button>
+              )}
+            </div>
+          </div>
+        </div>
+      </CardContent>
+    </Card>
+  );
+}
+
+// ---------------------------------------------------------------------------
+// Draggable Job Card (Kanban)
+// ---------------------------------------------------------------------------
+
+function DraggableJobCard({
   job,
   onClick,
   onMoveNext,
@@ -181,71 +284,34 @@ function JobCard({
   onMoveNext: () => void;
   movingId: string | null;
 }) {
-  const config = STATUS_CONFIG[job.status];
-  const nextStatus = getNextStatus(job.status);
-  const isMoving = movingId === job.id;
+  const { attributes, listeners, setNodeRef, isDragging } = useDraggable({
+    id: job.id,
+    data: { status: job.status },
+  });
 
   return (
-    <Card
-      className="cursor-pointer transition-colors hover:bg-muted/50"
-      onClick={onClick}
+    <div
+      ref={setNodeRef}
+      style={{ opacity: isDragging ? 0.4 : 1 }}
+      className="touch-none"
     >
-      <CardContent className="p-3">
-        <div className="flex items-start justify-between gap-2">
-          <div className="min-w-0 flex-1">
-            {job.quote && (
-              <p className="text-sm font-semibold">{job.quote.quoteNumber}</p>
-            )}
-            {job.printer && (
-              <p className="text-xs text-muted-foreground">
-                {job.printer.name}
-              </p>
-            )}
-            {!job.quote && !job.printer && (
-              <p className="text-sm font-medium text-muted-foreground">
-                Unlinked job
-              </p>
-            )}
-          </div>
-          <Badge variant={STATUS_BADGE_VARIANT[job.status]}>
-            {config.label}
-          </Badge>
-        </div>
-
-        {job.notes && (
-          <p className="mt-2 text-xs text-muted-foreground">
-            {truncate(job.notes, 60)}
-          </p>
-        )}
-
-        <div className="mt-2 flex items-center justify-between">
-          <span className="text-xs text-muted-foreground">
-            {formatDate(job.createdAt)}
-          </span>
-          {nextStatus && (
-            <Button
-              variant="ghost"
-              size="sm"
-              className="h-6 px-2 text-xs"
-              disabled={isMoving}
-              onClick={(e) => {
-                e.stopPropagation();
-                onMoveNext();
-              }}
-            >
-              {isMoving ? (
-                <Loader2 className="h-3 w-3 animate-spin" />
-              ) : (
-                <>
-                  <ChevronRight className="mr-1 h-3 w-3" />
-                  {STATUS_CONFIG[nextStatus].label}
-                </>
-              )}
-            </Button>
-          )}
-        </div>
-      </CardContent>
-    </Card>
+      <JobCardContent
+        job={job}
+        onClick={onClick}
+        onMoveNext={onMoveNext}
+        movingId={movingId}
+        dragHandle={
+          <button
+            {...listeners}
+            {...attributes}
+            className="mt-0.5 shrink-0 cursor-grab rounded p-0.5 text-muted-foreground/50 hover:text-muted-foreground active:cursor-grabbing"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <GripVertical className="h-3.5 w-3.5" />
+          </button>
+        }
+      />
+    </div>
   );
 }
 
@@ -267,9 +333,15 @@ function KanbanColumn({
   movingId: string | null;
 }) {
   const config = STATUS_CONFIG[status];
+  const { setNodeRef, isOver } = useDroppable({ id: status });
 
   return (
-    <div className="flex h-full w-64 flex-shrink-0 flex-col rounded-lg border border-border bg-muted/30">
+    <div
+      className={cn(
+        "flex h-full w-64 flex-shrink-0 flex-col rounded-lg border bg-muted/30 transition-colors",
+        isOver ? "border-primary/50 bg-primary/5" : "border-border"
+      )}
+    >
       <div className="flex items-center gap-2 border-b border-border px-3 py-2">
         <span
           className={cn(
@@ -285,9 +357,13 @@ function KanbanColumn({
           {jobs.length}
         </span>
       </div>
-      <div className="flex-1 space-y-2 overflow-y-auto p-2">
+      <div
+        ref={setNodeRef}
+        className="flex-1 space-y-2 overflow-y-auto p-2"
+        style={{ minHeight: 80 }}
+      >
         {jobs.map((job) => (
-          <JobCard
+          <DraggableJobCard
             key={job.id}
             job={job}
             onClick={() => onCardClick(job)}
@@ -297,7 +373,7 @@ function KanbanColumn({
         ))}
         {jobs.length === 0 && (
           <p className="py-4 text-center text-xs text-muted-foreground">
-            No jobs
+            {isOver ? "Drop here" : "No jobs"}
           </p>
         )}
       </div>
@@ -787,6 +863,15 @@ export function JobsPage() {
   const [newModalOpen, setNewModalOpen] = useState(false);
   const [detailJob, setDetailJob] = useState<Job | null>(null);
   const [movingId, setMovingId] = useState<string | null>(null);
+  const [activeDragJob, setActiveDragJob] = useState<Job | null>(null);
+  const prevJobsRef = useRef<Job[]>([]);
+
+  // ---- DnD sensors ----
+  const sensors = useSensors(
+    useSensor(PointerSensor, {
+      activationConstraint: { distance: 8 },
+    })
+  );
 
   // ---- Fetch data ----
   const fetchJobs = useCallback(async () => {
@@ -857,6 +942,61 @@ export function JobsPage() {
     } finally {
       setMovingId(null);
     }
+  }
+
+  // ---- Drag handlers ----
+  function handleDragStart(event: DragStartEvent) {
+    const draggedJob = jobs.find((j) => j.id === event.active.id);
+    setActiveDragJob(draggedJob ?? null);
+  }
+
+  async function handleDragEnd(event: DragEndEvent) {
+    setActiveDragJob(null);
+    const { active, over } = event;
+    if (!over) return;
+
+    const jobId = active.id as string;
+    let targetStatus = over.id as string;
+
+    // If dropped on another card, find that card's status
+    if (!STATUS_ORDER.includes(targetStatus as JobStatus)) {
+      const targetJob = jobs.find((j) => j.id === targetStatus);
+      if (targetJob) {
+        targetStatus = targetJob.status;
+      } else {
+        return;
+      }
+    }
+
+    const job = jobs.find((j) => j.id === jobId);
+    if (!job || job.status === targetStatus) return;
+
+    // Optimistic update
+    prevJobsRef.current = jobs;
+    setJobs((prev) =>
+      prev.map((j) =>
+        j.id === jobId ? { ...j, status: targetStatus as JobStatus } : j
+      )
+    );
+
+    try {
+      const res = await fetch(`/api/jobs/${jobId}`, {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ status: targetStatus }),
+      });
+
+      if (!res.ok) throw new Error("Failed to update status");
+      // Refresh from server to get accurate timestamps
+      await fetchJobs();
+    } catch {
+      // Revert on failure
+      setJobs(prevJobsRef.current);
+    }
+  }
+
+  function handleDragCancel() {
+    setActiveDragJob(null);
   }
 
   // ---- Filtered jobs ----
@@ -956,25 +1096,39 @@ export function JobsPage() {
 
       {/* Kanban View */}
       {jobs.length > 0 && view === "kanban" && (
-        <div className="overflow-x-auto pb-4">
-          <div className="flex gap-3" style={{ minWidth: "fit-content" }}>
-            {STATUS_ORDER.filter((status) => {
-              // If filter is ACTIVE, hide COMPLETE column. If COMPLETE, show only COMPLETE.
-              if (filter === "ACTIVE") return status !== "COMPLETE";
-              if (filter === "COMPLETE") return status === "COMPLETE";
-              return true;
-            }).map((status) => (
-              <KanbanColumn
-                key={status}
-                status={status}
-                jobs={filteredJobs.filter((j) => j.status === status)}
-                onCardClick={(job) => setDetailJob(job)}
-                onMoveNext={handleMoveNext}
-                movingId={movingId}
-              />
-            ))}
+        <DndContext
+          sensors={sensors}
+          collisionDetection={closestCorners}
+          onDragStart={handleDragStart}
+          onDragEnd={handleDragEnd}
+          onDragCancel={handleDragCancel}
+        >
+          <div className="overflow-x-auto pb-4">
+            <div className="flex gap-3" style={{ minWidth: "fit-content" }}>
+              {STATUS_ORDER.filter((status) => {
+                if (filter === "ACTIVE") return status !== "COMPLETE";
+                if (filter === "COMPLETE") return status === "COMPLETE";
+                return true;
+              }).map((status) => (
+                <KanbanColumn
+                  key={status}
+                  status={status}
+                  jobs={filteredJobs.filter((j) => j.status === status)}
+                  onCardClick={(job) => setDetailJob(job)}
+                  onMoveNext={handleMoveNext}
+                  movingId={movingId}
+                />
+              ))}
+            </div>
           </div>
-        </div>
+          <DragOverlay>
+            {activeDragJob ? (
+              <div className="w-64 opacity-90">
+                <JobCardContent job={activeDragJob} />
+              </div>
+            ) : null}
+          </DragOverlay>
+        </DndContext>
       )}
 
       {/* List View */}

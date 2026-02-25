@@ -5,22 +5,25 @@
 
 ## Last Updated
 
-- **Date:** 2026-02-25 06:15
-- **Branch:** main (not yet initialised)
-- **Focus:** Project kickoff and scaffold
+- **Date:** 2026-02-25 12:10
+- **Branch:** main
+- **Focus:** Dashboard rework, stock control, dark mode fix (v0.8.0)
 
 ## Accomplished
 
-- Reviewed comprehensive PRD for printforge-quote
-- Confirmed stack: Next.js 15 + TypeScript + Prisma + PostgreSQL + pnpm, self-hosted Docker
-- Scaffolded entire project: package.json, Prisma schema, Docker setup, calculator engine with tests
-- Created architecture doc, updated all memory/config files
-- Wrote calculator engine with full test suite (material, machine, labour, overhead, pricing)
+- **v0.8.0**: Comprehensive dashboard with all business metrics, stock control, dark mode readability fix
+  - Dashboard: 6 stat cards (quotes, revenue, this month, active jobs, clients, stock value), quote/job/stock breakdown cards with CSS status bars, recent quotes list, active jobs list, low stock alerts, quick actions
+  - Stock control: POST `/api/materials/[id]/stock` endpoint for atomic adjustments; +/- buttons on materials page (desktop table + mobile cards); stock value column; total stock value in toolbar
+  - Dark mode: proper surface layering (sidebar 0.14 → background 0.155 → cards 0.205), visible borders (0.30), better muted-foreground contrast (0.72)
+  - Dashboard API expanded with job groupBy, active jobs, client count, printer utilisation, stock health metrics
+- **v0.7.0**: Client-first quote flow, edit client on quote, convert accepted quote to job
+- **v0.6.2**: Weight formula accounts for solid shells, default infill 15%
+- **v0.6.1**: STL speed presets and weight formula accuracy fix
+- Version display in header bar
 
 ## In Progress
 
-- Git repo not yet initialised — needs `git init` and initial commit
-- Dependencies not yet installed — needs `pnpm install`
+_None_
 
 ## Blocked
 
@@ -28,11 +31,12 @@ _None_
 
 ## Next Steps
 
-1. Init git repo and make initial commit
-2. Install dependencies with `pnpm install`
-3. Start building Phase 1 — Calculator MVP UI (the calculator page with all input fields)
-4. Set up NextAuth.js authentication
-5. Create dashboard layout with sidebar navigation
+1. Authentication (NextAuth.js) — currently hardcoded `TEMP_USER_ID`
+2. Settings page (business details, markup defaults, tax rates)
+3. PDF quote generation / export
+4. Print time estimation improvements (per-model calibration)
+5. Printer management page enhancements
+6. Job workflow (status transitions, timeline)
 
 ## Active Beads Issues
 
@@ -41,42 +45,21 @@ _Beads not yet configured_
 ## Context
 
 - Project name: `printforge-quote`
-- Calculator engine already implemented at `src/lib/calculator.ts` with tests
-- PRD cleaned up at `strategy/printforge-quote-prd.md` (original messy version still at `strategy/3d-print-quote-project-prd.md`)
+- Version: 0.8.0
+- Deployed via cron-based git pull + docker build on Proxmox VM (not GitHub Actions)
+- Node.js/pnpm not available in Claude Code env — can't run local builds
 - Dark mode is default theme (workshop setting)
-- Multi-tenancy baked into Prisma schema from day one (userId on all tables)
+- Multi-tenancy via `TEMP_USER_ID` on all tables (auth not yet implemented)
+- Calculator engine at `src/lib/calculator.ts` with tests
+- All API routes follow same pattern: zod validation, TEMP_USER_ID scoping, try/catch with 500 handler
 
-## Files Modified
+## Files Modified This Session
 
 ```
-CLAUDE.md
-.gitignore
-package.json
-tsconfig.json
-next.config.ts
-postcss.config.mjs
-vitest.config.ts
-Dockerfile
-docker-compose.yml
-env.example
-prisma/schema.prisma
-src/app/globals.css
-src/app/layout.tsx
-src/app/page.tsx
-src/components/theme-provider.tsx
-src/lib/prisma.ts
-src/lib/utils.ts
-src/lib/calculator.ts
-src/lib/calculator.test.ts
-src/test/setup.ts
-docs/architecture/overview.md
-strategy/printforge-quote-prd.md
-strategy/todo-list.md
-specs/decisions.md
-.claude/rules/memory-sessions.md
-.claude/rules/memory-decisions.md
-.claude/rules/memory-preferences.md
-.claude/skills/coding-patterns/SKILL.md
-.claude/skills/testing/SKILL.md
-memory/HANDOFF.md
+package.json (version 0.8.0)
+src/app/globals.css (dark mode colours)
+src/app/api/dashboard/route.ts (expanded metrics)
+src/app/api/materials/[id]/stock/route.ts (NEW - stock adjustment)
+src/components/dashboard/dashboard-page.tsx (full rewrite)
+src/components/materials/materials-page.tsx (stock controls)
 ```

@@ -11,6 +11,5 @@ Each entry: `[YYYY-MM-DD] Learning — Context`
 
 <!-- Claude: add new entries at the top -->
 
-- [YYYY-MM-DD] [e.g., AlphaESS Modbus register 0x0020 returns SOC as percentage * 10, not raw percentage]
-- [YYYY-MM-DD] [e.g., Shopify webhook verification requires raw body, not parsed JSON]
-- [YYYY-MM-DD] [e.g., Docker Alpine images missing tzdata — need to install for timezone support]
+- [2026-02-25] Prisma enums are strict — when using enum fields in `where` clauses (e.g. `status: { in: [...] }`), the array MUST be typed with the Prisma-generated enum type (e.g. `JobStatus[]`), not `string[]`. TypeScript will pass locally but `next build` strict checking will fail. Always `import { EnumName } from "@prisma/client"` and type arrays accordingly.
+- [2026-02-25] No local Node.js/pnpm available in Claude Code env on this machine — cannot run `pnpm build` to catch type errors before pushing. Must be extra careful with types, especially Prisma enum compatibility. Always import and use Prisma-generated types for enum fields.

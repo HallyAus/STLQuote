@@ -19,7 +19,9 @@ interface Client {
   email: string | null;
   phone: string | null;
   company: string | null;
-  address: string | null;
+  billingAddress: string | null;
+  shippingAddress: string | null;
+  shippingSameAsBilling: boolean;
   tags: string[];
   notes: string | null;
   createdAt: string;
@@ -32,7 +34,9 @@ interface ClientFormData {
   email: string;
   phone: string;
   company: string;
-  address: string;
+  billingAddress: string;
+  shippingAddress: string;
+  shippingSameAsBilling: boolean;
   tags: string;
   notes: string;
 }
@@ -42,7 +46,9 @@ const emptyForm: ClientFormData = {
   email: "",
   phone: "",
   company: "",
-  address: "",
+  billingAddress: "",
+  shippingAddress: "",
+  shippingSameAsBilling: true,
   tags: "",
   notes: "",
 };
@@ -68,7 +74,9 @@ function clientToFormData(client: Client): ClientFormData {
     email: client.email ?? "",
     phone: client.phone ?? "",
     company: client.company ?? "",
-    address: client.address ?? "",
+    billingAddress: client.billingAddress ?? "",
+    shippingAddress: client.shippingAddress ?? "",
+    shippingSameAsBilling: client.shippingSameAsBilling,
     tags: client.tags.join(", "),
     notes: client.notes ?? "",
   };
@@ -80,7 +88,11 @@ function formDataToPayload(form: ClientFormData) {
     email: form.email.trim() || null,
     phone: form.phone.trim() || null,
     company: form.company.trim() || null,
-    address: form.address.trim() || null,
+    billingAddress: form.billingAddress.trim() || null,
+    shippingAddress: form.shippingSameAsBilling
+      ? null
+      : (form.shippingAddress.trim() || null),
+    shippingSameAsBilling: form.shippingSameAsBilling,
     tags: form.tags
       .split(",")
       .map((t) => t.trim())
@@ -183,7 +195,7 @@ export function ClientsPage() {
     setForm(emptyForm);
   }
 
-  function updateField(field: keyof ClientFormData, value: string) {
+  function updateField(field: keyof ClientFormData, value: string | boolean) {
     setForm((prev) => ({ ...prev, [field]: value }));
   }
 
@@ -423,7 +435,7 @@ function ClientModal({
   title: string;
   form: ClientFormData;
   saving: boolean;
-  onFieldChange: (field: keyof ClientFormData, value: string) => void;
+  onFieldChange: (field: keyof ClientFormData, value: string | boolean) => void;
   onSave: () => void;
   onClose: () => void;
 }) {
@@ -467,14 +479,38 @@ function ClientModal({
           placeholder="e.g. Smith Electrical"
         />
 
-        {/* Address */}
+        {/* Billing Address */}
         <Textarea
-          label="Address"
-          value={form.address}
-          onChange={(e) => onFieldChange("address", e.target.value)}
+          label="Billing Address"
+          value={form.billingAddress}
+          onChange={(e) => onFieldChange("billingAddress", e.target.value)}
           placeholder="123 Main St, Sydney NSW 2000"
           className="min-h-[60px]"
         />
+
+        {/* Shipping same as billing */}
+        <label className="flex items-center gap-2 cursor-pointer">
+          <input
+            type="checkbox"
+            checked={form.shippingSameAsBilling}
+            onChange={(e) => onFieldChange("shippingSameAsBilling", e.target.checked)}
+            className="h-4 w-4 rounded border-input accent-primary"
+          />
+          <span className="text-sm text-foreground">
+            Shipping address same as billing
+          </span>
+        </label>
+
+        {/* Shipping Address */}
+        {!form.shippingSameAsBilling && (
+          <Textarea
+            label="Shipping Address"
+            value={form.shippingAddress}
+            onChange={(e) => onFieldChange("shippingAddress", e.target.value)}
+            placeholder="456 Other St, Melbourne VIC 3000"
+            className="min-h-[60px]"
+          />
+        )}
 
         {/* Tags */}
         <Input

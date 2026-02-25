@@ -67,6 +67,7 @@ prisma/
 - Always filter by `userId` for multi-tenancy
 - Use Prisma transactions for multi-table writes
 - Generate migrations with `pnpm db:migrate`
+- **CRITICAL: Always import and use Prisma-generated enum types** (e.g. `import { JobStatus } from "@prisma/client"`) when passing values to Prisma `where` clauses. Never use plain `string[]` for enum fields — `next build` will fail even if the dev server doesn't complain.
 
 ## Calculator Engine
 

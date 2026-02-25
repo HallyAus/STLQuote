@@ -9,7 +9,9 @@ const updateClientSchema = z.object({
   email: z.string().email("Invalid email").optional().nullable().or(z.literal("")),
   phone: z.string().optional().nullable(),
   company: z.string().optional().nullable(),
-  address: z.string().optional().nullable(),
+  billingAddress: z.string().optional().nullable(),
+  shippingAddress: z.string().optional().nullable(),
+  shippingSameAsBilling: z.boolean().optional(),
   tags: z.array(z.string()).optional(),
   notes: z.string().optional().nullable(),
 });
@@ -87,7 +89,12 @@ export async function PUT(
     if (data.email !== undefined) data.email = (data.email as string)?.trim() || null;
     if (data.phone !== undefined) data.phone = (data.phone as string)?.trim() || null;
     if (data.company !== undefined) data.company = (data.company as string)?.trim() || null;
-    if (data.address !== undefined) data.address = (data.address as string)?.trim() || null;
+    if (data.billingAddress !== undefined) data.billingAddress = (data.billingAddress as string)?.trim() || null;
+    if (data.shippingSameAsBilling === true) {
+      data.shippingAddress = null;
+    } else if (data.shippingAddress !== undefined) {
+      data.shippingAddress = (data.shippingAddress as string)?.trim() || null;
+    }
     if (data.notes !== undefined) data.notes = (data.notes as string)?.trim() || null;
     if (data.tags !== undefined) {
       data.tags = (data.tags as string[]).filter((t) => t.trim().length > 0);
