@@ -130,6 +130,36 @@ export async function sendWelcomeEmail(email: string, name: string): Promise<boo
   });
 }
 
+export async function sendAccountCreatedEmail(
+  email: string,
+  name: string,
+  resetToken: string
+): Promise<boolean> {
+  const appUrl = process.env.NEXT_PUBLIC_APP_URL || "http://localhost:3000";
+  const resetUrl = `${appUrl}/reset-password?token=${resetToken}`;
+
+  return sendEmail({
+    to: email,
+    subject: "Your Printforge account is ready",
+    html: `
+      <div style="font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; max-width: 600px; margin: 0 auto;">
+        <h2 style="color: #171717;">Welcome to Printforge, ${name}!</h2>
+        <p>An account has been created for you on <strong>Printforge</strong> — the 3D print cost calculator and business management platform.</p>
+        <p>To get started, set your password using the link below:</p>
+        <p style="margin: 24px 0;">
+          <a href="${resetUrl}" style="background-color: #2563eb; color: white; padding: 12px 24px; border-radius: 6px; text-decoration: none; font-weight: 600;">
+            Set Your Password
+          </a>
+        </p>
+        <p style="color: #666; font-size: 14px;">This link expires in 1 hour. If it expires, use the "Forgot password" option on the login page to request a new one.</p>
+        <p style="color: #666; font-size: 14px;">Once you&rsquo;ve set your password, sign in at <a href="${appUrl}/login" style="color: #2563eb;">${appUrl.replace(/^https?:\/\//, "")}</a>.</p>
+        <hr style="border: none; border-top: 1px solid #e5e5e5; margin: 24px 0;" />
+        <p style="color: #999; font-size: 12px;">Printforge — 3D Print Cost Calculator</p>
+      </div>
+    `,
+  });
+}
+
 export async function sendBulkEmail({
   recipients,
   subject,

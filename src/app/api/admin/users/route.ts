@@ -1,6 +1,8 @@
 import { NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { requireAdmin, isSuperAdminRole } from "@/lib/auth-helpers";
+import { createPasswordResetToken } from "@/lib/tokens";
+import { sendAccountCreatedEmail } from "@/lib/email";
 import bcrypt from "bcryptjs";
 import { z } from "zod";
 
@@ -58,6 +60,14 @@ export async function POST(request: Request) {
         updatedAt: true,
       },
     });
+
+    // Send invitation email with password reset link (non-blocking)
+    try {
+      const resetToken = await createPasswordResetToken(email);
+      await sendAccountCreatedEmail(email, name, resetToken);
+    } catch (emailError) {
+      console.error("Failed to send account created email:", emailError);
+    }
 
     return NextResponse.json(user, { status: 201 });
   } catch (error) {
