@@ -45,6 +45,7 @@ export async function GET(
         businessAbn: true,
         businessPhone: true,
         businessEmail: true,
+        businessLogoUrl: true,
       },
     });
 

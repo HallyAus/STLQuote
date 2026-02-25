@@ -69,6 +69,7 @@ export async function POST(
         businessAbn: true,
         businessPhone: true,
         businessEmail: true,
+        businessLogoUrl: true,
       },
     });
 
