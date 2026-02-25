@@ -16,6 +16,9 @@ import {
   UserPlus,
   X,
   KeyRound,
+  Mail,
+  Send,
+  CheckCircle2,
 } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import { Select } from "@/components/ui/select";
@@ -53,7 +56,7 @@ export default function AdminPage() {
   const [users, setUsers] = useState<AdminUser[]>([]);
   const [loading, setLoading] = useState(true);
   const [actionLoading, setActionLoading] = useState<string | null>(null);
-  const [activeTab, setActiveTab] = useState<"users" | "deploys">("users");
+  const [activeTab, setActiveTab] = useState<"users" | "deploys" | "email">("users");
   const [showCreateModal, setShowCreateModal] = useState(false);
   const [createForm, setCreateForm] = useState({
     name: "",
@@ -68,6 +71,9 @@ export default function AdminPage() {
   const [resetLoading, setResetLoading] = useState(false);
   const [resetError, setResetError] = useState("");
   const [resetSuccess, setResetSuccess] = useState(false);
+  const [testEmailTo, setTestEmailTo] = useState("");
+  const [testEmailLoading, setTestEmailLoading] = useState(false);
+  const [testEmailResult, setTestEmailResult] = useState<{ ok: boolean; message: string } | null>(null);
 
   const fetchUsers = useCallback(async () => {
     try {
@@ -202,6 +208,31 @@ export default function AdminPage() {
     }
   }
 
+  async function handleTestEmail(e: React.FormEvent) {
+    e.preventDefault();
+    setTestEmailLoading(true);
+    setTestEmailResult(null);
+
+    try {
+      const res = await fetch("/api/admin/test-email", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ to: testEmailTo || undefined }),
+      });
+      const data = await res.json();
+
+      if (res.ok) {
+        setTestEmailResult({ ok: true, message: data.message });
+      } else {
+        setTestEmailResult({ ok: false, message: data.error || "Failed to send" });
+      }
+    } catch {
+      setTestEmailResult({ ok: false, message: "Something went wrong" });
+    } finally {
+      setTestEmailLoading(false);
+    }
+  }
+
   if (loading) {
     return (
       <div className="flex items-center justify-center py-12">
@@ -238,9 +269,72 @@ export default function AdminPage() {
           <Rocket className="h-4 w-4" />
           Deploys
         </button>
+        <button
+          onClick={() => setActiveTab("email")}
+          className={cn(
+            "flex items-center gap-1.5 px-4 py-2 text-sm font-medium border-b-2 -mb-px transition-colors",
+            activeTab === "email"
+              ? "border-primary text-primary"
+              : "border-transparent text-muted-foreground hover:text-foreground"
+          )}
+        >
+          <Mail className="h-4 w-4" />
+          Email
+        </button>
       </div>
 
       {activeTab === "deploys" && <DeployLogs />}
+
+      {/* Email test */}
+      {activeTab === "email" && (
+        <Card>
+          <CardHeader>
+            <CardTitle className="flex items-center gap-2">
+              <Mail className="h-5 w-5" />
+              Test Email
+            </CardTitle>
+          </CardHeader>
+          <CardContent>
+            <p className="mb-4 text-sm text-muted-foreground">
+              Send a test email to verify your Resend configuration is working.
+              Leave the address blank to send to your admin email.
+            </p>
+            <form onSubmit={handleTestEmail} className="space-y-4">
+              {testEmailResult && (
+                <div
+                  className={cn(
+                    "flex items-center gap-2 rounded-md px-3 py-2 text-sm",
+                    testEmailResult.ok
+                      ? "bg-success/10 text-success-foreground"
+                      : "bg-destructive/10 text-destructive-foreground"
+                  )}
+                >
+                  {testEmailResult.ok && <CheckCircle2 className="h-4 w-4 shrink-0" />}
+                  {testEmailResult.message}
+                </div>
+              )}
+              <div className="flex gap-2">
+                <div className="flex-1">
+                  <Input
+                    type="email"
+                    value={testEmailTo}
+                    onChange={(e) => setTestEmailTo(e.target.value)}
+                    placeholder="recipient@example.com (optional)"
+                  />
+                </div>
+                <Button type="submit" disabled={testEmailLoading}>
+                  {testEmailLoading ? (
+                    <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                  ) : (
+                    <Send className="mr-2 h-4 w-4" />
+                  )}
+                  Send Test
+                </Button>
+              </div>
+            </form>
+          </CardContent>
+        </Card>
+      )}
 
       {/* Stats */}
       {activeTab === "users" && stats && (
