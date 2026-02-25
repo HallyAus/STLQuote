@@ -10,13 +10,18 @@ import {
   AlertTriangle,
   Plus,
   Calculator,
+  Briefcase,
+  Users,
+  CalendarDays,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { cn } from "@/lib/utils";
 
-// --- Types ---
+// ---------------------------------------------------------------------------
+// Types
+// ---------------------------------------------------------------------------
 
 type QuoteStatus = "DRAFT" | "SENT" | "ACCEPTED" | "REJECTED" | "EXPIRED";
 
@@ -25,10 +30,20 @@ interface DashboardStats {
   draftQuotes: number;
   sentQuotes: number;
   acceptedQuotes: number;
+  rejectedQuotes: number;
+  expiredQuotes: number;
   totalRevenue: number;
+  quotesThisMonth: number;
+  totalJobs: number;
+  jobStatusMap: Record<string, number>;
+  activeJobCount: number;
+  totalClients: number;
   totalPrinters: number;
+  printersInUse: number;
   totalMaterials: number;
-  lowStockMaterials: number;
+  totalStockValue: number;
+  lowStockCount: number;
+  outOfStockCount: number;
 }
 
 interface DashboardQuote {
@@ -41,6 +56,14 @@ interface DashboardQuote {
   _count: { lineItems: number };
 }
 
+interface DashboardJob {
+  id: string;
+  status: string;
+  createdAt: string;
+  quote: { quoteNumber: string } | null;
+  printer: { name: string } | null;
+}
+
 interface LowStockMaterial {
   id: string;
   type: string;
@@ -49,15 +72,19 @@ interface LowStockMaterial {
   colour: string | null;
   stockQty: number;
   lowStockThreshold: number;
+  price: number;
 }
 
 interface DashboardData {
   stats: DashboardStats;
   recentQuotes: DashboardQuote[];
   lowStockAlerts: LowStockMaterial[];
+  activeJobs: DashboardJob[];
 }
 
-// --- Status badge ---
+// ---------------------------------------------------------------------------
+// Constants
+// ---------------------------------------------------------------------------
 
 const STATUS_LABEL: Record<QuoteStatus, string> = {
   DRAFT: "Draft",
@@ -75,7 +102,41 @@ const STATUS_VARIANT: Record<QuoteStatus, "default" | "info" | "success" | "dest
   EXPIRED: "warning",
 };
 
-// --- Currency formatter ---
+const QUOTE_BREAKDOWN = [
+  { key: "draftQuotes", label: "Draft", colour: "bg-gray-400" },
+  { key: "sentQuotes", label: "Sent", colour: "bg-blue-400" },
+  { key: "acceptedQuotes", label: "Accepted", colour: "bg-green-400" },
+  { key: "rejectedQuotes", label: "Rejected", colour: "bg-red-400" },
+  { key: "expiredQuotes", label: "Expired", colour: "bg-orange-400" },
+] as const;
+
+const JOB_PIPELINE = [
+  { status: "QUEUED", label: "Queued", colour: "bg-gray-400" },
+  { status: "PRINTING", label: "Printing", colour: "bg-blue-400" },
+  { status: "POST_PROCESSING", label: "Post-Processing", colour: "bg-orange-400" },
+  { status: "QUALITY_CHECK", label: "Quality Check", colour: "bg-yellow-400" },
+  { status: "PACKING", label: "Packing", colour: "bg-purple-400" },
+  { status: "SHIPPED", label: "Shipped", colour: "bg-cyan-400" },
+  { status: "COMPLETE", label: "Complete", colour: "bg-green-400" },
+];
+
+const JOB_STATUS_LABEL: Record<string, string> = Object.fromEntries(
+  JOB_PIPELINE.map((j) => [j.status, j.label])
+);
+
+const JOB_BADGE_VARIANT: Record<string, "default" | "info" | "success" | "warning"> = {
+  QUEUED: "default",
+  PRINTING: "info",
+  POST_PROCESSING: "warning",
+  QUALITY_CHECK: "info",
+  PACKING: "warning",
+  SHIPPED: "success",
+  COMPLETE: "success",
+};
+
+// ---------------------------------------------------------------------------
+// Helpers
+// ---------------------------------------------------------------------------
 
 function formatCurrency(value: number): string {
   return `$${value.toLocaleString("en-AU", {
@@ -84,17 +145,21 @@ function formatCurrency(value: number): string {
   })}`;
 }
 
-// --- Stat card ---
+// ---------------------------------------------------------------------------
+// Sub-components
+// ---------------------------------------------------------------------------
 
 function StatCard({
   icon: Icon,
   label,
   value,
+  sub,
   href,
 }: {
   icon: React.ElementType;
   label: string;
   value: string;
+  sub?: string;
   href?: string;
 }) {
   const content = (
@@ -104,87 +169,352 @@ function StatCard({
           <Icon className="h-5 w-5 text-primary" />
         </div>
         <div className="min-w-0">
-          <p className="text-sm text-muted-foreground">{label}</p>
-          <p className="text-2xl font-bold tracking-tight">{value}</p>
+          <p className="text-xs text-muted-foreground">{label}</p>
+          <p className="text-xl font-bold tracking-tight">{value}</p>
+          {sub && (
+            <p className="text-[11px] text-muted-foreground">{sub}</p>
+          )}
         </div>
       </CardContent>
     </Card>
   );
 
-  if (href) {
-    return <Link href={href}>{content}</Link>;
-  }
+  if (href) return <Link href={href}>{content}</Link>;
   return content;
 }
 
-// --- Loading skeleton ---
+function StatusBar({ count, max, colour }: { count: number; max: number; colour: string }) {
+  const pct = max > 0 ? Math.round((count / max) * 100) : 0;
+  return (
+    <div className="h-2 w-full rounded-full bg-muted">
+      <div
+        className={cn("h-2 rounded-full transition-all", colour)}
+        style={{ width: `${Math.max(pct, count > 0 ? 4 : 0)}%` }}
+      />
+    </div>
+  );
+}
+
+function QuoteBreakdownCard({ stats }: { stats: DashboardStats }) {
+  return (
+    <Card>
+      <CardHeader className="pb-3">
+        <CardTitle className="text-base font-semibold">Quote Breakdown</CardTitle>
+      </CardHeader>
+      <CardContent className="space-y-3">
+        {QUOTE_BREAKDOWN.map((row) => {
+          const count = stats[row.key] as number;
+          return (
+            <div key={row.key} className="space-y-1">
+              <div className="flex items-center justify-between text-sm">
+                <span className="text-muted-foreground">{row.label}</span>
+                <span className="font-medium tabular-nums">{count}</span>
+              </div>
+              <StatusBar count={count} max={stats.totalQuotes} colour={row.colour} />
+            </div>
+          );
+        })}
+      </CardContent>
+    </Card>
+  );
+}
+
+function JobPipelineCard({ stats }: { stats: DashboardStats }) {
+  return (
+    <Card>
+      <CardHeader className="pb-3">
+        <CardTitle className="text-base font-semibold">Job Pipeline</CardTitle>
+      </CardHeader>
+      <CardContent className="space-y-3">
+        {JOB_PIPELINE.map((row) => {
+          const count = stats.jobStatusMap[row.status] ?? 0;
+          return (
+            <div key={row.status} className="space-y-1">
+              <div className="flex items-center justify-between text-sm">
+                <span className="text-muted-foreground">{row.label}</span>
+                <span className="font-medium tabular-nums">{count}</span>
+              </div>
+              <StatusBar count={count} max={stats.totalJobs} colour={row.colour} />
+            </div>
+          );
+        })}
+      </CardContent>
+    </Card>
+  );
+}
+
+function StockHealthCard({ stats }: { stats: DashboardStats }) {
+  return (
+    <Card>
+      <CardHeader className="pb-3">
+        <CardTitle className="text-base font-semibold">Stock Health</CardTitle>
+      </CardHeader>
+      <CardContent className="space-y-3">
+        <div className="flex items-center justify-between text-sm">
+          <span className="text-muted-foreground">Total materials</span>
+          <span className="font-medium tabular-nums">{stats.totalMaterials}</span>
+        </div>
+        <div className="flex items-center justify-between text-sm">
+          <span className="text-muted-foreground">Printers</span>
+          <span className="font-medium tabular-nums">
+            {stats.printersInUse} active / {stats.totalPrinters} total
+          </span>
+        </div>
+        <div className="flex items-center justify-between text-sm">
+          <span className="text-muted-foreground">Low stock</span>
+          <span className={cn("font-medium tabular-nums", stats.lowStockCount > 0 && "text-orange-500")}>
+            {stats.lowStockCount}
+          </span>
+        </div>
+        <div className="flex items-center justify-between text-sm">
+          <span className="text-muted-foreground">Out of stock</span>
+          <span className={cn("font-medium tabular-nums", stats.outOfStockCount > 0 && "text-red-500")}>
+            {stats.outOfStockCount}
+          </span>
+        </div>
+        <div className="border-t border-border pt-3">
+          <div className="flex items-center justify-between">
+            <span className="text-sm font-medium">Stock value</span>
+            <span className="text-lg font-bold tabular-nums">
+              {formatCurrency(stats.totalStockValue)}
+            </span>
+          </div>
+        </div>
+      </CardContent>
+    </Card>
+  );
+}
+
+function RecentQuotesList({ quotes }: { quotes: DashboardQuote[] }) {
+  return (
+    <Card>
+      <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-3">
+        <CardTitle className="text-base font-semibold">Recent Quotes</CardTitle>
+        <Link href="/quotes" className="text-sm text-muted-foreground hover:text-foreground">
+          View all
+        </Link>
+      </CardHeader>
+      <CardContent>
+        {quotes.length === 0 ? (
+          <div className="flex flex-col items-center gap-3 py-6 text-center">
+            <FileText className="h-8 w-8 text-muted-foreground/50" />
+            <p className="text-sm text-muted-foreground">No quotes yet</p>
+            <Link href="/quotes/new">
+              <Button size="sm">
+                <Plus className="mr-1 h-4 w-4" />
+                Create your first quote
+              </Button>
+            </Link>
+          </div>
+        ) : (
+          <div className="space-y-2">
+            {quotes.map((quote) => (
+              <Link
+                key={quote.id}
+                href={`/quotes/${quote.id}`}
+                className="flex items-center justify-between rounded-lg border border-border p-3 transition-colors hover:bg-accent/50"
+              >
+                <div className="min-w-0">
+                  <div className="flex items-center gap-2">
+                    <span className="text-sm font-medium">{quote.quoteNumber}</span>
+                    <Badge variant={STATUS_VARIANT[quote.status]}>
+                      {STATUS_LABEL[quote.status]}
+                    </Badge>
+                  </div>
+                  <p className="mt-0.5 truncate text-sm text-muted-foreground">
+                    {quote.client?.name ?? "No client"}
+                  </p>
+                </div>
+                <span className="shrink-0 text-sm font-medium tabular-nums">
+                  {formatCurrency(quote.total)}
+                </span>
+              </Link>
+            ))}
+          </div>
+        )}
+      </CardContent>
+    </Card>
+  );
+}
+
+function ActiveJobsList({ jobs }: { jobs: DashboardJob[] }) {
+  return (
+    <Card>
+      <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-3">
+        <CardTitle className="text-base font-semibold">Active Jobs</CardTitle>
+        <Link href="/jobs" className="text-sm text-muted-foreground hover:text-foreground">
+          View all
+        </Link>
+      </CardHeader>
+      <CardContent>
+        {jobs.length === 0 ? (
+          <div className="flex flex-col items-center gap-3 py-6 text-center">
+            <Briefcase className="h-8 w-8 text-muted-foreground/50" />
+            <p className="text-sm text-muted-foreground">No active jobs</p>
+          </div>
+        ) : (
+          <div className="space-y-2">
+            {jobs.map((job) => (
+              <Link
+                key={job.id}
+                href="/jobs"
+                className="flex items-center justify-between rounded-lg border border-border p-3 transition-colors hover:bg-accent/50"
+              >
+                <div className="min-w-0">
+                  <p className="text-sm font-medium">
+                    {job.quote?.quoteNumber ?? "Unlinked job"}
+                  </p>
+                  <p className="text-xs text-muted-foreground">
+                    {job.printer?.name ?? "No printer"}
+                  </p>
+                </div>
+                <Badge variant={JOB_BADGE_VARIANT[job.status] ?? "default"}>
+                  {JOB_STATUS_LABEL[job.status] ?? job.status}
+                </Badge>
+              </Link>
+            ))}
+          </div>
+        )}
+      </CardContent>
+    </Card>
+  );
+}
+
+function LowStockAlertsList({ alerts }: { alerts: LowStockMaterial[] }) {
+  return (
+    <Card>
+      <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-3">
+        <CardTitle className="text-base font-semibold">
+          <span className="flex items-center gap-2">
+            <AlertTriangle className="h-4 w-4 text-orange-500" />
+            Low Stock
+          </span>
+        </CardTitle>
+        {alerts.length > 0 && (
+          <Badge variant="warning">{alerts.length}</Badge>
+        )}
+      </CardHeader>
+      <CardContent>
+        {alerts.length === 0 ? (
+          <div className="flex items-center gap-2 rounded-lg bg-green-500/10 px-3 py-2 text-sm text-green-600 dark:text-green-400">
+            All stock levels OK
+          </div>
+        ) : (
+          <div className="space-y-2">
+            {alerts.map((material) => (
+              <div
+                key={material.id}
+                className="flex items-center justify-between rounded-lg border border-border p-3 text-sm"
+              >
+                <div className="min-w-0">
+                  <p className="font-medium">
+                    {material.materialType}
+                    {material.brand ? ` — ${material.brand}` : ""}
+                  </p>
+                  <p className="text-muted-foreground">
+                    {material.colour ?? "No colour"}
+                  </p>
+                </div>
+                <div className="shrink-0 text-right">
+                  <p
+                    className={cn(
+                      "font-medium tabular-nums",
+                      material.stockQty === 0 ? "text-red-500" : "text-orange-500"
+                    )}
+                  >
+                    {material.stockQty} in stock
+                  </p>
+                  <p className="text-xs text-muted-foreground">
+                    Threshold: {material.lowStockThreshold}
+                  </p>
+                </div>
+              </div>
+            ))}
+          </div>
+        )}
+      </CardContent>
+    </Card>
+  );
+}
+
+function QuickActions() {
+  return (
+    <Card>
+      <CardHeader className="pb-3">
+        <CardTitle className="text-base font-semibold">Quick Actions</CardTitle>
+      </CardHeader>
+      <CardContent>
+        <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
+          <Link href="/quotes/new">
+            <Button variant="secondary" className="w-full justify-start">
+              <Plus className="mr-2 h-4 w-4" />
+              New Quote
+            </Button>
+          </Link>
+          <Link href="/calculator">
+            <Button variant="secondary" className="w-full justify-start">
+              <Calculator className="mr-2 h-4 w-4" />
+              Calculator
+            </Button>
+          </Link>
+          <Link href="/printers">
+            <Button variant="secondary" className="w-full justify-start">
+              <Printer className="mr-2 h-4 w-4" />
+              Printers
+            </Button>
+          </Link>
+          <Link href="/materials">
+            <Button variant="secondary" className="w-full justify-start">
+              <Palette className="mr-2 h-4 w-4" />
+              Materials
+            </Button>
+          </Link>
+        </div>
+      </CardContent>
+    </Card>
+  );
+}
+
+// ---------------------------------------------------------------------------
+// Loading skeleton
+// ---------------------------------------------------------------------------
 
 function LoadingSkeleton() {
   return (
     <div className="space-y-6">
-      {/* Stat cards skeleton */}
-      <div className="grid grid-cols-2 gap-4 lg:grid-cols-4">
-        {Array.from({ length: 4 }).map((_, i) => (
+      <div className="grid grid-cols-2 gap-4 md:grid-cols-3 lg:grid-cols-6">
+        {Array.from({ length: 6 }).map((_, i) => (
           <Card key={i}>
             <CardContent className="flex items-center gap-4 p-4">
               <div className="h-10 w-10 animate-pulse rounded-lg bg-muted" />
               <div className="space-y-2">
-                <div className="h-3 w-16 animate-pulse rounded bg-muted" />
-                <div className="h-6 w-12 animate-pulse rounded bg-muted" />
+                <div className="h-3 w-14 animate-pulse rounded bg-muted" />
+                <div className="h-5 w-10 animate-pulse rounded bg-muted" />
               </div>
             </CardContent>
           </Card>
         ))}
       </div>
-
-      {/* Two-column skeleton */}
-      <div className="grid gap-6 lg:grid-cols-2">
-        <Card>
-          <CardHeader>
-            <div className="h-5 w-32 animate-pulse rounded bg-muted" />
-          </CardHeader>
-          <CardContent>
-            <div className="space-y-3">
-              {Array.from({ length: 3 }).map((_, i) => (
-                <div
-                  key={i}
-                  className="h-10 animate-pulse rounded bg-muted"
-                />
-              ))}
-            </div>
-          </CardContent>
-        </Card>
-        <div className="space-y-6">
-          <Card>
-            <CardHeader>
-              <div className="h-5 w-28 animate-pulse rounded bg-muted" />
-            </CardHeader>
-            <CardContent>
-              <div className="h-16 animate-pulse rounded bg-muted" />
-            </CardContent>
-          </Card>
-          <Card>
-            <CardHeader>
-              <div className="h-5 w-24 animate-pulse rounded bg-muted" />
-            </CardHeader>
-            <CardContent>
-              <div className="grid grid-cols-2 gap-3">
-                {Array.from({ length: 4 }).map((_, i) => (
-                  <div
-                    key={i}
-                    className="h-9 animate-pulse rounded bg-muted"
-                  />
+      <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
+        {Array.from({ length: 3 }).map((_, i) => (
+          <Card key={i}>
+            <CardContent className="p-6">
+              <div className="space-y-3">
+                {Array.from({ length: 4 }).map((_, j) => (
+                  <div key={j} className="h-6 animate-pulse rounded bg-muted" />
                 ))}
               </div>
             </CardContent>
           </Card>
-        </div>
+        ))}
       </div>
     </div>
   );
 }
 
-// --- Main component ---
+// ---------------------------------------------------------------------------
+// Main component
+// ---------------------------------------------------------------------------
 
 export function DashboardPage() {
   const [data, setData] = useState<DashboardData | null>(null);
@@ -212,9 +542,7 @@ export function DashboardPage() {
       <div className="space-y-6">
         <div>
           <h1 className="text-2xl font-bold tracking-tight">Dashboard</h1>
-          <p className="text-muted-foreground">
-            Overview of your 3D printing business
-          </p>
+          <p className="text-muted-foreground">Overview of your 3D printing business</p>
         </div>
         <LoadingSkeleton />
       </div>
@@ -232,20 +560,18 @@ export function DashboardPage() {
     );
   }
 
-  const { stats, recentQuotes, lowStockAlerts } = data;
+  const { stats, recentQuotes, lowStockAlerts, activeJobs } = data;
 
   return (
     <div className="space-y-6">
       {/* Header */}
       <div>
         <h1 className="text-2xl font-bold tracking-tight">Dashboard</h1>
-        <p className="text-muted-foreground">
-          Overview of your 3D printing business
-        </p>
+        <p className="text-muted-foreground">Overview of your 3D printing business</p>
       </div>
 
-      {/* Stats cards */}
-      <div className="grid grid-cols-2 gap-4 lg:grid-cols-4">
+      {/* Top row: 6 stat cards */}
+      <div className="grid grid-cols-2 gap-4 md:grid-cols-3 lg:grid-cols-6">
         <StatCard
           icon={FileText}
           label="Total Quotes"
@@ -254,181 +580,53 @@ export function DashboardPage() {
         />
         <StatCard
           icon={DollarSign}
-          label="Accepted Revenue"
+          label="Revenue"
           value={formatCurrency(stats.totalRevenue)}
         />
         <StatCard
-          icon={Printer}
-          label="Printers"
-          value={String(stats.totalPrinters)}
-          href="/printers"
+          icon={CalendarDays}
+          label="This Month"
+          value={String(stats.quotesThisMonth)}
+          sub="new quotes"
+        />
+        <StatCard
+          icon={Briefcase}
+          label="Active Jobs"
+          value={String(stats.activeJobCount)}
+          sub={`${stats.totalJobs} total`}
+          href="/jobs"
+        />
+        <StatCard
+          icon={Users}
+          label="Clients"
+          value={String(stats.totalClients)}
+          href="/clients"
         />
         <StatCard
           icon={Palette}
-          label="Materials"
-          value={String(stats.totalMaterials)}
+          label="Stock Value"
+          value={formatCurrency(stats.totalStockValue)}
+          sub={`${stats.totalMaterials} materials`}
           href="/materials"
         />
       </div>
 
-      {/* Two-column layout */}
-      <div className="grid gap-6 lg:grid-cols-2">
-        {/* Left column: Recent Quotes */}
-        <Card>
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-4">
-            <CardTitle className="text-base font-semibold">
-              Recent Quotes
-            </CardTitle>
-            <Link
-              href="/quotes"
-              className="text-sm text-muted-foreground hover:text-foreground"
-            >
-              View all
-            </Link>
-          </CardHeader>
-          <CardContent>
-            {recentQuotes.length === 0 ? (
-              <div className="flex flex-col items-center gap-3 py-6 text-center">
-                <FileText className="h-8 w-8 text-muted-foreground/50" />
-                <p className="text-sm text-muted-foreground">No quotes yet</p>
-                <Link href="/quotes/new">
-                  <Button size="sm">
-                    <Plus className="mr-1 h-4 w-4" />
-                    Create your first quote
-                  </Button>
-                </Link>
-              </div>
-            ) : (
-              <div className="space-y-2">
-                {recentQuotes.map((quote) => {
-                  return (
-                    <Link
-                      key={quote.id}
-                      href={`/quotes/${quote.id}`}
-                      className="flex items-center justify-between rounded-lg border border-border p-3 transition-colors hover:bg-accent/50"
-                    >
-                      <div className="min-w-0">
-                        <div className="flex items-center gap-2">
-                          <span className="text-sm font-medium">
-                            {quote.quoteNumber}
-                          </span>
-                          <Badge variant={STATUS_VARIANT[quote.status]}>
-                            {STATUS_LABEL[quote.status]}
-                          </Badge>
-                        </div>
-                        <p className="mt-0.5 truncate text-sm text-muted-foreground">
-                          {quote.client?.name ?? "No client"}
-                        </p>
-                      </div>
-                      <span className="shrink-0 text-sm font-medium tabular-nums">
-                        {formatCurrency(quote.total)}
-                      </span>
-                    </Link>
-                  );
-                })}
-              </div>
-            )}
-          </CardContent>
-        </Card>
-
-        {/* Right column */}
-        <div className="space-y-6">
-          {/* Low Stock Alerts */}
-          <Card>
-            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-4">
-              <CardTitle className="text-base font-semibold">
-                <span className="flex items-center gap-2">
-                  <AlertTriangle className="h-4 w-4 text-orange-500" />
-                  Low Stock Alerts
-                </span>
-              </CardTitle>
-              {lowStockAlerts.length > 0 && (
-                <Badge variant="warning">
-                  {lowStockAlerts.length}
-                </Badge>
-              )}
-            </CardHeader>
-            <CardContent>
-              {lowStockAlerts.length === 0 ? (
-                <div className="flex items-center gap-2 rounded-lg bg-green-500/10 px-3 py-2 text-sm text-green-600 dark:text-green-400">
-                  All stock levels OK
-                </div>
-              ) : (
-                <div className="space-y-2">
-                  {lowStockAlerts.map((material) => (
-                    <div
-                      key={material.id}
-                      className="flex items-center justify-between rounded-lg border border-border p-3 text-sm"
-                    >
-                      <div className="min-w-0">
-                        <p className="font-medium">
-                          {material.materialType}
-                          {material.brand ? ` — ${material.brand}` : ""}
-                        </p>
-                        <p className="text-muted-foreground">
-                          {material.colour ?? "No colour"}
-                        </p>
-                      </div>
-                      <div className="shrink-0 text-right">
-                        <p
-                          className={cn(
-                            "font-medium tabular-nums",
-                            material.stockQty === 0
-                              ? "text-red-500"
-                              : "text-orange-500"
-                          )}
-                        >
-                          {material.stockQty} in stock
-                        </p>
-                        <p className="text-xs text-muted-foreground">
-                          Threshold: {material.lowStockThreshold}
-                        </p>
-                      </div>
-                    </div>
-                  ))}
-                </div>
-              )}
-            </CardContent>
-          </Card>
-
-          {/* Quick Actions */}
-          <Card>
-            <CardHeader className="pb-4">
-              <CardTitle className="text-base font-semibold">
-                Quick Actions
-              </CardTitle>
-            </CardHeader>
-            <CardContent>
-              <div className="grid grid-cols-2 gap-3">
-                <Link href="/quotes/new">
-                  <Button variant="secondary" className="w-full justify-start">
-                    <Plus className="mr-2 h-4 w-4" />
-                    New Quote
-                  </Button>
-                </Link>
-                <Link href="/calculator">
-                  <Button variant="secondary" className="w-full justify-start">
-                    <Calculator className="mr-2 h-4 w-4" />
-                    Calculator
-                  </Button>
-                </Link>
-                <Link href="/printers">
-                  <Button variant="secondary" className="w-full justify-start">
-                    <Printer className="mr-2 h-4 w-4" />
-                    Add Printer
-                  </Button>
-                </Link>
-                <Link href="/materials">
-                  <Button variant="secondary" className="w-full justify-start">
-                    <Palette className="mr-2 h-4 w-4" />
-                    Add Material
-                  </Button>
-                </Link>
-              </div>
-            </CardContent>
-          </Card>
-        </div>
+      {/* Middle row: Breakdown cards */}
+      <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
+        <QuoteBreakdownCard stats={stats} />
+        <JobPipelineCard stats={stats} />
+        <StockHealthCard stats={stats} />
       </div>
+
+      {/* Bottom row: Lists */}
+      <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
+        <RecentQuotesList quotes={recentQuotes} />
+        <ActiveJobsList jobs={activeJobs} />
+        <LowStockAlertsList alerts={lowStockAlerts} />
+      </div>
+
+      {/* Quick Actions */}
+      <QuickActions />
     </div>
   );
 }

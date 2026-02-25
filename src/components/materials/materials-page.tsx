@@ -9,7 +9,7 @@ import { Select } from "@/components/ui/select";
 import { Textarea } from "@/components/ui/textarea";
 import { Badge } from "@/components/ui/badge";
 import { Dialog, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
-import { Plus, Pencil, Trash2, Package, Loader2 } from "lucide-react";
+import { Plus, Minus, Pencil, Trash2, Package, Loader2 } from "lucide-react";
 import { MATERIAL_PRESETS } from "@/lib/presets";
 
 // ---------------------------------------------------------------------------
@@ -257,10 +257,14 @@ function MaterialCard({
   material,
   onEdit,
   onDelete,
+  onStockAdjust,
+  adjustingId,
 }: {
   material: Material;
   onEdit: () => void;
   onDelete: () => void;
+  onStockAdjust: (adjustment: number) => void;
+  adjustingId: string | null;
 }) {
   const status = stockStatus(material.stockQty, material.lowStockThreshold);
 
@@ -309,8 +313,32 @@ function MaterialCard({
           </div>
           <div>
             <span className="text-muted-foreground">Stock</span>
-            <p className="font-medium">{material.stockQty}</p>
+            <div className="flex items-center gap-1">
+              <Button
+                variant="ghost"
+                size="icon"
+                className="h-6 w-6"
+                disabled={adjustingId === material.id || material.stockQty === 0}
+                onClick={(e) => { e.stopPropagation(); onStockAdjust(-1); }}
+              >
+                <Minus className="h-3 w-3" />
+              </Button>
+              <span className="font-medium tabular-nums">{material.stockQty}</span>
+              <Button
+                variant="ghost"
+                size="icon"
+                className="h-6 w-6"
+                disabled={adjustingId === material.id}
+                onClick={(e) => { e.stopPropagation(); onStockAdjust(1); }}
+              >
+                <Plus className="h-3 w-3" />
+              </Button>
+            </div>
           </div>
+        </div>
+        <div className="mt-2 text-sm">
+          <span className="text-muted-foreground">Stock value: </span>
+          <span className="font-medium">${(material.price * material.stockQty).toFixed(2)}</span>
         </div>
         <div className="mt-3 flex justify-end gap-2">
           <Button variant="ghost" size="sm" onClick={onEdit}>
@@ -339,6 +367,7 @@ export function MaterialsPage() {
   const [showForm, setShowForm] = useState(false);
   const [editingMaterial, setEditingMaterial] = useState<Material | null>(null);
   const [formData, setFormData] = useState<MaterialFormData>(EMPTY_FORM);
+  const [adjustingId, setAdjustingId] = useState<string | null>(null);
 
   // Preset dropdown state
   const [presetOpen, setPresetOpen] = useState(false);
@@ -499,6 +528,37 @@ export function MaterialsPage() {
     }
   }
 
+  // ---- Stock adjustment ----
+  async function handleStockAdjust(id: string, adjustment: number) {
+    setAdjustingId(id);
+    try {
+      const res = await fetch(`/api/materials/${id}/stock`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ adjustment }),
+      });
+      if (!res.ok) {
+        const err = await res.json().catch(() => null);
+        console.error("Stock adjust failed:", err);
+        return;
+      }
+      const updated = await res.json();
+      setMaterials((prev) =>
+        prev.map((m) => (m.id === id ? { ...m, stockQty: updated.stockQty } : m))
+      );
+    } catch (err) {
+      console.error("Stock adjust error:", err);
+    } finally {
+      setAdjustingId(null);
+    }
+  }
+
+  // ---- Computed values ----
+  const totalStockValue = materials.reduce(
+    (sum, m) => sum + m.price * m.stockQty,
+    0
+  );
+
   // ---- Loading state ----
   if (loading) {
     return (
@@ -522,6 +582,11 @@ export function MaterialsPage() {
           <span className="text-sm text-muted-foreground">
             {filtered.length} material{filtered.length !== 1 ? "s" : ""}
           </span>
+          {materials.length > 0 && (
+            <span className="text-sm font-medium">
+              Stock value: ${totalStockValue.toFixed(2)}
+            </span>
+          )}
         </div>
         <div className="flex gap-2">
           <div className="relative" ref={presetRef}>
@@ -601,8 +666,11 @@ export function MaterialsPage() {
                     <th className="px-4 py-3 font-medium text-muted-foreground text-right">
                       $/g
                     </th>
-                    <th className="px-4 py-3 font-medium text-muted-foreground text-right">
+                    <th className="px-4 py-3 font-medium text-muted-foreground text-center">
                       Stock
+                    </th>
+                    <th className="px-4 py-3 font-medium text-muted-foreground text-right">
+                      Value
                     </th>
                     <th className="px-4 py-3 font-medium text-muted-foreground">
                       Status
@@ -670,8 +738,33 @@ export function MaterialsPage() {
                           )}
                           /g
                         </td>
+                        <td className="px-4 py-3">
+                          <div className="flex items-center justify-center gap-1">
+                            <Button
+                              variant="ghost"
+                              size="icon"
+                              className="h-7 w-7"
+                              disabled={adjustingId === material.id || material.stockQty === 0}
+                              onClick={() => handleStockAdjust(material.id, -1)}
+                            >
+                              <Minus className="h-3.5 w-3.5" />
+                            </Button>
+                            <span className="w-8 text-center font-medium tabular-nums">
+                              {material.stockQty}
+                            </span>
+                            <Button
+                              variant="ghost"
+                              size="icon"
+                              className="h-7 w-7"
+                              disabled={adjustingId === material.id}
+                              onClick={() => handleStockAdjust(material.id, 1)}
+                            >
+                              <Plus className="h-3.5 w-3.5" />
+                            </Button>
+                          </div>
+                        </td>
                         <td className="px-4 py-3 text-right tabular-nums">
-                          {material.stockQty}
+                          ${(material.price * material.stockQty).toFixed(2)}
                         </td>
                         <td className="px-4 py-3">
                           <Badge variant={status.variant}>
@@ -717,6 +810,8 @@ export function MaterialsPage() {
               material={material}
               onEdit={() => openEditForm(material)}
               onDelete={() => handleDelete(material.id)}
+              onStockAdjust={(adj) => handleStockAdjust(material.id, adj)}
+              adjustingId={adjustingId}
             />
           ))}
         </div>
