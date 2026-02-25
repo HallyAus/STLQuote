@@ -5,10 +5,11 @@ services:
       - "3000:3000"
     volumes:
       - ./deploy/logs:/app/deploy-logs:ro
+    env_file:
+      - .env
     environment:
       - DATABASE_URL=postgresql://printforge:printforge@db:5432/printforge_quote?schema=public
-      - NEXTAUTH_URL=http://localhost:3000
-      - NEXTAUTH_SECRET=${NEXTAUTH_SECRET}
+      - AUTH_TRUST_HOST=true
     depends_on:
       db:
         condition: service_healthy
