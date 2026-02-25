@@ -11,8 +11,7 @@ import { Button } from "@/components/ui/button";
 import { Select } from "@/components/ui/select";
 import { Card, CardContent } from "@/components/ui/card";
 import { CostBreakdownPanel } from "@/components/calculator/cost-breakdown";
-import { STLUploadPanel } from "@/components/calculator/stl-upload-panel";
-import type { STLEstimates } from "@/lib/stl-parser";
+import { STLUploadPanel, type FileEstimates } from "@/components/calculator/stl-upload-panel";
 import { cn } from "@/lib/utils";
 import { ChevronDown, Save, FolderOpen, Trash2, Loader2 } from "lucide-react";
 
@@ -272,7 +271,7 @@ export function CalculatorForm() {
   const [materials, setMaterials] = useState<MaterialOption[]>([]);
   const [selectedPrinterId, setSelectedPrinterId] = useState<string>("");
   const [selectedMaterialId, setSelectedMaterialId] = useState<string>("");
-  const [stlEstimates, setStlEstimates] = useState<STLEstimates | null>(null);
+  const [fileEstimates, setFileEstimates] = useState<FileEstimates | null>(null);
 
   // Preset state
   const [presets, setPresets] = useState<CalculatorPreset[]>([]);
@@ -315,16 +314,41 @@ export function CalculatorForm() {
   const breakdown = useMemo(() => calculateTotalCost(input), [input]);
 
   // -----------------------------------------------------------------------
-  // STL handler
+  // File upload handler (STL or G-code)
   // -----------------------------------------------------------------------
 
-  function handleSTLEstimates(estimates: STLEstimates) {
-    setStlEstimates(estimates);
+  function handleFileEstimates(estimates: FileEstimates) {
+    setFileEstimates(estimates);
     setInput((prev) => ({
       ...prev,
-      material: { ...prev.material, printWeightG: estimates.weightG },
-      machine: { ...prev.machine, printTimeMinutes: estimates.printTimeMinutes },
+      material: {
+        ...prev.material,
+        printWeightG: estimates.weightG || prev.material.printWeightG,
+      },
+      machine: {
+        ...prev.machine,
+        printTimeMinutes: estimates.printTimeMinutes || prev.machine.printTimeMinutes,
+      },
     }));
+
+    // G-code: try to auto-select matching material if one exists
+    if (estimates.type === "gcode" && estimates.materialType) {
+      const matchingMaterial = materials.find(
+        (m) => m.materialType.toUpperCase() === estimates.materialType!.toUpperCase()
+      );
+      if (matchingMaterial) {
+        setSelectedMaterialId(matchingMaterial.id);
+        setInput((prev) => ({
+          ...prev,
+          material: {
+            ...prev.material,
+            spoolPrice: matchingMaterial.price,
+            spoolWeightG: matchingMaterial.spoolWeightG,
+            printWeightG: estimates.weightG || prev.material.printWeightG,
+          },
+        }));
+      }
+    }
   }
 
   // -----------------------------------------------------------------------
@@ -482,9 +506,12 @@ export function CalculatorForm() {
   // -----------------------------------------------------------------------
 
   function handleCreateQuote() {
-    const description = stlEstimates
-      ? `${stlEstimates.filename} (${stlEstimates.dimensionsMm.x.toFixed(0)}\u00d7${stlEstimates.dimensionsMm.y.toFixed(0)}\u00d7${stlEstimates.dimensionsMm.z.toFixed(0)}mm)`
-      : "Calculated print job";
+    let description = "Calculated print job";
+    if (fileEstimates?.type === "stl" && fileEstimates.dimensionsMm) {
+      description = `${fileEstimates.filename} (${fileEstimates.dimensionsMm.x.toFixed(0)}\u00d7${fileEstimates.dimensionsMm.y.toFixed(0)}\u00d7${fileEstimates.dimensionsMm.z.toFixed(0)}mm)`;
+    } else if (fileEstimates?.type === "gcode") {
+      description = `${fileEstimates.filename}${fileEstimates.materialType ? ` (${fileEstimates.materialType})` : ""}`;
+    }
 
     const quoteData = {
       description,
@@ -508,8 +535,8 @@ export function CalculatorForm() {
 
   return (
     <div className="space-y-6">
-      {/* STL Upload Panel — full width */}
-      <STLUploadPanel onEstimatesReady={handleSTLEstimates} />
+      {/* File Upload Panel — full width (STL + G-code) */}
+      <STLUploadPanel onEstimatesReady={handleFileEstimates} />
 
       {/* Preset bar — full width, compact */}
       <PresetBar
@@ -750,7 +777,7 @@ export function CalculatorForm() {
             breakdown={breakdown}
             markupPct={input.pricing.markupPct}
             onCreateQuote={handleCreateQuote}
-            stlFilename={stlEstimates?.filename}
+            stlFilename={fileEstimates?.filename}
           />
         </div>
       </div>

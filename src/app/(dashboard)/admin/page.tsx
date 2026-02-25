@@ -13,7 +13,11 @@ import {
   Eye,
   Loader2,
   Rocket,
+  UserPlus,
+  X,
 } from "lucide-react";
+import { Input } from "@/components/ui/input";
+import { Select } from "@/components/ui/select";
 import { cn } from "@/lib/utils";
 import { DeployLogs } from "@/components/admin/deploy-logs";
 
@@ -47,6 +51,15 @@ export default function AdminPage() {
   const [loading, setLoading] = useState(true);
   const [actionLoading, setActionLoading] = useState<string | null>(null);
   const [activeTab, setActiveTab] = useState<"users" | "deploys">("users");
+  const [showCreateModal, setShowCreateModal] = useState(false);
+  const [createForm, setCreateForm] = useState({
+    name: "",
+    email: "",
+    password: "",
+    role: "USER",
+  });
+  const [createLoading, setCreateLoading] = useState(false);
+  const [createError, setCreateError] = useState("");
 
   const fetchUsers = useCallback(async () => {
     try {
@@ -122,6 +135,36 @@ export default function AdminPage() {
     }
   }
 
+  async function handleCreateUser(e: React.FormEvent) {
+    e.preventDefault();
+    setCreateError("");
+    setCreateLoading(true);
+
+    try {
+      const res = await fetch("/api/admin/users", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(createForm),
+      });
+
+      const data = await res.json();
+
+      if (!res.ok) {
+        setCreateError(data.error || "Failed to create user");
+        return;
+      }
+
+      // Success — close modal, refresh list
+      setShowCreateModal(false);
+      setCreateForm({ name: "", email: "", password: "", role: "USER" });
+      fetchUsers();
+    } catch {
+      setCreateError("Something went wrong");
+    } finally {
+      setCreateLoading(false);
+    }
+  }
+
   if (loading) {
     return (
       <div className="flex items-center justify-center py-12">
@@ -192,13 +235,119 @@ export default function AdminPage() {
         </div>
       )}
 
+      {/* Create User Modal */}
+      {showCreateModal && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50">
+          <Card className="w-full max-w-md mx-4">
+            <CardHeader>
+              <div className="flex items-center justify-between">
+                <CardTitle className="flex items-center gap-2">
+                  <UserPlus className="h-5 w-5" />
+                  Create User
+                </CardTitle>
+                <button
+                  onClick={() => {
+                    setShowCreateModal(false);
+                    setCreateError("");
+                  }}
+                  className="rounded-md p-1.5 hover:bg-muted"
+                >
+                  <X className="h-4 w-4" />
+                </button>
+              </div>
+            </CardHeader>
+            <CardContent>
+              <form onSubmit={handleCreateUser} className="space-y-4">
+                {createError && (
+                  <div className="rounded-md bg-destructive/10 px-3 py-2 text-sm text-destructive-foreground">
+                    {createError}
+                  </div>
+                )}
+                <Input
+                  label="Name"
+                  type="text"
+                  value={createForm.name}
+                  onChange={(e) =>
+                    setCreateForm((f) => ({ ...f, name: e.target.value }))
+                  }
+                  placeholder="Full name"
+                  required
+                  autoFocus
+                />
+                <Input
+                  label="Email"
+                  type="email"
+                  value={createForm.email}
+                  onChange={(e) =>
+                    setCreateForm((f) => ({ ...f, email: e.target.value }))
+                  }
+                  placeholder="user@example.com"
+                  required
+                />
+                <Input
+                  label="Password"
+                  type="password"
+                  value={createForm.password}
+                  onChange={(e) =>
+                    setCreateForm((f) => ({ ...f, password: e.target.value }))
+                  }
+                  placeholder="At least 8 characters"
+                  required
+                  minLength={8}
+                />
+                <Select
+                  label="Role"
+                  options={[
+                    { value: "USER", label: "User" },
+                    { value: "ADMIN", label: "Admin" },
+                  ]}
+                  value={createForm.role}
+                  onChange={(e) =>
+                    setCreateForm((f) => ({ ...f, role: e.target.value }))
+                  }
+                />
+                <div className="flex gap-2 pt-2">
+                  <Button
+                    type="button"
+                    variant="secondary"
+                    className="flex-1"
+                    onClick={() => {
+                      setShowCreateModal(false);
+                      setCreateError("");
+                    }}
+                  >
+                    Cancel
+                  </Button>
+                  <Button
+                    type="submit"
+                    className="flex-1"
+                    disabled={createLoading}
+                  >
+                    {createLoading && (
+                      <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                    )}
+                    Create User
+                  </Button>
+                </div>
+              </form>
+            </CardContent>
+          </Card>
+        </div>
+      )}
+
       {/* Users table */}
       {activeTab === "users" && <Card>
         <CardHeader>
-          <CardTitle className="flex items-center gap-2">
-            <Users className="h-5 w-5" />
-            Users
-          </CardTitle>
+          <div className="flex items-center justify-between">
+            <CardTitle className="flex items-center gap-2">
+              <Users className="h-5 w-5" />
+              Users
+            </CardTitle>
+            <Button size="sm" onClick={() => setShowCreateModal(true)}>
+              <UserPlus className="mr-1.5 h-4 w-4" />
+              Create User
+            </Button>
+          </div>
         </CardHeader>
         <CardContent>
           {/* Desktop table */}

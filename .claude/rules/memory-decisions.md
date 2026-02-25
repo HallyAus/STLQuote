@@ -11,6 +11,10 @@ Each entry: `[YYYY-MM-DD] Decision — Rationale`
 
 <!-- Claude: add new entries at the top -->
 
+- [2026-02-25] Auth config split pattern: auth.config.ts (edge-safe, no bcryptjs) + auth.ts (Node.js with Credentials) — standard NextAuth v5 pattern to avoid Edge Runtime warnings in middleware
+- [2026-02-25] G-code parser reads comment lines only, supports Bambu Studio/OrcaSlicer/PrusaSlicer/Cura — covers Daniel's Bambu Lab fleet and common community slicers
+- [2026-02-25] Prisma migrate deploy in Dockerfile instead of db push — production-safe schema changes with tracked migration history
+- [2026-02-25] Landing page at / is public (no auth) — middleware explicitly allows unauthenticated access to root path
 - [2026-02-25] GitHub Actions deploy uses appleboy/ssh-action@v1 with concurrency group — simple, no Docker registry needed, cancel-in-progress disabled to avoid partial deploys
 - [2026-02-25] Project name: printforge-quote — ties to Printforge brand
 - [2026-02-25] Self-hosted Docker on Proxmox — full control, no recurring SaaS costs, fits existing infrastructure

@@ -1,5 +1,8 @@
-import { auth } from "@/lib/auth";
+import NextAuth from "next-auth";
+import { authConfig } from "@/lib/auth.config";
 import { NextResponse } from "next/server";
+
+const { auth } = NextAuth(authConfig);
 
 export default auth((req) => {
   const { pathname } = req.nextUrl;
@@ -21,6 +24,11 @@ export default auth((req) => {
     return NextResponse.next();
   }
 
+  // Landing page is public
+  if (pathname === "/") {
+    return NextResponse.next();
+  }
+
   // Redirect unauthenticated users to login
   if (!req.auth?.user) {
     const loginUrl = new URL("/login", req.url);
@@ -38,7 +46,7 @@ export default auth((req) => {
   // Protect admin routes
   if (pathname.startsWith("/admin") || pathname.startsWith("/api/admin")) {
     if (req.auth.user.role !== "ADMIN") {
-      return NextResponse.redirect(new URL("/", req.url));
+      return NextResponse.redirect(new URL("/dashboard", req.url));
     }
   }
 

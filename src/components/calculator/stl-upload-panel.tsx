@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useRef, useCallback } from "react";
-import { Upload, Loader2, FileText, X, Box, Clock, Weight, Ruler } from "lucide-react";
+import { Upload, Loader2, FileText, X, Box, Clock, Weight, Ruler, Layers, Thermometer } from "lucide-react";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Select } from "@/components/ui/select";
@@ -16,9 +16,27 @@ import {
   type STLEstimates,
   type STLParseResult,
 } from "@/lib/stl-parser";
+import { parseGcode, isGcodeFile, type GcodeEstimates } from "@/lib/gcode-parser";
+
+export interface FileEstimates {
+  type: "stl" | "gcode";
+  filename: string;
+  // STL fields
+  weightG: number;
+  printTimeMinutes: number;
+  volumeCm3?: number;
+  dimensionsMm?: { x: number; y: number; z: number };
+  triangleCount?: number;
+  // G-code fields
+  materialType?: string | null;
+  layerHeight?: number | null;
+  nozzleTemp?: number | null;
+  bedTemp?: number | null;
+  slicer?: string | null;
+}
 
 interface STLUploadPanelProps {
-  onEstimatesReady: (estimates: STLEstimates) => void;
+  onEstimatesReady: (estimates: FileEstimates) => void;
 }
 
 function formatFileSize(bytes: number): string {
@@ -48,17 +66,34 @@ const speedPresets: { value: SpeedPreset; label: string }[] = [
   { value: "quality", label: "Quality" },
 ];
 
+const ACCEPTED_EXTENSIONS = ".stl,.gcode,.gco,.g";
+
+function isAcceptedFile(filename: string): boolean {
+  const lower = filename.toLowerCase();
+  return (
+    lower.endsWith(".stl") ||
+    lower.endsWith(".gcode") ||
+    lower.endsWith(".gco") ||
+    lower.endsWith(".g")
+  );
+}
+
 export function STLUploadPanel({ onEstimatesReady }: STLUploadPanelProps) {
   const [file, setFile] = useState<File | null>(null);
   const [parsing, setParsing] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const [result, setResult] = useState<STLParseResult | null>(null);
-  const [estimates, setEstimates] = useState<STLEstimates | null>(null);
+
+  // STL state
+  const [stlResult, setStlResult] = useState<STLParseResult | null>(null);
+  const [stlEstimates, setStlEstimates] = useState<STLEstimates | null>(null);
   const [infillPercent, setInfillPercent] = useState(15);
   const [speedPreset, setSpeedPreset] = useState<SpeedPreset>("standard");
   const [materialType, setMaterialType] = useState("PLA");
-  const [dragActive, setDragActive] = useState(false);
 
+  // G-code state
+  const [gcodeEstimates, setGcodeEstimates] = useState<GcodeEstimates | null>(null);
+
+  const [dragActive, setDragActive] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   const recalculate = useCallback(
@@ -75,7 +110,7 @@ export function STLUploadPanel({ onEstimatesReady }: STLUploadPanelProps) {
         speedPreset: speed,
         filename,
       });
-      setEstimates(newEstimates);
+      setStlEstimates(newEstimates);
     },
     []
   );
@@ -89,35 +124,45 @@ export function STLUploadPanel({ onEstimatesReady }: STLUploadPanelProps) {
         return;
       }
 
-      if (!selectedFile.name.toLowerCase().endsWith(".stl")) {
-        setError("Invalid file type. Please upload an STL file.");
+      if (!isAcceptedFile(selectedFile.name)) {
+        setError("Invalid file type. Please upload an STL or G-code file.");
         return;
       }
 
       setFile(selectedFile);
       setParsing(true);
       setError(null);
-      setResult(null);
-      setEstimates(null);
+      setStlResult(null);
+      setStlEstimates(null);
+      setGcodeEstimates(null);
 
       try {
-        const buffer = await selectedFile.arrayBuffer();
-        const parseResult = parseSTL(buffer);
-        setResult(parseResult);
-        recalculate(
-          parseResult,
-          materialType,
-          infillPercent,
-          speedPreset,
-          selectedFile.name
-        );
+        if (isGcodeFile(selectedFile.name)) {
+          // G-code processing — read as text
+          const text = await selectedFile.text();
+          const estimates = parseGcode(text, selectedFile.name);
+          setGcodeEstimates(estimates);
+        } else {
+          // STL processing
+          const buffer = await selectedFile.arrayBuffer();
+          const parseResult = parseSTL(buffer);
+          setStlResult(parseResult);
+          recalculate(
+            parseResult,
+            materialType,
+            infillPercent,
+            speedPreset,
+            selectedFile.name
+          );
+        }
       } catch (err) {
         setError(
-          err instanceof Error ? err.message : "Failed to parse STL file"
+          err instanceof Error ? err.message : "Failed to parse file"
         );
         setFile(null);
-        setResult(null);
-        setEstimates(null);
+        setStlResult(null);
+        setStlEstimates(null);
+        setGcodeEstimates(null);
       } finally {
         setParsing(false);
       }
@@ -127,8 +172,9 @@ export function STLUploadPanel({ onEstimatesReady }: STLUploadPanelProps) {
 
   const clearFile = useCallback(() => {
     setFile(null);
-    setResult(null);
-    setEstimates(null);
+    setStlResult(null);
+    setStlEstimates(null);
+    setGcodeEstimates(null);
     setError(null);
     setParsing(false);
     if (fileInputRef.current) {
@@ -168,27 +214,55 @@ export function STLUploadPanel({ onEstimatesReady }: STLUploadPanelProps) {
 
   function handleMaterialChange(newMaterial: string) {
     setMaterialType(newMaterial);
-    if (result && file) {
-      recalculate(result, newMaterial, infillPercent, speedPreset, file.name);
+    if (stlResult && file) {
+      recalculate(stlResult, newMaterial, infillPercent, speedPreset, file.name);
     }
   }
 
   function handleInfillChange(newInfill: number) {
     const clamped = Math.min(100, Math.max(5, newInfill));
     setInfillPercent(clamped);
-    if (result && file) {
-      recalculate(result, materialType, clamped, speedPreset, file.name);
+    if (stlResult && file) {
+      recalculate(stlResult, materialType, clamped, speedPreset, file.name);
     }
   }
 
   function handleSpeedChange(newSpeed: SpeedPreset) {
     setSpeedPreset(newSpeed);
-    if (result && file) {
-      recalculate(result, materialType, infillPercent, newSpeed, file.name);
+    if (stlResult && file) {
+      recalculate(stlResult, materialType, infillPercent, newSpeed, file.name);
     }
   }
 
-  // State 2 — Parsing
+  function handleApplySTL() {
+    if (!stlEstimates) return;
+    onEstimatesReady({
+      type: "stl",
+      filename: stlEstimates.filename,
+      weightG: stlEstimates.weightG,
+      printTimeMinutes: stlEstimates.printTimeMinutes,
+      volumeCm3: stlEstimates.volumeCm3,
+      dimensionsMm: stlEstimates.dimensionsMm,
+      triangleCount: stlEstimates.triangleCount,
+    });
+  }
+
+  function handleApplyGcode() {
+    if (!gcodeEstimates) return;
+    onEstimatesReady({
+      type: "gcode",
+      filename: gcodeEstimates.filename,
+      weightG: gcodeEstimates.weightG ?? 0,
+      printTimeMinutes: gcodeEstimates.printTimeMinutes ?? 0,
+      materialType: gcodeEstimates.materialType,
+      layerHeight: gcodeEstimates.layerHeight,
+      nozzleTemp: gcodeEstimates.nozzleTemp,
+      bedTemp: gcodeEstimates.bedTemp,
+      slicer: gcodeEstimates.slicer,
+    });
+  }
+
+  // --- Parsing state ---
   if (parsing) {
     return (
       <Card>
@@ -196,7 +270,7 @@ export function STLUploadPanel({ onEstimatesReady }: STLUploadPanelProps) {
           <div className="flex flex-col items-center justify-center gap-3 py-8">
             <Loader2 className="h-8 w-8 animate-spin text-primary" />
             <p className="text-sm font-medium text-foreground">
-              Analysing STL file...
+              Analysing file...
             </p>
             <p className="text-xs text-muted-foreground">
               Parsing geometry and calculating estimates
@@ -207,7 +281,7 @@ export function STLUploadPanel({ onEstimatesReady }: STLUploadPanelProps) {
     );
   }
 
-  // Error state
+  // --- Error state ---
   if (error) {
     return (
       <Card>
@@ -228,8 +302,170 @@ export function STLUploadPanel({ onEstimatesReady }: STLUploadPanelProps) {
     );
   }
 
-  // State 3 — Results
-  if (result && estimates && file) {
+  // --- G-code results ---
+  if (gcodeEstimates && file) {
+    const hasWeight = gcodeEstimates.weightG !== null;
+    const hasTime = gcodeEstimates.printTimeMinutes !== null;
+
+    return (
+      <Card>
+        <CardContent className="p-6 space-y-5">
+          {/* File info bar */}
+          <div className="flex items-center gap-3 rounded-lg bg-muted/50 px-4 py-3">
+            <FileText className="h-5 w-5 shrink-0 text-chart-2" />
+            <div className="min-w-0 flex-1">
+              <p className="truncate text-sm font-medium text-foreground">
+                {file.name}
+              </p>
+              <p className="text-xs text-muted-foreground">
+                {formatFileSize(file.size)}
+                {gcodeEstimates.slicer && (
+                  <> &middot; {gcodeEstimates.slicer}</>
+                )}
+              </p>
+            </div>
+            <span className="shrink-0 rounded-full bg-chart-2/10 px-2.5 py-0.5 text-xs font-medium text-chart-2">
+              G-code
+            </span>
+            <Button
+              variant="ghost"
+              size="icon"
+              onClick={clearFile}
+              className="shrink-0 text-muted-foreground hover:text-foreground"
+              aria-label="Remove file"
+            >
+              <X className="h-4 w-4" />
+            </Button>
+          </div>
+
+          {/* Slicer data grid */}
+          <div className="grid grid-cols-2 gap-3 lg:grid-cols-4">
+            {hasWeight && (
+              <div className="rounded-lg bg-muted/50 px-4 py-3">
+                <div className="flex items-center gap-2 text-muted-foreground">
+                  <Weight className="h-3.5 w-3.5" />
+                  <span className="text-xs font-medium uppercase tracking-wider">
+                    Weight
+                  </span>
+                </div>
+                <p className="mt-1 text-lg font-semibold text-foreground">
+                  {gcodeEstimates.weightG!.toFixed(1)}
+                  <span className="text-sm font-normal text-muted-foreground">
+                    g
+                  </span>
+                </p>
+              </div>
+            )}
+
+            {hasTime && (
+              <div className="rounded-lg bg-muted/50 px-4 py-3">
+                <div className="flex items-center gap-2 text-muted-foreground">
+                  <Clock className="h-3.5 w-3.5" />
+                  <span className="text-xs font-medium uppercase tracking-wider">
+                    Print Time
+                  </span>
+                </div>
+                <p className="mt-1 text-lg font-semibold text-foreground">
+                  {formatTime(gcodeEstimates.printTimeMinutes!)}
+                </p>
+              </div>
+            )}
+
+            {gcodeEstimates.materialType && (
+              <div className="rounded-lg bg-muted/50 px-4 py-3">
+                <div className="flex items-center gap-2 text-muted-foreground">
+                  <Layers className="h-3.5 w-3.5" />
+                  <span className="text-xs font-medium uppercase tracking-wider">
+                    Material
+                  </span>
+                </div>
+                <p className="mt-1 text-lg font-semibold text-foreground">
+                  {gcodeEstimates.materialType}
+                </p>
+              </div>
+            )}
+
+            {gcodeEstimates.layerHeight && (
+              <div className="rounded-lg bg-muted/50 px-4 py-3">
+                <div className="flex items-center gap-2 text-muted-foreground">
+                  <Layers className="h-3.5 w-3.5" />
+                  <span className="text-xs font-medium uppercase tracking-wider">
+                    Layer Height
+                  </span>
+                </div>
+                <p className="mt-1 text-lg font-semibold text-foreground">
+                  {gcodeEstimates.layerHeight}
+                  <span className="text-sm font-normal text-muted-foreground">
+                    mm
+                  </span>
+                </p>
+              </div>
+            )}
+
+            {gcodeEstimates.nozzleTemp && (
+              <div className="rounded-lg bg-muted/50 px-4 py-3">
+                <div className="flex items-center gap-2 text-muted-foreground">
+                  <Thermometer className="h-3.5 w-3.5" />
+                  <span className="text-xs font-medium uppercase tracking-wider">
+                    Nozzle
+                  </span>
+                </div>
+                <p className="mt-1 text-lg font-semibold text-foreground">
+                  {gcodeEstimates.nozzleTemp}
+                  <span className="text-sm font-normal text-muted-foreground">
+                    &deg;C
+                  </span>
+                </p>
+              </div>
+            )}
+
+            {gcodeEstimates.bedTemp && (
+              <div className="rounded-lg bg-muted/50 px-4 py-3">
+                <div className="flex items-center gap-2 text-muted-foreground">
+                  <Thermometer className="h-3.5 w-3.5" />
+                  <span className="text-xs font-medium uppercase tracking-wider">
+                    Bed
+                  </span>
+                </div>
+                <p className="mt-1 text-lg font-semibold text-foreground">
+                  {gcodeEstimates.bedTemp}
+                  <span className="text-sm font-normal text-muted-foreground">
+                    &deg;C
+                  </span>
+                </p>
+              </div>
+            )}
+          </div>
+
+          {!hasWeight && !hasTime && (
+            <div className="rounded-lg bg-muted/50 px-4 py-4 text-center">
+              <p className="text-sm text-muted-foreground">
+                No slicer estimates found in this G-code file.
+                Try uploading a file from Bambu Studio, OrcaSlicer, or PrusaSlicer.
+              </p>
+            </div>
+          )}
+
+          {/* Apply button */}
+          <div className="space-y-2 pt-1">
+            <Button
+              className="w-full"
+              onClick={handleApplyGcode}
+              disabled={!hasWeight && !hasTime}
+            >
+              Apply to Calculator
+            </Button>
+            <p className="text-center text-xs text-muted-foreground">
+              Slicer values are more accurate than STL estimates
+            </p>
+          </div>
+        </CardContent>
+      </Card>
+    );
+  }
+
+  // --- STL results ---
+  if (stlResult && stlEstimates && file) {
     return (
       <Card>
         <CardContent className="p-6 space-y-5">
@@ -242,7 +478,7 @@ export function STLUploadPanel({ onEstimatesReady }: STLUploadPanelProps) {
               </p>
               <p className="text-xs text-muted-foreground">
                 {formatFileSize(file.size)} &middot;{" "}
-                {estimates.triangleCount.toLocaleString()} triangles
+                {stlEstimates.triangleCount.toLocaleString()} triangles
               </p>
             </div>
             <Button
@@ -266,7 +502,7 @@ export function STLUploadPanel({ onEstimatesReady }: STLUploadPanelProps) {
                 </span>
               </div>
               <p className="mt-1 text-lg font-semibold text-foreground">
-                {estimates.volumeCm3.toFixed(2)}{" "}
+                {stlEstimates.volumeCm3.toFixed(2)}{" "}
                 <span className="text-sm font-normal text-muted-foreground">
                   cm&sup3;
                 </span>
@@ -281,15 +517,15 @@ export function STLUploadPanel({ onEstimatesReady }: STLUploadPanelProps) {
                 </span>
               </div>
               <p className="mt-1 text-lg font-semibold text-foreground">
-                {estimates.dimensionsMm.x.toFixed(1)}{" "}
+                {stlEstimates.dimensionsMm.x.toFixed(1)}{" "}
                 <span className="text-sm font-normal text-muted-foreground">
                   &times;
                 </span>{" "}
-                {estimates.dimensionsMm.y.toFixed(1)}{" "}
+                {stlEstimates.dimensionsMm.y.toFixed(1)}{" "}
                 <span className="text-sm font-normal text-muted-foreground">
                   &times;
                 </span>{" "}
-                {estimates.dimensionsMm.z.toFixed(1)}{" "}
+                {stlEstimates.dimensionsMm.z.toFixed(1)}{" "}
                 <span className="text-sm font-normal text-muted-foreground">
                   mm
                 </span>
@@ -304,7 +540,7 @@ export function STLUploadPanel({ onEstimatesReady }: STLUploadPanelProps) {
                 </span>
               </div>
               <p className="mt-1 text-lg font-semibold text-foreground">
-                {estimates.weightG.toFixed(1)}
+                {stlEstimates.weightG.toFixed(1)}
                 <span className="text-sm font-normal text-muted-foreground">
                   g
                 </span>
@@ -319,7 +555,7 @@ export function STLUploadPanel({ onEstimatesReady }: STLUploadPanelProps) {
                 </span>
               </div>
               <p className="mt-1 text-lg font-semibold text-foreground">
-                {formatTime(estimates.printTimeMinutes)}
+                {formatTime(stlEstimates.printTimeMinutes)}
               </p>
             </div>
           </div>
@@ -376,7 +612,7 @@ export function STLUploadPanel({ onEstimatesReady }: STLUploadPanelProps) {
           <div className="space-y-2 pt-1">
             <Button
               className="w-full"
-              onClick={() => onEstimatesReady(estimates)}
+              onClick={handleApplySTL}
             >
               Apply to Calculator
             </Button>
@@ -389,7 +625,7 @@ export function STLUploadPanel({ onEstimatesReady }: STLUploadPanelProps) {
     );
   }
 
-  // State 1 — Empty (no file)
+  // --- Empty state (no file) ---
   return (
     <Card>
       <CardContent className="p-2">
@@ -421,21 +657,21 @@ export function STLUploadPanel({ onEstimatesReady }: STLUploadPanelProps) {
             />
           </div>
           <p className="mt-4 text-sm font-medium text-foreground">
-            Drop your STL file here
+            Drop your file here
           </p>
           <p className="mt-1 text-xs text-muted-foreground">
             or click to browse
           </p>
           <p className="mt-4 text-xs text-muted-foreground/70">
-            Supports binary and ASCII STL files up to 50MB
+            STL files for volume estimates &middot; G-code for slicer data
           </p>
           <input
             ref={fileInputRef}
             type="file"
-            accept=".stl"
+            accept={ACCEPTED_EXTENSIONS}
             onChange={handleFileInput}
             className="hidden"
-            aria-label="Upload STL file"
+            aria-label="Upload STL or G-code file"
           />
         </div>
       </CardContent>
