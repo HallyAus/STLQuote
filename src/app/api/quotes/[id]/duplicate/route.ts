@@ -82,6 +82,24 @@ export async function POST(
         });
       }
 
+      // Log events on both quotes
+      await tx.quoteEvent.create({
+        data: {
+          quoteId: quote.id,
+          action: "created",
+          detail: `Duplicated from ${original.quoteNumber}`,
+          actorId: user.id,
+        },
+      });
+      await tx.quoteEvent.create({
+        data: {
+          quoteId: original.id,
+          action: "duplicated",
+          detail: `Duplicated as ${quoteNumber}`,
+          actorId: user.id,
+        },
+      });
+
       return quote;
     });
 

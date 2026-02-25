@@ -46,6 +46,15 @@ export async function GET(
       return NextResponse.json({ error: "Quote not found" }, { status: 404 });
     }
 
+    // Log portal view (fire-and-forget)
+    prisma.quoteEvent.create({
+      data: {
+        quoteId: quote.id,
+        action: "viewed",
+        detail: "Viewed via client portal",
+      },
+    }).catch((err) => console.error("Failed to log quote event:", err));
+
     // Return sanitised data (no internal IDs exposed beyond what's needed)
     return NextResponse.json({
       quoteNumber: quote.quoteNumber,

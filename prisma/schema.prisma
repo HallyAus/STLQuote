@@ -192,8 +192,21 @@ model Quote {
 
   lineItems QuoteLineItem[]
   jobs      Job[]
+  events    QuoteEvent[]
 
   @@index([userId])
+}
+
+model QuoteEvent {
+  id        String   @id @default(cuid())
+  quoteId   String
+  quote     Quote    @relation(fields: [quoteId], references: [id], onDelete: Cascade)
+  action    String   // created | emailed | viewed | status_changed | accepted | rejected | line_item_added | line_item_updated | line_item_removed | duplicated | pdf_downloaded
+  detail    String?  @db.Text
+  actorId   String?  // userId who performed the action (null for portal/system actions)
+  createdAt DateTime @default(now())
+
+  @@index([quoteId])
 }
 
 model QuoteLineItem {

@@ -20,8 +20,10 @@ import {
   Briefcase,
   Send,
   Copy,
+  History,
 } from "lucide-react";
 import { QUOTE_STATUS, BANNER, type QuoteStatus } from "@/lib/status-colours";
+import { QuoteTimeline } from "@/components/quotes/quote-timeline";
 
 interface LineItem {
   id: string;
@@ -973,6 +975,19 @@ export function QuoteDetail() {
               </Button>
             </div>
           </div>
+        </CardContent>
+      </Card>
+
+      {/* Activity Timeline */}
+      <Card>
+        <CardHeader>
+          <CardTitle className="flex items-center gap-2">
+            <History className="h-4 w-4" />
+            Activity
+          </CardTitle>
+        </CardHeader>
+        <CardContent>
+          <QuoteTimeline quoteId={quoteId} />
         </CardContent>
       </Card>
 

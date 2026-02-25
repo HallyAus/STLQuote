@@ -82,6 +82,16 @@ export async function GET(
       React.createElement(QuoteDocument, { data: pdfData }) as any as ReactElement<DocumentProps, string | JSXElementConstructor<DocumentProps>>
     );
 
+    // Log PDF download (fire-and-forget)
+    prisma.quoteEvent.create({
+      data: {
+        quoteId: id,
+        action: "pdf_downloaded",
+        detail: "PDF downloaded",
+        actorId: user.id,
+      },
+    }).catch((err) => console.error("Failed to log quote event:", err));
+
     return new NextResponse(new Uint8Array(buffer), {
       headers: {
         "Content-Type": "application/pdf",

@@ -98,7 +98,7 @@ export async function POST(request: NextRequest) {
     const quoteNumber = await generateQuoteNumber();
 
     const quote = await prisma.$transaction(async (tx) => {
-      return tx.quote.create({
+      const created = await tx.quote.create({
         data: {
           ...quoteData,
           expiryDate: quoteData.expiryDate
@@ -117,6 +117,17 @@ export async function POST(request: NextRequest) {
           lineItems: true,
         },
       });
+
+      await tx.quoteEvent.create({
+        data: {
+          quoteId: created.id,
+          action: "created",
+          detail: `Quote ${quoteNumber} created${lineItems.length > 0 ? ` with ${lineItems.length} line item${lineItems.length !== 1 ? "s" : ""}` : ""}`,
+          actorId: user.id,
+        },
+      });
+
+      return created;
     });
 
     return NextResponse.json(quote, { status: 201 });

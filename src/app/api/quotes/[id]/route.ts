@@ -126,6 +126,18 @@ export async function PUT(
       },
     });
 
+    // Log status change event
+    if (parsed.data.status && parsed.data.status !== existing.status) {
+      prisma.quoteEvent.create({
+        data: {
+          quoteId: id,
+          action: "status_changed",
+          detail: `Status changed from ${existing.status} to ${parsed.data.status}`,
+          actorId: user.id,
+        },
+      }).catch((err) => console.error("Failed to log quote event:", err));
+    }
+
     // Fire webhooks on status change
     if (parsed.data.status && parsed.data.status !== existing.status) {
       const eventMap: Record<string, string> = {

@@ -144,6 +144,16 @@ export async function POST(
       },
     });
 
+    // Log emailed event
+    prisma.quoteEvent.create({
+      data: {
+        quoteId: id,
+        action: "emailed",
+        detail: `Emailed to ${quote.client.email}${sent ? "" : " (email not configured)"}`,
+        actorId: user.id,
+      },
+    }).catch((err) => console.error("Failed to log quote event:", err));
+
     return NextResponse.json({
       message: sent ? "Quote sent successfully." : "Quote marked as sent (email not configured).",
       portalUrl,

@@ -101,6 +101,15 @@ export async function PUT(
 
       await recalculateQuoteTotals(tx, quoteId);
 
+      await tx.quoteEvent.create({
+        data: {
+          quoteId,
+          action: "line_item_updated",
+          detail: `Updated "${updated.description}"`,
+          actorId: user.id,
+        },
+      });
+
       return updated;
     });
 
@@ -149,8 +158,17 @@ export async function DELETE(
     }
 
     await prisma.$transaction(async (tx) => {
-      await tx.quoteLineItem.delete({ where: { id: lineItemId } });
+      const deleted = await tx.quoteLineItem.delete({ where: { id: lineItemId } });
       await recalculateQuoteTotals(tx, quoteId);
+
+      await tx.quoteEvent.create({
+        data: {
+          quoteId,
+          action: "line_item_removed",
+          detail: `Removed "${deleted.description}"`,
+          actorId: user.id,
+        },
+      });
     });
 
     return new NextResponse(null, { status: 204 });

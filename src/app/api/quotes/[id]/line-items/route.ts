@@ -83,6 +83,15 @@ export async function POST(
         data: { subtotal, total },
       });
 
+      await tx.quoteEvent.create({
+        data: {
+          quoteId,
+          action: "line_item_added",
+          detail: `Added "${parsed.data.description}"${(parsed.data.quantity ?? 1) > 1 ? ` x${parsed.data.quantity}` : ""}`,
+          actorId: user.id,
+        },
+      });
+
       return created;
     });
 

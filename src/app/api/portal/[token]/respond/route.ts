@@ -65,6 +65,15 @@ export async function POST(
       data: { status: newStatus },
     });
 
+    // Log accept/reject event
+    prisma.quoteEvent.create({
+      data: {
+        quoteId: quote.id,
+        action: parsed.data.action === "accept" ? "accepted" : "rejected",
+        detail: `${quote.client?.name || "Client"} ${parsed.data.action === "accept" ? "accepted" : "rejected"} via portal`,
+      },
+    }).catch((err) => console.error("Failed to log quote event:", err));
+
     // Notify quote owner
     if (quote.user?.email) {
       const clientName = quote.client?.name || "A client";
