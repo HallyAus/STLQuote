@@ -293,7 +293,7 @@ export default function PortalPage() {
 
         {/* Footer */}
         <p className="mt-6 text-center text-xs text-gray-400">
-          Powered by Printforge Quote
+          Powered by <span className="font-semibold text-blue-500">Printforge</span> &mdash; 3D Print Cost Calculator
         </p>
       </div>
     </div>

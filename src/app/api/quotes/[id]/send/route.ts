@@ -3,6 +3,9 @@ import { prisma } from "@/lib/prisma";
 import { getSessionUser } from "@/lib/auth-helpers";
 import { sendQuoteEmail } from "@/lib/email";
 import { generateToken } from "@/lib/tokens";
+import { renderToBuffer, type DocumentProps } from "@react-pdf/renderer";
+import { QuoteDocument } from "@/lib/pdf/quote-document";
+import React, { type ReactElement, type JSXElementConstructor } from "react";
 
 type RouteContext = { params: Promise<{ id: string }> };
 
@@ -44,13 +47,69 @@ export async function POST(
     const appUrl = process.env.NEXT_PUBLIC_APP_URL || "http://localhost:3000";
     const portalUrl = `${appUrl}/portal/${portalToken}`;
 
-    // Fetch business name from settings
+    // Fetch business settings
     const settings = await prisma.settings.findUnique({
       where: { userId: user.id },
-      select: { businessName: true },
+      select: {
+        businessName: true,
+        businessAddress: true,
+        businessAbn: true,
+        businessPhone: true,
+        businessEmail: true,
+      },
     });
 
-    // Send email
+    // Generate PDF attachment
+    let pdfBuffer: Buffer | undefined;
+    try {
+      const pdfData = {
+        quoteNumber: quote.quoteNumber,
+        createdAt: quote.createdAt.toISOString(),
+        expiryDate: quote.expiryDate?.toISOString() || null,
+        currency: quote.currency,
+        subtotal: quote.subtotal,
+        markupPct: quote.markupPct,
+        total: quote.total,
+        notes: quote.notes,
+        terms: quote.terms,
+        client: quote.client
+          ? {
+              name: quote.client.name,
+              email: quote.client.email,
+              phone: quote.client.phone,
+              company: quote.client.company,
+              billingAddress: quote.client.billingAddress,
+            }
+          : null,
+        lineItems: quote.lineItems.map((li) => ({
+          description: li.description,
+          materialCost: li.materialCost,
+          machineCost: li.machineCost,
+          labourCost: li.labourCost,
+          overheadCost: li.overheadCost,
+          lineTotal: li.lineTotal,
+          quantity: li.quantity,
+        })),
+        business: {
+          name: settings?.businessName || null,
+          address: settings?.businessAddress || null,
+          abn: settings?.businessAbn || null,
+          phone: settings?.businessPhone || null,
+          email: settings?.businessEmail || null,
+        },
+      };
+
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      const buffer = await renderToBuffer(
+        React.createElement(QuoteDocument, { data: pdfData }) as any as ReactElement<DocumentProps, string | JSXElementConstructor<DocumentProps>>
+      );
+      pdfBuffer = Buffer.from(buffer);
+    } catch (pdfError) {
+      console.error("Failed to generate PDF for email:", pdfError);
+      // Continue without attachment
+    }
+
+    // Send email with PDF attachment
     const sent = await sendQuoteEmail({
       to: quote.client.email,
       quoteNumber: quote.quoteNumber,
@@ -58,6 +117,7 @@ export async function POST(
       currency: quote.currency,
       portalUrl,
       businessName: settings?.businessName || undefined,
+      pdfBuffer,
     });
 
     // Update quote: set portal token, status to SENT, sentAt
@@ -71,7 +131,7 @@ export async function POST(
     });
 
     return NextResponse.json({
-      message: sent ? "Quote sent successfully." : "Quote marked as sent (SMTP not configured).",
+      message: sent ? "Quote sent successfully." : "Quote marked as sent (email not configured).",
       portalUrl,
     });
   } catch (error) {
