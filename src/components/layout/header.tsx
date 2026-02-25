@@ -27,34 +27,16 @@ export function Header({ title, breadcrumb, onMenuToggle }: HeaderProps) {
   const [impersonatedName, setImpersonatedName] = useState("");
   const menuRef = useRef<HTMLDivElement>(null);
 
-  // Check impersonation status
+  // Check impersonation status via server endpoint (cookie is httpOnly)
   useEffect(() => {
     async function checkImpersonation() {
       if (session?.user?.role !== "ADMIN") return;
       try {
-        const cookies = document.cookie.split(";").map((c) => c.trim());
-        const impCookie = cookies.find((c) =>
-          c.startsWith("impersonate-user-id=")
-        );
-        if (impCookie) {
-          setImpersonating(true);
-          // Fetch the impersonated user's name
-          const userId = impCookie.split("=")[1];
-          if (userId) {
-            const usersRes = await fetch("/api/admin/users");
-            if (usersRes.ok) {
-              const data = await usersRes.json();
-              const user = data.users?.find(
-                (u: { id: string }) => u.id === userId
-              );
-              if (user) {
-                setImpersonatedName(user.name || user.email || "Unknown");
-              }
-            }
-          }
-        } else {
-          setImpersonating(false);
-          setImpersonatedName("");
+        const res = await fetch("/api/admin/impersonate/status");
+        if (res.ok) {
+          const data = await res.json();
+          setImpersonating(data.impersonating);
+          setImpersonatedName(data.name || "");
         }
       } catch {
         // ignore
