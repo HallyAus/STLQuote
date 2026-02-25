@@ -1,9 +1,9 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { getSessionUser } from "@/lib/auth-helpers";
-import { renderToBuffer } from "@react-pdf/renderer";
+import { renderToBuffer, type DocumentProps } from "@react-pdf/renderer";
 import { QuoteDocument } from "@/lib/pdf/quote-document";
-import React, { type ReactElement } from "react";
+import React, { type ReactElement, type JSXElementConstructor } from "react";
 
 type RouteContext = { params: Promise<{ id: string }> };
 
@@ -77,8 +77,9 @@ export async function GET(
       },
     };
 
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const buffer = await renderToBuffer(
-      React.createElement(QuoteDocument, { data: pdfData }) as unknown as ReactElement
+      React.createElement(QuoteDocument, { data: pdfData }) as any as ReactElement<DocumentProps, string | JSXElementConstructor<DocumentProps>>
     );
 
     return new NextResponse(buffer, {
