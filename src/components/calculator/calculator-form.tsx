@@ -271,7 +271,7 @@ export function CalculatorForm() {
   const [materials, setMaterials] = useState<MaterialOption[]>([]);
   const [selectedPrinterId, setSelectedPrinterId] = useState<string>("");
   const [selectedMaterialId, setSelectedMaterialId] = useState<string>("");
-  const [fileEstimates, setFileEstimates] = useState<FileEstimates | null>(null);
+  const [fileEstimatesList, setFileEstimatesList] = useState<FileEstimates[]>([]);
 
   // Preset state
   const [presets, setPresets] = useState<CalculatorPreset[]>([]);
@@ -317,8 +317,18 @@ export function CalculatorForm() {
   // File upload handler (STL or G-code)
   // -----------------------------------------------------------------------
 
-  function handleFileEstimates(estimates: FileEstimates) {
-    setFileEstimates(estimates);
+  function handleFileAdded(estimates: FileEstimates) {
+    setFileEstimatesList((prev) => {
+      const idx = prev.findIndex((f) => f.filename === estimates.filename);
+      if (idx >= 0) {
+        const updated = [...prev];
+        updated[idx] = estimates;
+        return updated;
+      }
+      return [...prev, estimates];
+    });
+
+    // Populate form with latest file's values
     setInput((prev) => ({
       ...prev,
       material: {
@@ -349,6 +359,10 @@ export function CalculatorForm() {
         }));
       }
     }
+  }
+
+  function handleFileRemoved(filename: string) {
+    setFileEstimatesList((prev) => prev.filter((f) => f.filename !== filename));
   }
 
   // -----------------------------------------------------------------------
@@ -506,26 +520,71 @@ export function CalculatorForm() {
   // -----------------------------------------------------------------------
 
   function handleCreateQuote() {
-    let description = "Calculated print job";
-    if (fileEstimates?.type === "stl" && fileEstimates.dimensionsMm) {
-      description = `${fileEstimates.filename} (${fileEstimates.dimensionsMm.x.toFixed(0)}\u00d7${fileEstimates.dimensionsMm.y.toFixed(0)}\u00d7${fileEstimates.dimensionsMm.z.toFixed(0)}mm)`;
-    } else if (fileEstimates?.type === "gcode") {
-      description = `${fileEstimates.filename}${fileEstimates.materialType ? ` (${fileEstimates.materialType})` : ""}`;
+    if (fileEstimatesList.length > 1) {
+      // Multi-file: calculate costs per-file using each file's weight/time
+      const items = fileEstimatesList.map((fe) => {
+        const perFileInput: CalculatorInput = {
+          ...input,
+          material: {
+            ...input.material,
+            printWeightG: fe.weightG,
+          },
+          machine: {
+            ...input.machine,
+            printTimeMinutes: fe.printTimeMinutes,
+          },
+        };
+        const perFileCost = calculateTotalCost(perFileInput);
+
+        let description = fe.filename;
+        if (fe.type === "stl" && fe.dimensionsMm) {
+          description = `${fe.filename} (${fe.dimensionsMm.x.toFixed(0)}\u00d7${fe.dimensionsMm.y.toFixed(0)}\u00d7${fe.dimensionsMm.z.toFixed(0)}mm)`;
+        } else if (fe.type === "gcode" && fe.materialType) {
+          description = `${fe.filename} (${fe.materialType})`;
+        }
+
+        return {
+          description,
+          printWeightG: fe.weightG,
+          printTimeMinutes: fe.printTimeMinutes,
+          materialCost: perFileCost.materialCost,
+          machineCost: perFileCost.machineCost,
+          labourCost: perFileCost.labourCost,
+          overheadCost: perFileCost.overheadCost,
+          lineTotal: perFileCost.unitPrice,
+          quantity: perFileCost.quantity,
+        };
+      });
+
+      sessionStorage.setItem(
+        "calculatorToQuote",
+        JSON.stringify({ items })
+      );
+    } else {
+      // Single file or no file — legacy single item format
+      const fe = fileEstimatesList[0] ?? null;
+      let description = "Calculated print job";
+      if (fe?.type === "stl" && fe.dimensionsMm) {
+        description = `${fe.filename} (${fe.dimensionsMm.x.toFixed(0)}\u00d7${fe.dimensionsMm.y.toFixed(0)}\u00d7${fe.dimensionsMm.z.toFixed(0)}mm)`;
+      } else if (fe?.type === "gcode") {
+        description = `${fe.filename}${fe.materialType ? ` (${fe.materialType})` : ""}`;
+      }
+
+      const quoteData = {
+        description,
+        printWeightG: input.material.printWeightG,
+        printTimeMinutes: input.machine.printTimeMinutes,
+        materialCost: breakdown.materialCost,
+        machineCost: breakdown.machineCost,
+        labourCost: breakdown.labourCost,
+        overheadCost: breakdown.overheadCost,
+        lineTotal: breakdown.unitPrice,
+        quantity: breakdown.quantity,
+      };
+
+      sessionStorage.setItem("calculatorToQuote", JSON.stringify(quoteData));
     }
 
-    const quoteData = {
-      description,
-      printWeightG: input.material.printWeightG,
-      printTimeMinutes: input.machine.printTimeMinutes,
-      materialCost: breakdown.materialCost,
-      machineCost: breakdown.machineCost,
-      labourCost: breakdown.labourCost,
-      overheadCost: breakdown.overheadCost,
-      lineTotal: breakdown.unitPrice,
-      quantity: breakdown.quantity,
-    };
-
-    sessionStorage.setItem("calculatorToQuote", JSON.stringify(quoteData));
     router.push("/quotes/new?fromCalculator=true");
   }
 
@@ -536,7 +595,7 @@ export function CalculatorForm() {
   return (
     <div className="space-y-6">
       {/* File Upload Panel — full width (STL + G-code) */}
-      <STLUploadPanel onEstimatesReady={handleFileEstimates} />
+      <STLUploadPanel onFileAdded={handleFileAdded} onFileRemoved={handleFileRemoved} />
 
       {/* Preset bar — full width, compact */}
       <PresetBar
@@ -777,7 +836,12 @@ export function CalculatorForm() {
             breakdown={breakdown}
             markupPct={input.pricing.markupPct}
             onCreateQuote={handleCreateQuote}
-            stlFilename={fileEstimates?.filename}
+            stlFilename={
+              fileEstimatesList.length > 1
+                ? `${fileEstimatesList.length} files`
+                : fileEstimatesList[0]?.filename
+            }
+            fileCount={fileEstimatesList.length}
           />
         </div>
       </div>

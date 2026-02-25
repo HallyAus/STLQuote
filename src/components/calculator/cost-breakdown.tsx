@@ -12,6 +12,7 @@ interface CostBreakdownPanelProps {
   markupPct: number;
   onCreateQuote?: () => void;
   stlFilename?: string;
+  fileCount?: number;
 }
 
 function formatAUD(value: number): string {
@@ -50,6 +51,7 @@ export function CostBreakdownPanel({
   markupPct,
   onCreateQuote,
   stlFilename,
+  fileCount = 0,
 }: CostBreakdownPanelProps) {
   const {
     materialCost,
@@ -161,10 +163,12 @@ export function CostBreakdownPanel({
               onClick={onCreateQuote}
             >
               <FileText className="mr-2 h-4 w-4" />
-              Create Quote
+              Create Quote{fileCount > 1 ? ` (${fileCount} items)` : ""}
             </Button>
             <p className="text-center text-xs text-muted-foreground">
-              Generate a professional quote from this calculation
+              {fileCount > 1
+                ? `Generate a quote with ${fileCount} line items`
+                : "Generate a professional quote from this calculation"}
             </p>
           </div>
         )}

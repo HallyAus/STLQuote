@@ -1,3 +1,4 @@
+import type { Metadata } from "next";
 import Link from "next/link";
 import {
   Calculator,
@@ -12,6 +13,17 @@ import {
   Server,
   ChevronRight,
 } from "lucide-react";
+
+export const metadata: Metadata = {
+  title: "Printforge Quote — Stop Guessing Your 3D Print Costs",
+  description:
+    "The complete business tool for 3D print shops. Calculate costs, send professional quotes, manage materials, and track jobs — all self-hosted on your own server.",
+  openGraph: {
+    title: "Printforge Quote — Stop Guessing Your 3D Print Costs",
+    description:
+      "Calculate costs, send professional quotes, manage materials, and track jobs — all self-hosted.",
+  },
+};
 
 const features = [
   {

@@ -25,6 +25,7 @@ export async function GET() {
     const materials = await prisma.material.findMany({
       where: { userId: user.id },
       orderBy: [{ materialType: "asc" }, { brand: "asc" }],
+      take: 500,
     });
 
     return NextResponse.json(materials);

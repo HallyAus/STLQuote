@@ -5,20 +5,23 @@
 
 ## Last Updated
 
-- **Date:** 2026-02-25 17:40
+- **Date:** 2026-02-25 19:30
 - **Branch:** main
-- **Focus:** Feature-complete batch — v1.0.0
+- **Focus:** Public release hardening + multi-file calculator
 
 ## Accomplished
 
-- **v1.0.0**: Feature-complete release
-  - **bcryptjs Edge Runtime fix**: Split `auth.config.ts` (edge-safe, no bcryptjs) from `auth.ts` (Node.js with Credentials provider). Middleware imports from `auth.config.ts` now.
-  - **Admin create users**: POST `/api/admin/users` with bcrypt hashing + zod validation. Create User modal on admin page with name/email/password/role form.
-  - **G-code parser**: `src/lib/gcode-parser.ts` extracts weight, time, material, layer height, temps from Bambu Studio/OrcaSlicer/PrusaSlicer/Cura G-code headers. Upload panel now accepts `.stl`, `.gcode`, `.gco`, `.g` files. G-code results show slicer metadata and auto-select matching material in calculator.
-  - **Landing page**: Public marketing page at `/` with hero, features grid, how-it-works steps, self-hosted pitch, CTA. Middleware allows unauthenticated access to `/`.
-  - **Database migrations**: Initial migration SQL in `prisma/migrations/0001_init/`. Dockerfile switched from `db push` to `migrate deploy`. Migration lock file created.
-  - **Version bump**: 0.9.0 → 1.0.0
-  - Clients nav already wired in sidebar (verified, no changes needed)
+- **Hardening batch (this session)**:
+  - Rate limiting on auth routes (`src/lib/rate-limit.ts` — in-memory sliding window, 5/15min register, 10/15min login)
+  - Debug panel disabled in production (NODE_ENV guard in dashboard layout)
+  - Removed `prisma/seed-user.mjs` and Dockerfile reference
+  - Pagination safety caps (take: 500) on quotes/clients/materials/printers/jobs API routes
+  - Security headers in `next.config.ts` (X-Frame-Options, X-Content-Type-Options, Referrer-Policy, Permissions-Policy, X-DNS-Prefetch-Control)
+  - SEO metadata in layout.tsx (OG tags, metadataBase), landing page metadata, robots.txt, sitemap.ts
+- **Multi-file calculator upload**: STL upload panel now supports multiple files. Drop zone always visible, compact file list with per-file type badge/weight/time/remove. STL controls recalculate all STL files. Calculator form serialises multi-file as `{ items: [...] }` to sessionStorage. New quote page handles both array and legacy single format.
+- **Weight rounding**: STL parser and G-code parser now round weightG to 0.1g
+- **Prior sessions**: theme-aware UI overhaul, Cloudflare domain config, last login tracking, admin reset password
+- **v1.0.0**: Feature-complete release (see prior sessions)
 - **v0.9.0**: Auth, admin portal, calculator redesign, sidebar/header redesign, quotes PDF, jobs kanban, settings, presets
 - **v0.8.0**: Dashboard, stock control, dark mode fix
 - **v0.7.0**: Client-first quote flow, edit client on quote, convert accepted quote to job
@@ -33,12 +36,11 @@ _None_
 
 ## Next Steps
 
-1. **First deploy with migrations**: Run `prisma migrate resolve --applied 0001_init` on existing DB (schema already matches), then future deploys use `migrate deploy` automatically
-2. Print time estimation improvements (per-model calibration)
-3. Printer management page enhancements (utilisation tracking)
-4. Job workflow enhancements (timeline, notifications)
-5. Email notifications (quote sent, job status changes)
-6. Client portal (public quote view/accept)
+1. **Remaining feature tiers** from public release plan:
+   - Tier 1 Ship-blocking: email quotes (Nodemailer SMTP), PDF export (@react-pdf/renderer), password reset flow, email verification
+   - Tier 2 High-value: client portal, auto-deduct stock, revenue charts, duplicate quote, global search
+   - Tier 3 Quality of life: batch pricing, job timeline, printer utilisation, CSV export, webhooks
+2. First deploy with migrations: `prisma migrate resolve --applied 0001_init` on existing DB
 
 ## Active Beads Issues
 
@@ -53,25 +55,38 @@ _Beads not yet configured_
 - Dark mode is default theme (workshop setting)
 - Auth: NextAuth.js v5 with Credentials provider, JWT sessions
 - Auth split: `auth.config.ts` (edge-safe) + `auth.ts` (Node.js with bcryptjs)
+- Rate limiting: in-memory sliding window at `src/lib/rate-limit.ts`
 - Calculator engine at `src/lib/calculator.ts` with tests
 - G-code parser at `src/lib/gcode-parser.ts`
-- All API routes: zod validation, auth via getSessionUser(), try/catch with 500 handler
+- Multi-file upload: STL upload panel supports arrays, sessionStorage format `{ items: [...] }`
+- All API routes: zod validation, auth via getSessionUser(), try/catch with 500 handler, take: 500 safety cap
 - Prisma migrations in `prisma/migrations/`, deployed via `migrate deploy`
+- Security headers configured in `next.config.ts`
+- SEO: metadataBase, OG tags, robots.txt, sitemap.ts
 
 ## Files Modified This Session
 
 ```
-package.json (version 1.0.0)
-src/lib/auth.config.ts (NEW — edge-safe auth config)
-src/lib/auth.ts (refactored — imports from auth.config)
-src/middleware.ts (imports from auth.config, public landing route)
-src/lib/gcode-parser.ts (NEW — G-code metadata parser)
-src/components/calculator/stl-upload-panel.tsx (G-code support, FileEstimates)
-src/components/calculator/calculator-form.tsx (FileEstimates, G-code auto-fill)
-src/app/api/admin/users/route.ts (POST create user endpoint)
-src/app/(dashboard)/admin/page.tsx (Create User modal)
-src/app/page.tsx (landing/marketing page)
-Dockerfile (migrate deploy instead of db push)
-prisma/migrations/0001_init/migration.sql (NEW)
-prisma/migrations/migration_lock.toml (NEW)
+src/lib/rate-limit.ts (NEW — in-memory sliding window rate limiter)
+src/app/api/auth/register/route.ts (rate limiting)
+src/app/api/auth/[...nextauth]/route.ts (rate limiting)
+src/app/(dashboard)/layout.tsx (debug panel production guard)
+prisma/seed-user.mjs (DELETED)
+Dockerfile (removed seed-user reference)
+src/app/api/quotes/route.ts (take: 500)
+src/app/api/clients/route.ts (take: 500)
+src/app/api/materials/route.ts (take: 500)
+src/app/api/printers/route.ts (take: 500)
+src/app/api/jobs/route.ts (take: 500)
+next.config.ts (security headers)
+src/app/layout.tsx (SEO metadata, OG tags, metadataBase)
+src/app/page.tsx (page-specific metadata)
+public/robots.txt (NEW)
+src/app/sitemap.ts (NEW)
+src/components/calculator/stl-upload-panel.tsx (multi-file rewrite)
+src/components/calculator/calculator-form.tsx (multi-file support)
+src/components/calculator/cost-breakdown.tsx (fileCount prop, button text)
+src/components/quotes/new-quote.tsx (multi-item from calculator)
+src/lib/stl-parser.ts (weight rounding to 0.1g)
+src/lib/gcode-parser.ts (weight rounding to 0.1g)
 ```

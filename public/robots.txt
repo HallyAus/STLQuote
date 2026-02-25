@@ -1,0 +1,14 @@
+User-agent: *
+Allow: /
+Disallow: /dashboard
+Disallow: /calculator
+Disallow: /printers
+Disallow: /materials
+Disallow: /quotes
+Disallow: /clients
+Disallow: /jobs
+Disallow: /settings
+Disallow: /admin
+Disallow: /api/
+
+Sitemap: https://crm.printforge.com.au/sitemap.xml

@@ -57,6 +57,7 @@ export async function GET() {
         lineItems: { select: { id: true } },
       },
       orderBy: { createdAt: "desc" },
+      take: 500,
     });
 
     return NextResponse.json(quotes);

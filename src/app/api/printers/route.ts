@@ -25,6 +25,7 @@ export async function GET() {
     const printers = await prisma.printer.findMany({
       where: { userId: user.id },
       orderBy: { createdAt: "desc" },
+      take: 500,
     });
 
     return NextResponse.json(printers);

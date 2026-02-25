@@ -21,6 +21,7 @@ export async function GET() {
         printer: { select: { name: true } },
       },
       orderBy: { createdAt: "desc" },
+      take: 500,
     });
 
     return NextResponse.json(jobs);

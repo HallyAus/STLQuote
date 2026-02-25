@@ -139,6 +139,11 @@ export function parseGcode(text: string, filename: string): GcodeEstimates {
     }
   }
 
+  // Round weight to 0.1g for clean display
+  if (result.weightG !== null) {
+    result.weightG = Math.round(result.weightG * 10) / 10;
+  }
+
   return result;
 }
 

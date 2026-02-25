@@ -46,20 +46,32 @@ function formatAUD(value: number): string {
   return `$${value.toFixed(2)}`;
 }
 
-function readCalculatorData(): CalculatorLineItem | null {
+function readCalculatorData(): CalculatorLineItem[] {
   try {
     const raw = sessionStorage.getItem("calculatorToQuote");
-    if (!raw) return null;
-    const data = JSON.parse(raw) as CalculatorLineItem;
-    if (
-      typeof data.description !== "string" ||
-      typeof data.lineTotal !== "number"
-    ) {
-      return null;
+    if (!raw) return [];
+    const data = JSON.parse(raw);
+
+    // Multi-item format: { items: [...] }
+    if (data.items && Array.isArray(data.items)) {
+      return data.items.filter(
+        (item: CalculatorLineItem) =>
+          typeof item.description === "string" &&
+          typeof item.lineTotal === "number"
+      );
     }
-    return data;
+
+    // Legacy single-item format
+    if (
+      typeof data.description === "string" &&
+      typeof data.lineTotal === "number"
+    ) {
+      return [data as CalculatorLineItem];
+    }
+
+    return [];
   } catch {
-    return null;
+    return [];
   }
 }
 
@@ -87,9 +99,7 @@ export function NewQuote() {
   const [expiryDate, setExpiryDate] = useState(defaultExpiryDate());
   const [markupPct, setMarkupPct] = useState("50");
 
-  const [calcLineItem, setCalcLineItem] = useState<CalculatorLineItem | null>(
-    null
-  );
+  const [calcLineItems, setCalcLineItems] = useState<CalculatorLineItem[]>([]);
 
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -121,9 +131,9 @@ export function NewQuote() {
   // Read calculator data from sessionStorage when arriving from calculator
   useEffect(() => {
     if (searchParams.get("fromCalculator") === "true") {
-      const data = readCalculatorData();
-      if (data) {
-        setCalcLineItem(data);
+      const items = readCalculatorData();
+      if (items.length > 0) {
+        setCalcLineItems(items);
         setMarkupPct("0");
       }
       sessionStorage.removeItem("calculatorToQuote");
@@ -175,21 +185,17 @@ export function NewQuote() {
       setSaving(true);
       setError(null);
 
-      const lineItems = calcLineItem
-        ? [
-            {
-              description: calcLineItem.description,
-              printWeightG: calcLineItem.printWeightG,
-              printTimeMinutes: calcLineItem.printTimeMinutes,
-              materialCost: calcLineItem.materialCost,
-              machineCost: calcLineItem.machineCost,
-              labourCost: calcLineItem.labourCost,
-              overheadCost: calcLineItem.overheadCost,
-              lineTotal: calcLineItem.lineTotal,
-              quantity: calcLineItem.quantity,
-            },
-          ]
-        : [];
+      const lineItems = calcLineItems.map((item) => ({
+        description: item.description,
+        printWeightG: item.printWeightG,
+        printTimeMinutes: item.printTimeMinutes,
+        materialCost: item.materialCost,
+        machineCost: item.machineCost,
+        labourCost: item.labourCost,
+        overheadCost: item.overheadCost,
+        lineTotal: item.lineTotal,
+        quantity: item.quantity,
+      }));
 
       const payload = {
         clientId: selectedClientId,
@@ -334,48 +340,74 @@ export function NewQuote() {
             </div>
 
             {/* Calculator line item preview */}
-            {calcLineItem && (
-              <div className="rounded-md border border-primary/30 bg-primary/5 p-4 space-y-2">
+            {calcLineItems.length > 0 && (
+              <div className="rounded-md border border-primary/30 bg-primary/5 p-4 space-y-3">
                 <div className="flex items-center gap-2 text-sm font-semibold text-primary">
                   <Calculator className="h-4 w-4" />
-                  Line item from Calculator
+                  {calcLineItems.length === 1
+                    ? "Line item from Calculator"
+                    : `${calcLineItems.length} line items from Calculator`}
                 </div>
-                <div className="grid grid-cols-2 gap-x-4 gap-y-1 text-xs text-muted-foreground">
-                  <span>Description</span>
-                  <span className="text-foreground">
-                    {calcLineItem.description}
-                  </span>
-                  <span>Material cost</span>
-                  <span className="font-mono text-foreground">
-                    {formatAUD(calcLineItem.materialCost)}
-                  </span>
-                  <span>Machine cost</span>
-                  <span className="font-mono text-foreground">
-                    {formatAUD(calcLineItem.machineCost)}
-                  </span>
-                  <span>Labour cost</span>
-                  <span className="font-mono text-foreground">
-                    {formatAUD(calcLineItem.labourCost)}
-                  </span>
-                  <span>Overhead cost</span>
-                  <span className="font-mono text-foreground">
-                    {formatAUD(calcLineItem.overheadCost)}
-                  </span>
-                  <span>Quantity</span>
-                  <span className="text-foreground">
-                    {calcLineItem.quantity}
-                  </span>
-                  <span className="font-semibold">Unit price</span>
-                  <span className="font-mono font-semibold text-primary">
-                    {formatAUD(calcLineItem.lineTotal)}
-                  </span>
-                </div>
+                {calcLineItems.map((item, idx) => (
+                  <div
+                    key={idx}
+                    className="grid grid-cols-2 gap-x-4 gap-y-1 text-xs text-muted-foreground"
+                  >
+                    <span>Description</span>
+                    <span className="text-foreground">
+                      {item.description}
+                    </span>
+                    <span>Material cost</span>
+                    <span className="font-mono text-foreground">
+                      {formatAUD(item.materialCost)}
+                    </span>
+                    <span>Machine cost</span>
+                    <span className="font-mono text-foreground">
+                      {formatAUD(item.machineCost)}
+                    </span>
+                    <span>Labour cost</span>
+                    <span className="font-mono text-foreground">
+                      {formatAUD(item.labourCost)}
+                    </span>
+                    <span>Overhead cost</span>
+                    <span className="font-mono text-foreground">
+                      {formatAUD(item.overheadCost)}
+                    </span>
+                    <span>Quantity</span>
+                    <span className="text-foreground">
+                      {item.quantity}
+                    </span>
+                    <span className="font-semibold">Unit price</span>
+                    <span className="font-mono font-semibold text-primary">
+                      {formatAUD(item.lineTotal)}
+                    </span>
+                    {calcLineItems.length > 1 && (
+                      <>
+                        <span />
+                        <button
+                          type="button"
+                          onClick={() =>
+                            setCalcLineItems((prev) =>
+                              prev.filter((_, i) => i !== idx)
+                            )
+                          }
+                          className="text-left text-xs text-muted-foreground underline hover:text-foreground"
+                        >
+                          Remove
+                        </button>
+                      </>
+                    )}
+                    {idx < calcLineItems.length - 1 && (
+                      <div className="col-span-2 my-1 border-t border-border/50" />
+                    )}
+                  </div>
+                ))}
                 <button
                   type="button"
-                  onClick={() => setCalcLineItem(null)}
+                  onClick={() => setCalcLineItems([])}
                   className="text-xs text-muted-foreground underline hover:text-foreground"
                 >
-                  Remove line item
+                  {calcLineItems.length === 1 ? "Remove line item" : "Remove all line items"}
                 </button>
               </div>
             )}
@@ -414,7 +446,7 @@ export function NewQuote() {
               placeholder="Optional terms and conditions..."
             />
 
-            {!calcLineItem && (
+            {calcLineItems.length === 0 && (
               <p className="text-xs text-muted-foreground">
                 Line items can be added after creating the quote.
               </p>

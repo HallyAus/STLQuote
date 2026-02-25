@@ -19,4 +19,4 @@ ENV HOSTNAME="0.0.0.0"
 
 EXPOSE 3000
 
-CMD ["sh", "-c", "pnpm prisma migrate deploy && node prisma/seed-user.mjs && pnpm start"]
+CMD ["sh", "-c", "pnpm prisma migrate deploy && pnpm start"]

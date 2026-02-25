@@ -26,6 +26,7 @@ export async function GET() {
       include: {
         _count: { select: { quotes: true } },
       },
+      take: 500,
     });
 
     return NextResponse.json(clients);
