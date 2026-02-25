@@ -9,7 +9,8 @@ let THREE: typeof import("three") | null = null;
 let OrbitControlsModule: { OrbitControls: unknown } | null = null;
 let STLLoaderModule: { STLLoader: unknown } | null = null;
 
-async function loadThree() {
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+async function loadThree(): Promise<{ THREE: typeof import("three"); OrbitControls: any; STLLoader: any }> {
   if (!THREE) {
     const [three, controls, loader] = await Promise.all([
       import("three"),
@@ -22,19 +23,8 @@ async function loadThree() {
   }
   return {
     THREE: THREE!,
-    OrbitControls: (OrbitControlsModule as Record<string, unknown>).OrbitControls as new (
-      camera: InstanceType<typeof THREE.PerspectiveCamera>,
-      domElement: HTMLElement
-    ) => InstanceType<typeof THREE.EventDispatcher> & {
-      enableDamping: boolean;
-      dampingFactor: number;
-      target: InstanceType<typeof THREE.Vector3>;
-      update: () => void;
-      dispose: () => void;
-    },
-    STLLoader: (STLLoaderModule as Record<string, unknown>).STLLoader as new () => {
-      parse: (data: ArrayBuffer) => InstanceType<typeof THREE.BufferGeometry>;
-    },
+    OrbitControls: (OrbitControlsModule as Record<string, unknown>).OrbitControls,
+    STLLoader: (STLLoaderModule as Record<string, unknown>).STLLoader,
   };
 }
 
@@ -50,10 +40,11 @@ interface STLViewerProps {
 export function STLViewer({ buffer, filename, onClose }: STLViewerProps) {
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const containerRef = useRef<HTMLDivElement>(null);
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const sceneRef = useRef<{
-    renderer: InstanceType<typeof import("three").WebGLRenderer>;
-    controls: { update: () => void; dispose: () => void; target: InstanceType<typeof import("three").Vector3> };
-    camera: InstanceType<typeof import("three").PerspectiveCamera>;
+    renderer: any;
+    controls: any;
+    camera: any;
     animId: number;
     resetCamera: () => void;
   } | null>(null);
