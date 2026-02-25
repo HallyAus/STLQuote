@@ -220,7 +220,7 @@ export function WebhookSettings() {
               <div className="min-w-0 flex-1">
                 <p className="truncate text-sm font-medium">{webhook.url}</p>
                 <div className="mt-1 flex items-center gap-2">
-                  <Badge variant={webhook.active ? "success" : "secondary"}>
+                  <Badge variant={webhook.active ? "success" : "default"}>
                     {webhook.active ? "Active" : "Inactive"}
                   </Badge>
                   {webhook.lastStatus !== null && (
