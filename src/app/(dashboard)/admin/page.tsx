@@ -19,6 +19,9 @@ import {
   Mail,
   Send,
   CheckCircle2,
+  Pencil,
+  Trash2,
+  AlertTriangle,
 } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import { Select } from "@/components/ui/select";
@@ -57,6 +60,8 @@ export default function AdminPage() {
   const [loading, setLoading] = useState(true);
   const [actionLoading, setActionLoading] = useState<string | null>(null);
   const [activeTab, setActiveTab] = useState<"users" | "deploys" | "email">("users");
+
+  // Create user modal
   const [showCreateModal, setShowCreateModal] = useState(false);
   const [createForm, setCreateForm] = useState({
     name: "",
@@ -66,11 +71,24 @@ export default function AdminPage() {
   });
   const [createLoading, setCreateLoading] = useState(false);
   const [createError, setCreateError] = useState("");
-  const [resetPasswordUser, setResetPasswordUser] = useState<AdminUser | null>(null);
-  const [resetPassword, setResetPassword] = useState("");
-  const [resetLoading, setResetLoading] = useState(false);
-  const [resetError, setResetError] = useState("");
-  const [resetSuccess, setResetSuccess] = useState(false);
+
+  // Edit user modal
+  const [editUser, setEditUser] = useState<AdminUser | null>(null);
+  const [editForm, setEditForm] = useState({
+    name: "",
+    email: "",
+    role: "USER",
+    password: "",
+  });
+  const [editLoading, setEditLoading] = useState(false);
+  const [editError, setEditError] = useState("");
+  const [editSuccess, setEditSuccess] = useState("");
+
+  // Delete confirmation
+  const [deleteUser, setDeleteUser] = useState<AdminUser | null>(null);
+  const [deleteLoading, setDeleteLoading] = useState(false);
+
+  // Test email
   const [testEmailTo, setTestEmailTo] = useState("");
   const [testEmailLoading, setTestEmailLoading] = useState(false);
   const [testEmailResult, setTestEmailResult] = useState<{ ok: boolean; message: string } | null>(null);
@@ -92,6 +110,8 @@ export default function AdminPage() {
   useEffect(() => {
     fetchUsers();
   }, [fetchUsers]);
+
+  // --- Actions ---
 
   async function toggleRole(user: AdminUser) {
     setActionLoading(user.id + "-role");
@@ -160,15 +180,11 @@ export default function AdminPage() {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(createForm),
       });
-
       const data = await res.json();
-
       if (!res.ok) {
         setCreateError(data.error || "Failed to create user");
         return;
       }
-
-      // Success — close modal, refresh list
       setShowCreateModal(false);
       setCreateForm({ name: "", email: "", password: "", role: "USER" });
       fetchUsers();
@@ -179,32 +195,78 @@ export default function AdminPage() {
     }
   }
 
-  async function handleResetPassword(e: React.FormEvent) {
+  function openEditModal(user: AdminUser) {
+    setEditUser(user);
+    setEditForm({
+      name: user.name || "",
+      email: user.email || "",
+      role: user.role,
+      password: "",
+    });
+    setEditError("");
+    setEditSuccess("");
+  }
+
+  async function handleEditUser(e: React.FormEvent) {
     e.preventDefault();
-    setResetError("");
-    setResetSuccess(false);
-    setResetLoading(true);
+    if (!editUser) return;
+    setEditError("");
+    setEditSuccess("");
+    setEditLoading(true);
 
     try {
-      const res = await fetch(`/api/admin/users/${resetPasswordUser!.id}`, {
-        method: "PUT",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ password: resetPassword }),
-      });
-
-      const data = await res.json();
-
-      if (!res.ok) {
-        setResetError(data.error || "Failed to reset password");
-        return;
+      const payload: Record<string, string> = {
+        name: editForm.name,
+        email: editForm.email,
+        role: editForm.role,
+      };
+      if (editForm.password) {
+        payload.password = editForm.password;
       }
 
-      setResetSuccess(true);
-      setResetPassword("");
+      const res = await fetch(`/api/admin/users/${editUser.id}`, {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(payload),
+      });
+      const data = await res.json();
+      if (!res.ok) {
+        setEditError(data.error || "Failed to update user");
+        return;
+      }
+      setEditSuccess("User updated successfully");
+      // Update local state
+      setUsers((prev) =>
+        prev.map((u) =>
+          u.id === editUser.id
+            ? { ...u, name: editForm.name, email: editForm.email, role: editForm.role }
+            : u
+        )
+      );
     } catch {
-      setResetError("Something went wrong");
+      setEditError("Something went wrong");
     } finally {
-      setResetLoading(false);
+      setEditLoading(false);
+    }
+  }
+
+  async function handleDeleteUser() {
+    if (!deleteUser) return;
+    setDeleteLoading(true);
+
+    try {
+      const res = await fetch(`/api/admin/users/${deleteUser.id}`, {
+        method: "DELETE",
+      });
+      if (res.ok) {
+        setUsers((prev) => prev.filter((u) => u.id !== deleteUser.id));
+        setDeleteUser(null);
+        fetchUsers(); // Refresh stats
+      }
+    } catch {
+      // ignore
+    } finally {
+      setDeleteLoading(false);
     }
   }
 
@@ -220,18 +282,18 @@ export default function AdminPage() {
         body: JSON.stringify({ to: testEmailTo || undefined }),
       });
       const data = await res.json();
-
-      if (res.ok) {
-        setTestEmailResult({ ok: true, message: data.message });
-      } else {
-        setTestEmailResult({ ok: false, message: data.error || "Failed to send" });
-      }
+      setTestEmailResult({
+        ok: res.ok,
+        message: res.ok ? data.message : data.error || "Failed to send",
+      });
     } catch {
       setTestEmailResult({ ok: false, message: "Something went wrong" });
     } finally {
       setTestEmailLoading(false);
     }
   }
+
+  // --- Render ---
 
   if (loading) {
     return (
@@ -245,47 +307,31 @@ export default function AdminPage() {
     <div className="space-y-6">
       {/* Tabs */}
       <div className="flex gap-1 border-b border-border">
-        <button
-          onClick={() => setActiveTab("users")}
-          className={cn(
-            "flex items-center gap-1.5 px-4 py-2 text-sm font-medium border-b-2 -mb-px transition-colors",
-            activeTab === "users"
-              ? "border-primary text-primary"
-              : "border-transparent text-muted-foreground hover:text-foreground"
-          )}
-        >
-          <Users className="h-4 w-4" />
-          Users
-        </button>
-        <button
-          onClick={() => setActiveTab("deploys")}
-          className={cn(
-            "flex items-center gap-1.5 px-4 py-2 text-sm font-medium border-b-2 -mb-px transition-colors",
-            activeTab === "deploys"
-              ? "border-primary text-primary"
-              : "border-transparent text-muted-foreground hover:text-foreground"
-          )}
-        >
-          <Rocket className="h-4 w-4" />
-          Deploys
-        </button>
-        <button
-          onClick={() => setActiveTab("email")}
-          className={cn(
-            "flex items-center gap-1.5 px-4 py-2 text-sm font-medium border-b-2 -mb-px transition-colors",
-            activeTab === "email"
-              ? "border-primary text-primary"
-              : "border-transparent text-muted-foreground hover:text-foreground"
-          )}
-        >
-          <Mail className="h-4 w-4" />
-          Email
-        </button>
+        {([
+          { key: "users", icon: Users, label: "Users" },
+          { key: "deploys", icon: Rocket, label: "Deploys" },
+          { key: "email", icon: Mail, label: "Email" },
+        ] as const).map((tab) => (
+          <button
+            key={tab.key}
+            onClick={() => setActiveTab(tab.key)}
+            className={cn(
+              "flex items-center gap-1.5 px-4 py-2 text-sm font-medium border-b-2 -mb-px transition-colors",
+              activeTab === tab.key
+                ? "border-primary text-primary"
+                : "border-transparent text-muted-foreground hover:text-foreground"
+            )}
+          >
+            <tab.icon className="h-4 w-4" />
+            {tab.label}
+          </button>
+        ))}
       </div>
 
+      {/* Deploys tab */}
       {activeTab === "deploys" && <DeployLogs />}
 
-      {/* Email test */}
+      {/* Email tab */}
       {activeTab === "email" && (
         <Card>
           <CardHeader>
@@ -336,34 +382,272 @@ export default function AdminPage() {
         </Card>
       )}
 
-      {/* Stats */}
-      {activeTab === "users" && stats && (
-        <div className="grid grid-cols-2 gap-4 md:grid-cols-4">
+      {/* Users tab */}
+      {activeTab === "users" && (
+        <>
+          {/* Stats */}
+          {stats && (
+            <div className="grid grid-cols-2 gap-4 md:grid-cols-4">
+              <Card>
+                <CardContent className="p-4">
+                  <div className="text-2xl font-bold">{stats.totalUsers}</div>
+                  <div className="text-sm text-muted-foreground">Total users</div>
+                </CardContent>
+              </Card>
+              <Card>
+                <CardContent className="p-4">
+                  <div className="text-2xl font-bold">{stats.adminCount}</div>
+                  <div className="text-sm text-muted-foreground">Admins</div>
+                </CardContent>
+              </Card>
+              <Card>
+                <CardContent className="p-4">
+                  <div className="text-2xl font-bold">{stats.disabledCount}</div>
+                  <div className="text-sm text-muted-foreground">Disabled</div>
+                </CardContent>
+              </Card>
+              <Card>
+                <CardContent className="p-4">
+                  <div className="text-2xl font-bold">{stats.newThisWeek}</div>
+                  <div className="text-sm text-muted-foreground">New this week</div>
+                </CardContent>
+              </Card>
+            </div>
+          )}
+
+          {/* Users table */}
           <Card>
-            <CardContent className="p-4">
-              <div className="text-2xl font-bold">{stats.totalUsers}</div>
-              <div className="text-sm text-muted-foreground">Total users</div>
+            <CardHeader>
+              <div className="flex items-center justify-between">
+                <CardTitle className="flex items-center gap-2">
+                  <Users className="h-5 w-5" />
+                  Users
+                </CardTitle>
+                <Button size="sm" onClick={() => setShowCreateModal(true)}>
+                  <UserPlus className="mr-1.5 h-4 w-4" />
+                  Create User
+                </Button>
+              </div>
+            </CardHeader>
+            <CardContent>
+              {/* Desktop table */}
+              <div className="hidden md:block overflow-x-auto">
+                <table className="w-full text-sm">
+                  <thead>
+                    <tr className="border-b border-border text-left text-muted-foreground">
+                      <th className="pb-3 pr-4 font-medium">User</th>
+                      <th className="pb-3 pr-4 font-medium">Role</th>
+                      <th className="pb-3 pr-4 font-medium">Status</th>
+                      <th className="pb-3 pr-4 font-medium">Joined</th>
+                      <th className="pb-3 pr-4 font-medium">Last Login</th>
+                      <th className="pb-3 pr-4 font-medium">Activity</th>
+                      <th className="pb-3 font-medium">Actions</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {users.map((user) => (
+                      <tr
+                        key={user.id}
+                        className="border-b border-border/50 last:border-0"
+                      >
+                        <td className="py-3 pr-4">
+                          <div className="font-medium">{user.name || "No name"}</div>
+                          <div className="text-xs text-muted-foreground">{user.email}</div>
+                        </td>
+                        <td className="py-3 pr-4">
+                          <span
+                            className={cn(
+                              "inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-xs font-medium",
+                              user.role === "ADMIN"
+                                ? "bg-primary/10 text-primary"
+                                : "bg-muted text-muted-foreground"
+                            )}
+                          >
+                            {user.role === "ADMIN" && <Shield className="h-3 w-3" />}
+                            {user.role}
+                          </span>
+                        </td>
+                        <td className="py-3 pr-4">
+                          <span
+                            className={cn(
+                              "inline-flex rounded-full px-2 py-0.5 text-xs font-medium",
+                              user.disabled
+                                ? "bg-destructive/10 text-destructive-foreground"
+                                : "bg-success/15 text-success-foreground"
+                            )}
+                          >
+                            {user.disabled ? "Disabled" : "Active"}
+                          </span>
+                        </td>
+                        <td className="py-3 pr-4 text-muted-foreground">
+                          {new Date(user.createdAt).toLocaleDateString("en-AU", { day: "2-digit", month: "2-digit", year: "numeric" })}
+                        </td>
+                        <td className="py-3 pr-4 text-muted-foreground">
+                          {user.lastLogin ? formatRelativeTime(user.lastLogin) : "Never"}
+                        </td>
+                        <td className="py-3 pr-4 text-xs text-muted-foreground">
+                          <span>{user._count.quotes} quotes</span>
+                          <span className="mx-1">&middot;</span>
+                          <span>{user._count.jobs} jobs</span>
+                        </td>
+                        <td className="py-3">
+                          <div className="flex items-center gap-0.5">
+                            <Button
+                              variant="ghost"
+                              size="sm"
+                              onClick={() => openEditModal(user)}
+                              title="Edit user"
+                            >
+                              <Pencil className="h-3.5 w-3.5" />
+                            </Button>
+                            <Button
+                              variant="ghost"
+                              size="sm"
+                              onClick={() => toggleRole(user)}
+                              disabled={actionLoading === user.id + "-role"}
+                              title={user.role === "ADMIN" ? "Demote to user" : "Promote to admin"}
+                            >
+                              {actionLoading === user.id + "-role" ? (
+                                <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                              ) : user.role === "ADMIN" ? (
+                                <ShieldOff className="h-3.5 w-3.5" />
+                              ) : (
+                                <Shield className="h-3.5 w-3.5" />
+                              )}
+                            </Button>
+                            <Button
+                              variant="ghost"
+                              size="sm"
+                              onClick={() => toggleDisabled(user)}
+                              disabled={actionLoading === user.id + "-disabled"}
+                              title={user.disabled ? "Enable account" : "Disable account"}
+                            >
+                              {actionLoading === user.id + "-disabled" ? (
+                                <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                              ) : user.disabled ? (
+                                <UserCheck className="h-3.5 w-3.5" />
+                              ) : (
+                                <UserX className="h-3.5 w-3.5" />
+                              )}
+                            </Button>
+                            <Button
+                              variant="ghost"
+                              size="sm"
+                              onClick={() => impersonate(user)}
+                              disabled={actionLoading === user.id + "-impersonate"}
+                              title="Impersonate user"
+                            >
+                              {actionLoading === user.id + "-impersonate" ? (
+                                <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                              ) : (
+                                <Eye className="h-3.5 w-3.5" />
+                              )}
+                            </Button>
+                            <Button
+                              variant="ghost"
+                              size="sm"
+                              onClick={() => setDeleteUser(user)}
+                              title="Delete user"
+                              className="text-destructive-foreground hover:text-destructive-foreground"
+                            >
+                              <Trash2 className="h-3.5 w-3.5" />
+                            </Button>
+                          </div>
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+
+              {/* Mobile cards */}
+              <div className="space-y-3 md:hidden">
+                {users.map((user) => (
+                  <div
+                    key={user.id}
+                    className="rounded-lg border border-border p-4 space-y-3"
+                  >
+                    <div className="flex items-start justify-between">
+                      <div>
+                        <div className="font-medium">{user.name || "No name"}</div>
+                        <div className="text-sm text-muted-foreground">{user.email}</div>
+                      </div>
+                      <div className="flex gap-1">
+                        <span
+                          className={cn(
+                            "inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-xs font-medium",
+                            user.role === "ADMIN"
+                              ? "bg-primary/10 text-primary"
+                              : "bg-muted text-muted-foreground"
+                          )}
+                        >
+                          {user.role}
+                        </span>
+                        <span
+                          className={cn(
+                            "inline-flex rounded-full px-2 py-0.5 text-xs font-medium",
+                            user.disabled
+                              ? "bg-destructive/10 text-destructive-foreground"
+                              : "bg-success/15 text-success-foreground"
+                          )}
+                        >
+                          {user.disabled ? "Disabled" : "Active"}
+                        </span>
+                      </div>
+                    </div>
+                    <div className="flex flex-wrap items-center gap-x-4 gap-y-1 text-sm text-muted-foreground">
+                      <span>
+                        Joined {new Date(user.createdAt).toLocaleDateString("en-AU", { day: "2-digit", month: "2-digit", year: "numeric" })}
+                      </span>
+                      <span>Login {user.lastLogin ? formatRelativeTime(user.lastLogin) : "never"}</span>
+                      <span>{user._count.quotes} quotes</span>
+                      <span>{user._count.jobs} jobs</span>
+                    </div>
+                    <div className="flex flex-wrap items-center gap-2">
+                      <Button variant="secondary" size="sm" onClick={() => openEditModal(user)}>
+                        <Pencil className="mr-1 h-3 w-3" />
+                        Edit
+                      </Button>
+                      <Button variant="secondary" size="sm" onClick={() => toggleRole(user)} disabled={actionLoading === user.id + "-role"}>
+                        {user.role === "ADMIN" ? (
+                          <><ShieldOff className="mr-1 h-3 w-3" />Demote</>
+                        ) : (
+                          <><Shield className="mr-1 h-3 w-3" />Promote</>
+                        )}
+                      </Button>
+                      <Button variant="secondary" size="sm" onClick={() => toggleDisabled(user)} disabled={actionLoading === user.id + "-disabled"}>
+                        {user.disabled ? (
+                          <><UserCheck className="mr-1 h-3 w-3" />Enable</>
+                        ) : (
+                          <><UserX className="mr-1 h-3 w-3" />Disable</>
+                        )}
+                      </Button>
+                      <Button variant="secondary" size="sm" onClick={() => impersonate(user)} disabled={actionLoading === user.id + "-impersonate"}>
+                        <Eye className="mr-1 h-3 w-3" />
+                        Impersonate
+                      </Button>
+                      <Button
+                        variant="secondary"
+                        size="sm"
+                        onClick={() => setDeleteUser(user)}
+                        className="text-destructive-foreground"
+                      >
+                        <Trash2 className="mr-1 h-3 w-3" />
+                        Delete
+                      </Button>
+                    </div>
+                  </div>
+                ))}
+              </div>
+
+              {users.length === 0 && (
+                <div className="py-8 text-center text-muted-foreground">
+                  No users found.
+                </div>
+              )}
             </CardContent>
           </Card>
-          <Card>
-            <CardContent className="p-4">
-              <div className="text-2xl font-bold">{stats.adminCount}</div>
-              <div className="text-sm text-muted-foreground">Admins</div>
-            </CardContent>
-          </Card>
-          <Card>
-            <CardContent className="p-4">
-              <div className="text-2xl font-bold">{stats.disabledCount}</div>
-              <div className="text-sm text-muted-foreground">Disabled</div>
-            </CardContent>
-          </Card>
-          <Card>
-            <CardContent className="p-4">
-              <div className="text-2xl font-bold">{stats.newThisWeek}</div>
-              <div className="text-sm text-muted-foreground">New this week</div>
-            </CardContent>
-          </Card>
-        </div>
+        </>
       )}
 
       {/* Create User Modal */}
@@ -376,13 +660,7 @@ export default function AdminPage() {
                   <UserPlus className="h-5 w-5" />
                   Create User
                 </CardTitle>
-                <button
-                  onClick={() => {
-                    setShowCreateModal(false);
-                    setCreateError("");
-                  }}
-                  className="rounded-md p-1.5 hover:bg-muted"
-                >
+                <button onClick={() => { setShowCreateModal(false); setCreateError(""); }} className="rounded-md p-1.5 hover:bg-muted">
                   <X className="h-4 w-4" />
                 </button>
               </div>
@@ -394,38 +672,9 @@ export default function AdminPage() {
                     {createError}
                   </div>
                 )}
-                <Input
-                  label="Name"
-                  type="text"
-                  value={createForm.name}
-                  onChange={(e) =>
-                    setCreateForm((f) => ({ ...f, name: e.target.value }))
-                  }
-                  placeholder="Full name"
-                  required
-                  autoFocus
-                />
-                <Input
-                  label="Email"
-                  type="email"
-                  value={createForm.email}
-                  onChange={(e) =>
-                    setCreateForm((f) => ({ ...f, email: e.target.value }))
-                  }
-                  placeholder="user@example.com"
-                  required
-                />
-                <Input
-                  label="Password"
-                  type="password"
-                  value={createForm.password}
-                  onChange={(e) =>
-                    setCreateForm((f) => ({ ...f, password: e.target.value }))
-                  }
-                  placeholder="At least 8 characters"
-                  required
-                  minLength={8}
-                />
+                <Input label="Name" type="text" value={createForm.name} onChange={(e) => setCreateForm((f) => ({ ...f, name: e.target.value }))} placeholder="Full name" required autoFocus />
+                <Input label="Email" type="email" value={createForm.email} onChange={(e) => setCreateForm((f) => ({ ...f, email: e.target.value }))} placeholder="user@example.com" required />
+                <Input label="Password" type="password" value={createForm.password} onChange={(e) => setCreateForm((f) => ({ ...f, password: e.target.value }))} placeholder="At least 8 characters" required minLength={8} />
                 <Select
                   label="Role"
                   options={[
@@ -433,30 +682,14 @@ export default function AdminPage() {
                     { value: "ADMIN", label: "Admin" },
                   ]}
                   value={createForm.role}
-                  onChange={(e) =>
-                    setCreateForm((f) => ({ ...f, role: e.target.value }))
-                  }
+                  onChange={(e) => setCreateForm((f) => ({ ...f, role: e.target.value }))}
                 />
                 <div className="flex gap-2 pt-2">
-                  <Button
-                    type="button"
-                    variant="secondary"
-                    className="flex-1"
-                    onClick={() => {
-                      setShowCreateModal(false);
-                      setCreateError("");
-                    }}
-                  >
+                  <Button type="button" variant="secondary" className="flex-1" onClick={() => { setShowCreateModal(false); setCreateError(""); }}>
                     Cancel
                   </Button>
-                  <Button
-                    type="submit"
-                    className="flex-1"
-                    disabled={createLoading}
-                  >
-                    {createLoading && (
-                      <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                    )}
+                  <Button type="submit" className="flex-1" disabled={createLoading}>
+                    {createLoading && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
                     Create User
                   </Button>
                 </div>
@@ -466,80 +699,53 @@ export default function AdminPage() {
         </div>
       )}
 
-      {/* Reset Password Modal */}
-      {resetPasswordUser && (
+      {/* Edit User Modal */}
+      {editUser && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50">
           <Card className="w-full max-w-md mx-4">
             <CardHeader>
               <div className="flex items-center justify-between">
                 <CardTitle className="flex items-center gap-2">
-                  <KeyRound className="h-5 w-5" />
-                  Reset Password
+                  <Pencil className="h-5 w-5" />
+                  Edit User
                 </CardTitle>
-                <button
-                  onClick={() => {
-                    setResetPasswordUser(null);
-                    setResetPassword("");
-                    setResetError("");
-                    setResetSuccess(false);
-                  }}
-                  className="rounded-md p-1.5 hover:bg-muted"
-                >
+                <button onClick={() => setEditUser(null)} className="rounded-md p-1.5 hover:bg-muted">
                   <X className="h-4 w-4" />
                 </button>
               </div>
             </CardHeader>
             <CardContent>
-              <p className="mb-4 text-sm text-muted-foreground">
-                Set a new password for{" "}
-                <span className="font-medium text-foreground">
-                  {resetPasswordUser.name || resetPasswordUser.email}
-                </span>
-              </p>
-              <form onSubmit={handleResetPassword} className="space-y-4">
-                {resetError && (
+              <form onSubmit={handleEditUser} className="space-y-4">
+                {editError && (
                   <div className="rounded-md bg-destructive/10 px-3 py-2 text-sm text-destructive-foreground">
-                    {resetError}
+                    {editError}
                   </div>
                 )}
-                {resetSuccess && (
-                  <div className="rounded-md bg-success/10 px-3 py-2 text-sm text-success-foreground">
-                    Password updated successfully
+                {editSuccess && (
+                  <div className="flex items-center gap-2 rounded-md bg-success/10 px-3 py-2 text-sm text-success-foreground">
+                    <CheckCircle2 className="h-4 w-4 shrink-0" />
+                    {editSuccess}
                   </div>
                 )}
-                <Input
-                  label="New password"
-                  type="password"
-                  value={resetPassword}
-                  onChange={(e) => setResetPassword(e.target.value)}
-                  placeholder="At least 8 characters"
-                  required
-                  minLength={8}
-                  autoFocus
+                <Input label="Name" type="text" value={editForm.name} onChange={(e) => setEditForm((f) => ({ ...f, name: e.target.value }))} placeholder="Full name" required autoFocus />
+                <Input label="Email" type="email" value={editForm.email} onChange={(e) => setEditForm((f) => ({ ...f, email: e.target.value }))} placeholder="user@example.com" required />
+                <Select
+                  label="Role"
+                  options={[
+                    { value: "USER", label: "User" },
+                    { value: "ADMIN", label: "Admin" },
+                  ]}
+                  value={editForm.role}
+                  onChange={(e) => setEditForm((f) => ({ ...f, role: e.target.value }))}
                 />
+                <Input label="New Password (optional)" type="password" value={editForm.password} onChange={(e) => setEditForm((f) => ({ ...f, password: e.target.value }))} placeholder="Leave blank to keep current" minLength={8} />
                 <div className="flex gap-2 pt-2">
-                  <Button
-                    type="button"
-                    variant="secondary"
-                    className="flex-1"
-                    onClick={() => {
-                      setResetPasswordUser(null);
-                      setResetPassword("");
-                      setResetError("");
-                      setResetSuccess(false);
-                    }}
-                  >
-                    {resetSuccess ? "Done" : "Cancel"}
+                  <Button type="button" variant="secondary" className="flex-1" onClick={() => setEditUser(null)}>
+                    {editSuccess ? "Done" : "Cancel"}
                   </Button>
-                  <Button
-                    type="submit"
-                    className="flex-1"
-                    disabled={resetLoading || resetSuccess}
-                  >
-                    {resetLoading && (
-                      <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                    )}
-                    Reset Password
+                  <Button type="submit" className="flex-1" disabled={editLoading}>
+                    {editLoading && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+                    Save Changes
                   </Button>
                 </div>
               </form>
@@ -548,274 +754,39 @@ export default function AdminPage() {
         </div>
       )}
 
-      {/* Users table */}
-      {activeTab === "users" && <Card>
-        <CardHeader>
-          <div className="flex items-center justify-between">
-            <CardTitle className="flex items-center gap-2">
-              <Users className="h-5 w-5" />
-              Users
-            </CardTitle>
-            <Button size="sm" onClick={() => setShowCreateModal(true)}>
-              <UserPlus className="mr-1.5 h-4 w-4" />
-              Create User
-            </Button>
-          </div>
-        </CardHeader>
-        <CardContent>
-          {/* Desktop table */}
-          <div className="hidden md:block overflow-x-auto">
-            <table className="w-full text-sm">
-              <thead>
-                <tr className="border-b border-border text-left text-muted-foreground">
-                  <th className="pb-3 pr-4 font-medium">User</th>
-                  <th className="pb-3 pr-4 font-medium">Role</th>
-                  <th className="pb-3 pr-4 font-medium">Status</th>
-                  <th className="pb-3 pr-4 font-medium">Joined</th>
-                  <th className="pb-3 pr-4 font-medium">Last Login</th>
-                  <th className="pb-3 pr-4 font-medium">Quotes</th>
-                  <th className="pb-3 pr-4 font-medium">Jobs</th>
-                  <th className="pb-3 font-medium">Actions</th>
-                </tr>
-              </thead>
-              <tbody>
-                {users.map((user) => (
-                  <tr
-                    key={user.id}
-                    className="border-b border-border/50 last:border-0"
-                  >
-                    <td className="py-3 pr-4">
-                      <div className="font-medium">
-                        {user.name || "No name"}
-                      </div>
-                      <div className="text-xs text-muted-foreground">
-                        {user.email}
-                      </div>
-                    </td>
-                    <td className="py-3 pr-4">
-                      <span
-                        className={`inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-xs font-medium ${
-                          user.role === "ADMIN"
-                            ? "bg-primary/10 text-primary"
-                            : "bg-muted text-muted-foreground"
-                        }`}
-                      >
-                        {user.role === "ADMIN" && (
-                          <Shield className="h-3 w-3" />
-                        )}
-                        {user.role}
-                      </span>
-                    </td>
-                    <td className="py-3 pr-4">
-                      <span
-                        className={`inline-flex rounded-full px-2 py-0.5 text-xs font-medium ${
-                          user.disabled
-                            ? "bg-destructive/10 text-destructive-foreground"
-                            : "bg-success/15 text-success-foreground"
-                        }`}
-                      >
-                        {user.disabled ? "Disabled" : "Active"}
-                      </span>
-                    </td>
-                    <td className="py-3 pr-4 text-muted-foreground">
-                      {new Date(user.createdAt).toLocaleDateString("en-AU", { day: "2-digit", month: "2-digit", year: "numeric" })}
-                    </td>
-                    <td className="py-3 pr-4 text-muted-foreground">
-                      {user.lastLogin
-                        ? formatRelativeTime(user.lastLogin)
-                        : "Never"}
-                    </td>
-                    <td className="py-3 pr-4 text-muted-foreground">
-                      {user._count.quotes}
-                    </td>
-                    <td className="py-3 pr-4 text-muted-foreground">
-                      {user._count.jobs}
-                    </td>
-                    <td className="py-3">
-                      <div className="flex items-center gap-1">
-                        <Button
-                          variant="ghost"
-                          size="sm"
-                          onClick={() => toggleRole(user)}
-                          disabled={actionLoading === user.id + "-role"}
-                          title={
-                            user.role === "ADMIN"
-                              ? "Demote to user"
-                              : "Promote to admin"
-                          }
-                        >
-                          {actionLoading === user.id + "-role" ? (
-                            <Loader2 className="h-4 w-4 animate-spin" />
-                          ) : user.role === "ADMIN" ? (
-                            <ShieldOff className="h-4 w-4" />
-                          ) : (
-                            <Shield className="h-4 w-4" />
-                          )}
-                        </Button>
-                        <Button
-                          variant="ghost"
-                          size="sm"
-                          onClick={() => toggleDisabled(user)}
-                          disabled={actionLoading === user.id + "-disabled"}
-                          title={
-                            user.disabled ? "Enable account" : "Disable account"
-                          }
-                        >
-                          {actionLoading === user.id + "-disabled" ? (
-                            <Loader2 className="h-4 w-4 animate-spin" />
-                          ) : user.disabled ? (
-                            <UserCheck className="h-4 w-4" />
-                          ) : (
-                            <UserX className="h-4 w-4" />
-                          )}
-                        </Button>
-                        <Button
-                          variant="ghost"
-                          size="sm"
-                          onClick={() => impersonate(user)}
-                          disabled={
-                            actionLoading === user.id + "-impersonate"
-                          }
-                          title="Impersonate user"
-                        >
-                          {actionLoading === user.id + "-impersonate" ? (
-                            <Loader2 className="h-4 w-4 animate-spin" />
-                          ) : (
-                            <Eye className="h-4 w-4" />
-                          )}
-                        </Button>
-                        <Button
-                          variant="ghost"
-                          size="sm"
-                          onClick={() => setResetPasswordUser(user)}
-                          title="Reset password"
-                        >
-                          <KeyRound className="h-4 w-4" />
-                        </Button>
-                      </div>
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
-
-          {/* Mobile cards */}
-          <div className="space-y-3 md:hidden">
-            {users.map((user) => (
-              <div
-                key={user.id}
-                className="rounded-lg border border-border p-4 space-y-3"
-              >
-                <div className="flex items-start justify-between">
-                  <div>
-                    <div className="font-medium">
-                      {user.name || "No name"}
-                    </div>
-                    <div className="text-sm text-muted-foreground">
-                      {user.email}
-                    </div>
-                  </div>
-                  <div className="flex gap-1">
-                    <span
-                      className={`inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-xs font-medium ${
-                        user.role === "ADMIN"
-                          ? "bg-primary/10 text-primary"
-                          : "bg-muted text-muted-foreground"
-                      }`}
-                    >
-                      {user.role}
-                    </span>
-                    <span
-                      className={`inline-flex rounded-full px-2 py-0.5 text-xs font-medium ${
-                        user.disabled
-                          ? "bg-destructive/10 text-destructive-foreground"
-                          : "bg-success/15 text-success-foreground"
-                      }`}
-                    >
-                      {user.disabled ? "Disabled" : "Active"}
-                    </span>
-                  </div>
-                </div>
-                <div className="flex flex-wrap items-center gap-x-4 gap-y-1 text-sm text-muted-foreground">
-                  <span>
-                    Joined {new Date(user.createdAt).toLocaleDateString("en-AU", { day: "2-digit", month: "2-digit", year: "numeric" })}
-                  </span>
-                  <span>
-                    Login{" "}
-                    {user.lastLogin
-                      ? formatRelativeTime(user.lastLogin)
-                      : "never"}
-                  </span>
-                  <span>{user._count.quotes} quotes</span>
-                  <span>{user._count.jobs} jobs</span>
-                </div>
-                <div className="flex items-center gap-2">
-                  <Button
-                    variant="secondary"
-                    size="sm"
-                    onClick={() => toggleRole(user)}
-                    disabled={actionLoading === user.id + "-role"}
-                  >
-                    {user.role === "ADMIN" ? (
-                      <>
-                        <ShieldOff className="mr-1 h-3 w-3" />
-                        Demote
-                      </>
-                    ) : (
-                      <>
-                        <Shield className="mr-1 h-3 w-3" />
-                        Promote
-                      </>
-                    )}
-                  </Button>
-                  <Button
-                    variant="secondary"
-                    size="sm"
-                    onClick={() => toggleDisabled(user)}
-                    disabled={actionLoading === user.id + "-disabled"}
-                  >
-                    {user.disabled ? (
-                      <>
-                        <UserCheck className="mr-1 h-3 w-3" />
-                        Enable
-                      </>
-                    ) : (
-                      <>
-                        <UserX className="mr-1 h-3 w-3" />
-                        Disable
-                      </>
-                    )}
-                  </Button>
-                  <Button
-                    variant="secondary"
-                    size="sm"
-                    onClick={() => impersonate(user)}
-                    disabled={actionLoading === user.id + "-impersonate"}
-                  >
-                    <Eye className="mr-1 h-3 w-3" />
-                    Impersonate
-                  </Button>
-                  <Button
-                    variant="secondary"
-                    size="sm"
-                    onClick={() => setResetPasswordUser(user)}
-                  >
-                    <KeyRound className="mr-1 h-3 w-3" />
-                    Reset PW
-                  </Button>
-                </div>
+      {/* Delete Confirmation Modal */}
+      {deleteUser && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50">
+          <Card className="w-full max-w-sm mx-4">
+            <CardContent className="p-6 text-center space-y-4">
+              <div className="mx-auto flex h-12 w-12 items-center justify-center rounded-full bg-destructive/10">
+                <AlertTriangle className="h-6 w-6 text-destructive-foreground" />
               </div>
-            ))}
-          </div>
-
-          {users.length === 0 && (
-            <div className="py-8 text-center text-muted-foreground">
-              No users found.
-            </div>
-          )}
-        </CardContent>
-      </Card>}
+              <div>
+                <h3 className="text-lg font-semibold">Delete User</h3>
+                <p className="mt-1 text-sm text-muted-foreground">
+                  Permanently delete <strong>{deleteUser.name || deleteUser.email}</strong>?
+                  This will remove all their data including {deleteUser._count.quotes} quotes and {deleteUser._count.jobs} jobs.
+                </p>
+              </div>
+              <div className="flex gap-2">
+                <Button variant="secondary" className="flex-1" onClick={() => setDeleteUser(null)} disabled={deleteLoading}>
+                  Cancel
+                </Button>
+                <Button
+                  variant="destructive"
+                  className="flex-1"
+                  onClick={handleDeleteUser}
+                  disabled={deleteLoading}
+                >
+                  {deleteLoading && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+                  Delete
+                </Button>
+              </div>
+            </CardContent>
+          </Card>
+        </div>
+      )}
     </div>
   );
 }

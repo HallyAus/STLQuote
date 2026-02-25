@@ -405,44 +405,6 @@ function LowStockAlertsList({ alerts }: { alerts: LowStockMaterial[] }) {
   );
 }
 
-function QuickActions() {
-  return (
-    <Card>
-      <CardHeader className="pb-3">
-        <CardTitle className="text-base font-semibold">Quick Actions</CardTitle>
-      </CardHeader>
-      <CardContent>
-        <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
-          <Link href="/quotes/new">
-            <Button variant="secondary" className="w-full justify-start">
-              <Plus className="mr-2 h-4 w-4" />
-              New Quote
-            </Button>
-          </Link>
-          <Link href="/calculator">
-            <Button variant="secondary" className="w-full justify-start">
-              <Calculator className="mr-2 h-4 w-4" />
-              Calculator
-            </Button>
-          </Link>
-          <Link href="/printers">
-            <Button variant="secondary" className="w-full justify-start">
-              <Printer className="mr-2 h-4 w-4" />
-              Printers
-            </Button>
-          </Link>
-          <Link href="/materials">
-            <Button variant="secondary" className="w-full justify-start">
-              <Palette className="mr-2 h-4 w-4" />
-              Materials
-            </Button>
-          </Link>
-        </div>
-      </CardContent>
-    </Card>
-  );
-}
-
 // ---------------------------------------------------------------------------
 // Loading skeleton
 // ---------------------------------------------------------------------------
@@ -532,10 +494,38 @@ export function DashboardPage() {
 
   return (
     <div className="space-y-6">
-      {/* Header */}
-      <div>
-        <h1 className="text-2xl font-bold tracking-tight">Dashboard</h1>
-        <p className="text-muted-foreground">Overview of your 3D printing business</p>
+      {/* Header + Quick Actions */}
+      <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+        <div>
+          <h1 className="text-2xl font-bold tracking-tight">Dashboard</h1>
+          <p className="text-muted-foreground">Overview of your 3D printing business</p>
+        </div>
+        <div className="flex flex-wrap gap-2">
+          <Link href="/quotes/new">
+            <Button size="sm" className="gap-1.5">
+              <Plus className="h-3.5 w-3.5" />
+              New Quote
+            </Button>
+          </Link>
+          <Link href="/calculator">
+            <Button variant="secondary" size="sm" className="gap-1.5">
+              <Calculator className="h-3.5 w-3.5" />
+              Calculator
+            </Button>
+          </Link>
+          <Link href="/clients">
+            <Button variant="secondary" size="sm" className="gap-1.5">
+              <Users className="h-3.5 w-3.5" />
+              Clients
+            </Button>
+          </Link>
+          <Link href="/jobs">
+            <Button variant="secondary" size="sm" className="gap-1.5">
+              <Briefcase className="h-3.5 w-3.5" />
+              Jobs
+            </Button>
+          </Link>
+        </div>
       </div>
 
       {/* Top row: 6 stat cards */}
@@ -595,9 +585,6 @@ export function DashboardPage() {
 
       {/* Revenue Charts */}
       <RevenueCharts />
-
-      {/* Quick Actions */}
-      <QuickActions />
     </div>
   );
 }
