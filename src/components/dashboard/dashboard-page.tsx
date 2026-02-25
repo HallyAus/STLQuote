@@ -18,12 +18,13 @@ import { Button } from "@/components/ui/button";
 import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { cn } from "@/lib/utils";
+import { QUOTE_STATUS, JOB_STATUS, JOB_STATUS_ORDER, BANNER, STATUS_TEXT, type QuoteStatus as QStatus } from "@/lib/status-colours";
 
 // ---------------------------------------------------------------------------
 // Types
 // ---------------------------------------------------------------------------
 
-type QuoteStatus = "DRAFT" | "SENT" | "ACCEPTED" | "REJECTED" | "EXPIRED";
+type QuoteStatus = QStatus;
 
 interface DashboardStats {
   totalQuotes: number;
@@ -86,53 +87,19 @@ interface DashboardData {
 // Constants
 // ---------------------------------------------------------------------------
 
-const STATUS_LABEL: Record<QuoteStatus, string> = {
-  DRAFT: "Draft",
-  SENT: "Sent",
-  ACCEPTED: "Accepted",
-  REJECTED: "Rejected",
-  EXPIRED: "Expired",
-};
-
-const STATUS_VARIANT: Record<QuoteStatus, "default" | "info" | "success" | "destructive" | "warning"> = {
-  DRAFT: "default",
-  SENT: "info",
-  ACCEPTED: "success",
-  REJECTED: "destructive",
-  EXPIRED: "warning",
-};
-
 const QUOTE_BREAKDOWN = [
-  { key: "draftQuotes", label: "Draft", colour: "bg-gray-400" },
-  { key: "sentQuotes", label: "Sent", colour: "bg-blue-400" },
-  { key: "acceptedQuotes", label: "Accepted", colour: "bg-green-400" },
-  { key: "rejectedQuotes", label: "Rejected", colour: "bg-red-400" },
-  { key: "expiredQuotes", label: "Expired", colour: "bg-orange-400" },
+  { key: "draftQuotes", label: "Draft", colour: QUOTE_STATUS.DRAFT.barColour },
+  { key: "sentQuotes", label: "Sent", colour: QUOTE_STATUS.SENT.barColour },
+  { key: "acceptedQuotes", label: "Accepted", colour: QUOTE_STATUS.ACCEPTED.barColour },
+  { key: "rejectedQuotes", label: "Rejected", colour: QUOTE_STATUS.REJECTED.barColour },
+  { key: "expiredQuotes", label: "Expired", colour: QUOTE_STATUS.EXPIRED.barColour },
 ] as const;
 
-const JOB_PIPELINE = [
-  { status: "QUEUED", label: "Queued", colour: "bg-gray-400" },
-  { status: "PRINTING", label: "Printing", colour: "bg-blue-400" },
-  { status: "POST_PROCESSING", label: "Post-Processing", colour: "bg-orange-400" },
-  { status: "QUALITY_CHECK", label: "Quality Check", colour: "bg-yellow-400" },
-  { status: "PACKING", label: "Packing", colour: "bg-purple-400" },
-  { status: "SHIPPED", label: "Shipped", colour: "bg-cyan-400" },
-  { status: "COMPLETE", label: "Complete", colour: "bg-green-400" },
-];
-
-const JOB_STATUS_LABEL: Record<string, string> = Object.fromEntries(
-  JOB_PIPELINE.map((j) => [j.status, j.label])
-);
-
-const JOB_BADGE_VARIANT: Record<string, "default" | "info" | "success" | "warning"> = {
-  QUEUED: "default",
-  PRINTING: "info",
-  POST_PROCESSING: "warning",
-  QUALITY_CHECK: "info",
-  PACKING: "warning",
-  SHIPPED: "success",
-  COMPLETE: "success",
-};
+const JOB_PIPELINE = JOB_STATUS_ORDER.map((status) => ({
+  status,
+  label: JOB_STATUS[status].label,
+  colour: JOB_STATUS[status].dotColour,
+}));
 
 // ---------------------------------------------------------------------------
 // Helpers
@@ -262,13 +229,13 @@ function StockHealthCard({ stats }: { stats: DashboardStats }) {
         </div>
         <div className="flex items-center justify-between text-sm">
           <span className="text-muted-foreground">Low stock</span>
-          <span className={cn("font-medium tabular-nums", stats.lowStockCount > 0 && "text-orange-500")}>
+          <span className={cn("font-medium tabular-nums", stats.lowStockCount > 0 && STATUS_TEXT.warning)}>
             {stats.lowStockCount}
           </span>
         </div>
         <div className="flex items-center justify-between text-sm">
           <span className="text-muted-foreground">Out of stock</span>
-          <span className={cn("font-medium tabular-nums", stats.outOfStockCount > 0 && "text-red-500")}>
+          <span className={cn("font-medium tabular-nums", stats.outOfStockCount > 0 && STATUS_TEXT.danger)}>
             {stats.outOfStockCount}
           </span>
         </div>
@@ -317,8 +284,8 @@ function RecentQuotesList({ quotes }: { quotes: DashboardQuote[] }) {
                 <div className="min-w-0">
                   <div className="flex items-center gap-2">
                     <span className="text-sm font-medium">{quote.quoteNumber}</span>
-                    <Badge variant={STATUS_VARIANT[quote.status]}>
-                      {STATUS_LABEL[quote.status]}
+                    <Badge variant={QUOTE_STATUS[quote.status].variant}>
+                      {QUOTE_STATUS[quote.status].label}
                     </Badge>
                   </div>
                   <p className="mt-0.5 truncate text-sm text-muted-foreground">
@@ -368,8 +335,8 @@ function ActiveJobsList({ jobs }: { jobs: DashboardJob[] }) {
                     {job.printer?.name ?? "No printer"}
                   </p>
                 </div>
-                <Badge variant={JOB_BADGE_VARIANT[job.status] ?? "default"}>
-                  {JOB_STATUS_LABEL[job.status] ?? job.status}
+                <Badge variant={JOB_STATUS[job.status as keyof typeof JOB_STATUS]?.variant ?? "default"}>
+                  {JOB_STATUS[job.status as keyof typeof JOB_STATUS]?.label ?? job.status}
                 </Badge>
               </Link>
             ))}
@@ -386,7 +353,7 @@ function LowStockAlertsList({ alerts }: { alerts: LowStockMaterial[] }) {
       <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-3">
         <CardTitle className="text-base font-semibold">
           <span className="flex items-center gap-2">
-            <AlertTriangle className="h-4 w-4 text-orange-500" />
+            <AlertTriangle className={cn("h-4 w-4", STATUS_TEXT.warning)} />
             Low Stock
           </span>
         </CardTitle>
@@ -396,7 +363,7 @@ function LowStockAlertsList({ alerts }: { alerts: LowStockMaterial[] }) {
       </CardHeader>
       <CardContent>
         {alerts.length === 0 ? (
-          <div className="flex items-center gap-2 rounded-lg bg-green-500/10 px-3 py-2 text-sm text-green-600 dark:text-green-400">
+          <div className={cn("flex items-center gap-2", BANNER.success)}>
             All stock levels OK
           </div>
         ) : (
@@ -419,7 +386,7 @@ function LowStockAlertsList({ alerts }: { alerts: LowStockMaterial[] }) {
                   <p
                     className={cn(
                       "font-medium tabular-nums",
-                      material.stockQty === 0 ? "text-red-500" : "text-orange-500"
+                      material.stockQty === 0 ? STATUS_TEXT.danger : STATUS_TEXT.warning
                     )}
                   >
                     {material.stockQty} in stock

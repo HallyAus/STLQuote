@@ -407,7 +407,7 @@ export default function AdminPage() {
                   </div>
                 )}
                 {resetSuccess && (
-                  <div className="rounded-md bg-green-500/10 px-3 py-2 text-sm text-green-500">
+                  <div className="rounded-md bg-success/10 px-3 py-2 text-sm text-success-foreground">
                     Password updated successfully
                   </div>
                 )}
@@ -514,7 +514,7 @@ export default function AdminPage() {
                         className={`inline-flex rounded-full px-2 py-0.5 text-xs font-medium ${
                           user.disabled
                             ? "bg-destructive/10 text-destructive-foreground"
-                            : "bg-green-500/10 text-green-500"
+                            : "bg-success/15 text-success-foreground"
                         }`}
                       >
                         {user.disabled ? "Disabled" : "Active"}
@@ -628,7 +628,7 @@ export default function AdminPage() {
                       className={`inline-flex rounded-full px-2 py-0.5 text-xs font-medium ${
                         user.disabled
                           ? "bg-destructive/10 text-destructive-foreground"
-                          : "bg-green-500/10 text-green-500"
+                          : "bg-success/15 text-success-foreground"
                       }`}
                     >
                       {user.disabled ? "Disabled" : "Active"}

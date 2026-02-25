@@ -5,6 +5,7 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { cn } from "@/lib/utils";
+import { JOB_STATUS, JOB_STATUS_ORDER, BANNER, type JobStatus as JStatus } from "@/lib/status-colours";
 import { Select } from "@/components/ui/select";
 import { Textarea } from "@/components/ui/textarea";
 import { Badge } from "@/components/ui/badge";
@@ -77,67 +78,6 @@ interface QuoteOption {
 // Constants
 // ---------------------------------------------------------------------------
 
-const STATUS_ORDER: JobStatus[] = [
-  "QUEUED",
-  "PRINTING",
-  "POST_PROCESSING",
-  "QUALITY_CHECK",
-  "PACKING",
-  "SHIPPED",
-  "COMPLETE",
-];
-
-const STATUS_CONFIG: Record<
-  JobStatus,
-  { label: string; colour: string; bgColour: string }
-> = {
-  QUEUED: {
-    label: "Queued",
-    colour: "text-gray-500",
-    bgColour: "bg-gray-500/15",
-  },
-  PRINTING: {
-    label: "Printing",
-    colour: "text-blue-500",
-    bgColour: "bg-blue-500/15",
-  },
-  POST_PROCESSING: {
-    label: "Post-Processing",
-    colour: "text-orange-500",
-    bgColour: "bg-orange-500/15",
-  },
-  QUALITY_CHECK: {
-    label: "Quality Check",
-    colour: "text-yellow-500",
-    bgColour: "bg-yellow-500/15",
-  },
-  PACKING: {
-    label: "Packing",
-    colour: "text-purple-500",
-    bgColour: "bg-purple-500/15",
-  },
-  SHIPPED: {
-    label: "Shipped",
-    colour: "text-cyan-500",
-    bgColour: "bg-cyan-500/15",
-  },
-  COMPLETE: {
-    label: "Complete",
-    colour: "text-green-500",
-    bgColour: "bg-green-500/15",
-  },
-};
-
-const STATUS_BADGE_VARIANT: Record<JobStatus, "default" | "info" | "success" | "warning"> = {
-  QUEUED: "default",
-  PRINTING: "info",
-  POST_PROCESSING: "warning",
-  QUALITY_CHECK: "info",
-  PACKING: "warning",
-  SHIPPED: "success",
-  COMPLETE: "success",
-};
-
 type FilterMode = "ALL" | "ACTIVE" | "COMPLETE";
 
 const FILTER_OPTIONS: { value: FilterMode; label: string }[] = [
@@ -174,9 +114,9 @@ function truncate(text: string, maxLength: number): string {
 }
 
 function getNextStatus(status: JobStatus): JobStatus | null {
-  const idx = STATUS_ORDER.indexOf(status);
-  if (idx < 0 || idx >= STATUS_ORDER.length - 1) return null;
-  return STATUS_ORDER[idx + 1];
+  const idx = JOB_STATUS_ORDER.indexOf(status);
+  if (idx < 0 || idx >= JOB_STATUS_ORDER.length - 1) return null;
+  return JOB_STATUS_ORDER[idx + 1];
 }
 
 // ---------------------------------------------------------------------------
@@ -196,7 +136,7 @@ function JobCardContent({
   movingId?: string | null;
   dragHandle?: React.ReactNode;
 }) {
-  const config = STATUS_CONFIG[job.status];
+  const config = JOB_STATUS[job.status];
   const nextStatus = getNextStatus(job.status);
   const isMoving = movingId === job.id;
 
@@ -225,7 +165,7 @@ function JobCardContent({
                   </p>
                 )}
               </div>
-              <Badge variant={STATUS_BADGE_VARIANT[job.status]}>
+              <Badge variant={JOB_STATUS[job.status].variant}>
                 {config.label}
               </Badge>
             </div>
@@ -256,7 +196,7 @@ function JobCardContent({
                   ) : (
                     <>
                       <ChevronRight className="mr-1 h-3 w-3" />
-                      {STATUS_CONFIG[nextStatus].label}
+                      {JOB_STATUS[nextStatus].label}
                     </>
                   )}
                 </Button>
@@ -332,27 +272,18 @@ function KanbanColumn({
   onMoveNext: (job: Job) => void;
   movingId: string | null;
 }) {
-  const config = STATUS_CONFIG[status];
   const { setNodeRef, isOver } = useDroppable({ id: status });
 
   return (
     <div
       className={cn(
-        "flex h-full w-64 flex-shrink-0 flex-col rounded-lg border bg-muted/30 transition-colors",
+        "flex h-full min-w-[85vw] snap-center flex-shrink-0 flex-col rounded-lg border bg-muted/30 transition-colors sm:min-w-0 sm:w-64",
         isOver ? "border-primary/50 bg-primary/5" : "border-border"
       )}
     >
       <div className="flex items-center gap-2 border-b border-border px-3 py-2">
-        <span
-          className={cn(
-            "h-2 w-2 rounded-full",
-            config.bgColour.replace("/15", "")
-          )}
-          style={{
-            backgroundColor: `var(--${config.colour.replace("text-", "")}, currentColor)`,
-          }}
-        />
-        <span className="text-sm font-medium">{config.label}</span>
+        <span className={cn("h-2 w-2 rounded-full", JOB_STATUS[status].dotColour)} />
+        <span className="text-sm font-medium">{JOB_STATUS[status].label}</span>
         <span className="ml-auto rounded-full bg-muted px-2 py-0.5 text-xs font-medium text-muted-foreground">
           {jobs.length}
         </span>
@@ -435,7 +366,7 @@ function ListView({
           </thead>
           <tbody>
             {jobs.map((job) => {
-              const config = STATUS_CONFIG[job.status];
+              const config = JOB_STATUS[job.status];
               const nextStatus = getNextStatus(job.status);
               const isMoving = movingId === job.id;
 
@@ -452,7 +383,7 @@ function ListView({
                     {job.printer?.name ?? "\u2014"}
                   </td>
                   <td className="px-4 py-3">
-                    <Badge variant={STATUS_BADGE_VARIANT[job.status]}>
+                    <Badge variant={JOB_STATUS[job.status].variant}>
                       {config.label}
                     </Badge>
                   </td>
@@ -479,7 +410,7 @@ function ListView({
                         ) : (
                           <>
                             <ChevronRight className="mr-1 h-3 w-3" />
-                            {STATUS_CONFIG[nextStatus].label}
+                            {JOB_STATUS[nextStatus].label}
                           </>
                         )}
                       </Button>
@@ -559,7 +490,7 @@ function NewJobModal({
       </DialogHeader>
       <div className="space-y-4">
         {error && (
-          <div className="rounded-md border border-red-300 bg-red-50 p-3 text-sm text-red-700 dark:border-red-800 dark:bg-red-950 dark:text-red-300">
+          <div className={BANNER.error}>
             {error}
           </div>
         )}
@@ -723,7 +654,7 @@ function JobDetailModal({
       </DialogHeader>
       <div className="space-y-4">
         {error && (
-          <div className="rounded-md border border-red-300 bg-red-50 p-3 text-sm text-red-700 dark:border-red-800 dark:bg-red-950 dark:text-red-300">
+          <div className={BANNER.error}>
             {error}
           </div>
         )}
@@ -761,9 +692,9 @@ function JobDetailModal({
           label="Status"
           value={status}
           onChange={(e) => setStatus(e.target.value as JobStatus)}
-          options={STATUS_ORDER.map((s) => ({
+          options={JOB_STATUS_ORDER.map((s) => ({
             value: s,
-            label: STATUS_CONFIG[s].label,
+            label: JOB_STATUS[s].label,
           }))}
         />
 
@@ -814,7 +745,7 @@ function JobDetailModal({
             variant="ghost"
             onClick={handleDelete}
             disabled={saving || deleting}
-            className="text-red-500 hover:text-red-600 hover:bg-red-500/10"
+            className="text-destructive-foreground hover:text-destructive-foreground hover:bg-destructive/10"
           >
             {deleting ? (
               <Loader2 className="mr-2 h-4 w-4 animate-spin" />
@@ -959,7 +890,7 @@ export function JobsPage() {
     let targetStatus = over.id as string;
 
     // If dropped on another card, find that card's status
-    if (!STATUS_ORDER.includes(targetStatus as JobStatus)) {
+    if (!JOB_STATUS_ORDER.includes(targetStatus as JobStatus)) {
       const targetJob = jobs.find((j) => j.id === targetStatus);
       if (targetJob) {
         targetStatus = targetJob.status;
@@ -1069,7 +1000,7 @@ export function JobsPage() {
 
       {/* Error banner */}
       {error && (
-        <div className="rounded-md border border-red-300 bg-red-50 p-3 text-sm text-red-700 dark:border-red-800 dark:bg-red-950 dark:text-red-300">
+        <div className={BANNER.error}>
           {error}
         </div>
       )}
@@ -1103,9 +1034,9 @@ export function JobsPage() {
           onDragEnd={handleDragEnd}
           onDragCancel={handleDragCancel}
         >
-          <div className="overflow-x-auto pb-4">
+          <div className="snap-x snap-mandatory overflow-x-auto pb-4">
             <div className="flex gap-3" style={{ minWidth: "fit-content" }}>
-              {STATUS_ORDER.filter((status) => {
+              {JOB_STATUS_ORDER.filter((status) => {
                 if (filter === "ACTIVE") return status !== "COMPLETE";
                 if (filter === "COMPLETE") return status === "COMPLETE";
                 return true;

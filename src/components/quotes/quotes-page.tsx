@@ -8,12 +8,11 @@ import { roundCurrency } from "@/lib/utils";
 import { Select } from "@/components/ui/select";
 import { Badge } from "@/components/ui/badge";
 import { Plus, FileText, Loader2 } from "lucide-react";
+import { QUOTE_STATUS, BANNER, type QuoteStatus } from "@/lib/status-colours";
 
 // ---------------------------------------------------------------------------
 // Types
 // ---------------------------------------------------------------------------
-
-type QuoteStatus = "DRAFT" | "SENT" | "ACCEPTED" | "REJECTED" | "EXPIRED";
 
 interface Quote {
   id: string;
@@ -46,21 +45,6 @@ const STATUS_OPTIONS: { value: string; label: string }[] = [
   { value: "EXPIRED", label: "Expired" },
 ];
 
-const STATUS_LABEL: Record<QuoteStatus, string> = {
-  DRAFT: "Draft",
-  SENT: "Sent",
-  ACCEPTED: "Accepted",
-  REJECTED: "Rejected",
-  EXPIRED: "Expired",
-};
-
-const STATUS_VARIANT: Record<QuoteStatus, "default" | "info" | "success" | "destructive" | "warning"> = {
-  DRAFT: "default",
-  SENT: "info",
-  ACCEPTED: "success",
-  REJECTED: "destructive",
-  EXPIRED: "warning",
-};
 
 function formatDate(dateStr: string): string {
   return new Date(dateStr).toLocaleDateString("en-AU", {
@@ -98,8 +82,8 @@ function QuoteCard({
               {quote.client?.name ?? "\u2014"}
             </p>
           </div>
-          <Badge variant={STATUS_VARIANT[quote.status]}>
-            {STATUS_LABEL[quote.status]}
+          <Badge variant={QUOTE_STATUS[quote.status].variant}>
+            {QUOTE_STATUS[quote.status].label}
           </Badge>
         </div>
         <div className="mt-3 grid grid-cols-3 gap-2 text-sm">
@@ -190,7 +174,7 @@ export function QuotesPage() {
 
       {/* Error banner */}
       {error && (
-        <div className="rounded-md border border-red-300 bg-red-50 p-3 text-sm text-red-700 dark:border-red-800 dark:bg-red-950 dark:text-red-300">
+        <div className={BANNER.error}>
           {error}
         </div>
       )}
@@ -262,8 +246,8 @@ export function QuotesPage() {
                           {quote.client?.name ?? "\u2014"}
                         </td>
                         <td className="px-4 py-3">
-                          <Badge variant={STATUS_VARIANT[quote.status]}>
-                            {STATUS_LABEL[quote.status]}
+                          <Badge variant={QUOTE_STATUS[quote.status].variant}>
+                            {QUOTE_STATUS[quote.status].label}
                           </Badge>
                         </td>
                         <td className="px-4 py-3 text-right tabular-nums">

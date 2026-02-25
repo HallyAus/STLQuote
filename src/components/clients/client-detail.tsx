@@ -5,11 +5,9 @@ import { useRouter, useParams } from "next/navigation";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card";
+import { Badge } from "@/components/ui/badge";
 import { cn, roundCurrency } from "@/lib/utils";
-
-// ---------- Types ----------
-
-type QuoteStatus = "DRAFT" | "SENT" | "ACCEPTED" | "REJECTED" | "EXPIRED";
+import { tagColour, QUOTE_STATUS, BANNER, type QuoteStatus } from "@/lib/status-colours";
 
 interface ClientQuote {
   id: string;
@@ -60,26 +58,6 @@ const emptyForm: ClientFormData = {
 };
 
 // ---------- Helpers ----------
-
-function tagColour(tag: string): string {
-  const lower = tag.toLowerCase();
-  if (lower === "tradie") return "bg-orange-500/15 text-orange-600 dark:text-orange-400";
-  if (lower === "ev owner") return "bg-green-500/15 text-green-600 dark:text-green-400";
-  if (lower === "maker") return "bg-blue-500/15 text-blue-600 dark:text-blue-400";
-  if (lower === "commercial") return "bg-purple-500/15 text-purple-600 dark:text-purple-400";
-  return "bg-gray-500/15 text-gray-600 dark:text-gray-400";
-}
-
-function statusBadge(status: QuoteStatus) {
-  const map: Record<QuoteStatus, { label: string; className: string }> = {
-    DRAFT: { label: "Draft", className: "bg-gray-500/15 text-gray-500" },
-    SENT: { label: "Sent", className: "bg-blue-500/15 text-blue-500" },
-    ACCEPTED: { label: "Accepted", className: "bg-green-500/15 text-green-500" },
-    REJECTED: { label: "Rejected", className: "bg-red-500/15 text-red-500" },
-    EXPIRED: { label: "Expired", className: "bg-orange-500/15 text-orange-500" },
-  };
-  return map[status];
-}
 
 function formatDate(dateStr: string): string {
   return new Date(dateStr).toLocaleDateString("en-AU", {
@@ -294,7 +272,7 @@ export function ClientDetail() {
 
       {/* Error banner */}
       {error && (
-        <div className="rounded-md border border-red-300 bg-red-50 p-3 text-sm text-red-700 dark:border-red-800 dark:bg-red-950 dark:text-red-300">
+        <div className={BANNER.error}>
           {error}
         </div>
       )}
@@ -317,7 +295,7 @@ export function ClientDetail() {
               </Button>
               <Button
                 variant="ghost"
-                className="text-red-500 hover:text-red-600 hover:bg-red-500/10"
+                className="text-destructive-foreground hover:bg-destructive/10"
                 onClick={handleDelete}
               >
                 Delete
@@ -449,9 +427,7 @@ export function ClientDetail() {
                     </tr>
                   </thead>
                   <tbody>
-                    {client.quotes.map((quote) => {
-                      const badge = statusBadge(quote.status);
-                      return (
+                    {client.quotes.map((quote) => (
                         <tr
                           key={quote.id}
                           className="cursor-pointer border-b border-border last:border-0 hover:bg-muted/50 transition-colors"
@@ -461,14 +437,9 @@ export function ClientDetail() {
                             {quote.quoteNumber}
                           </td>
                           <td className="px-3 py-2">
-                            <span
-                              className={cn(
-                                "rounded-full px-2 py-0.5 text-xs font-medium",
-                                badge.className
-                              )}
-                            >
-                              {badge.label}
-                            </span>
+                            <Badge variant={QUOTE_STATUS[quote.status].variant}>
+                              {QUOTE_STATUS[quote.status].label}
+                            </Badge>
                           </td>
                           <td className="px-3 py-2 text-right tabular-nums font-medium">
                             {formatCurrency(quote.total)}
@@ -477,17 +448,14 @@ export function ClientDetail() {
                             {formatDate(quote.createdAt)}
                           </td>
                         </tr>
-                      );
-                    })}
+                    ))}
                   </tbody>
                 </table>
               </div>
 
               {/* Mobile cards */}
               <div className="space-y-3 md:hidden">
-                {client.quotes.map((quote) => {
-                  const badge = statusBadge(quote.status);
-                  return (
+                {client.quotes.map((quote) => (
                     <div
                       key={quote.id}
                       className="cursor-pointer rounded-lg border border-border p-3 transition-colors hover:bg-muted/50"
@@ -495,14 +463,9 @@ export function ClientDetail() {
                     >
                       <div className="flex items-center justify-between">
                         <p className="font-medium">{quote.quoteNumber}</p>
-                        <span
-                          className={cn(
-                            "rounded-full px-2 py-0.5 text-xs font-medium",
-                            badge.className
-                          )}
-                        >
-                          {badge.label}
-                        </span>
+                        <Badge variant={QUOTE_STATUS[quote.status].variant}>
+                          {QUOTE_STATUS[quote.status].label}
+                        </Badge>
                       </div>
                       <div className="mt-2 flex items-center justify-between text-sm">
                         <span className="text-muted-foreground">
@@ -513,8 +476,7 @@ export function ClientDetail() {
                         </span>
                       </div>
                     </div>
-                  );
-                })}
+                ))}
               </div>
             </>
           )}

@@ -8,6 +8,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { Dialog, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
 import { roundCurrency } from "@/lib/utils";
 import { PRINTER_PRESETS } from "@/lib/presets";
+import { BANNER } from "@/lib/status-colours";
 
 // ---------- Types ----------
 
@@ -288,7 +289,7 @@ export function PrintersPage() {
 
       {/* Error banner */}
       {error && (
-        <div className="rounded-md border border-red-300 bg-red-50 p-3 text-sm text-red-700 dark:border-red-800 dark:bg-red-950 dark:text-red-300">
+        <div className={BANNER.error}>
           {error}
         </div>
       )}

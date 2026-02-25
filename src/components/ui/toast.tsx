@@ -56,7 +56,7 @@ export function ToastProvider({ children }: { children: React.ReactNode }) {
     <ToastContext.Provider value={{ toast }}>
       {children}
       {toasts.length > 0 && (
-        <div className="fixed bottom-4 right-4 z-[100] flex flex-col gap-2">
+        <div className="fixed bottom-4 left-4 right-4 z-[100] flex flex-col items-end gap-2 sm:left-auto sm:right-4">
           {toasts.map((t) => (
             <ToastItem key={t.id} toast={t} onDismiss={() => dismiss(t.id)} />
           ))}
@@ -68,8 +68,8 @@ export function ToastProvider({ children }: { children: React.ReactNode }) {
 
 const variantStyles: Record<ToastVariant, string> = {
   default: "border-border bg-card text-card-foreground",
-  success: "border-green-500/30 bg-green-500/10 text-green-700 dark:text-green-300",
-  error: "border-red-500/30 bg-red-500/10 text-red-700 dark:text-red-300",
+  success: "border-success/30 bg-success/10 text-success-foreground",
+  error: "border-destructive/30 bg-destructive/10 text-destructive-foreground",
 };
 
 const variantIcons: Record<ToastVariant, React.ReactNode> = {

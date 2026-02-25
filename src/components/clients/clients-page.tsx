@@ -9,7 +9,7 @@ import { Select } from "@/components/ui/select";
 import { Textarea } from "@/components/ui/textarea";
 import { Badge } from "@/components/ui/badge";
 import { Dialog, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
-import { cn } from "@/lib/utils";
+import { tagColour, BANNER } from "@/lib/status-colours";
 
 // ---------- Types ----------
 
@@ -53,20 +53,9 @@ const emptyForm: ClientFormData = {
   notes: "",
 };
 
-// ---------- Tag colours ----------
+// ---------- Helpers ----------
 
 const TAG_FILTER_OPTIONS = ["All", "Tradie", "EV Owner", "Maker", "Commercial", "Other"] as const;
-
-function tagColour(tag: string): string {
-  const lower = tag.toLowerCase();
-  if (lower === "tradie") return "bg-orange-500/15 text-orange-600 dark:text-orange-400";
-  if (lower === "ev owner") return "bg-green-500/15 text-green-600 dark:text-green-400";
-  if (lower === "maker") return "bg-blue-500/15 text-blue-600 dark:text-blue-400";
-  if (lower === "commercial") return "bg-purple-500/15 text-purple-600 dark:text-purple-400";
-  return "bg-gray-500/15 text-gray-600 dark:text-gray-400";
-}
-
-// ---------- Helpers ----------
 
 function clientToFormData(client: Client): ClientFormData {
   return {
@@ -287,7 +276,7 @@ export function ClientsPage() {
 
       {/* Error banner */}
       {error && (
-        <div className="rounded-md border border-red-300 bg-red-50 p-3 text-sm text-red-700 dark:border-red-800 dark:bg-red-950 dark:text-red-300">
+        <div className={BANNER.error}>
           {error}
         </div>
       )}

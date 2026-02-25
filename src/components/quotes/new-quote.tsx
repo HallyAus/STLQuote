@@ -8,6 +8,7 @@ import { Select } from "@/components/ui/select";
 import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card";
 import { Textarea } from "@/components/ui/textarea";
 import { ArrowLeft, Loader2, Calculator, UserPlus, X } from "lucide-react";
+import { BANNER } from "@/lib/status-colours";
 
 // ---------------------------------------------------------------------------
 // Types
@@ -247,7 +248,7 @@ export function NewQuote() {
           <div className="space-y-4">
             {/* Error banner */}
             {error && (
-              <div className="rounded-md border border-red-300 bg-red-50 p-3 text-sm text-red-700 dark:border-red-800 dark:bg-red-950 dark:text-red-300">
+              <div className={BANNER.error}>
                 {error}
               </div>
             )}

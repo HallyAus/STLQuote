@@ -56,14 +56,5 @@ export function formatRelativeTime(dateStr: string): string {
   return formatDate(dateStr);
 }
 
-/**
- * Return Tailwind colour classes for a client tag.
- */
-export function tagColour(tag: string): string {
-  const lower = tag.toLowerCase();
-  if (lower === "tradie") return "bg-orange-500/15 text-orange-600 dark:text-orange-400";
-  if (lower === "ev owner") return "bg-green-500/15 text-green-600 dark:text-green-400";
-  if (lower === "maker") return "bg-blue-500/15 text-blue-600 dark:text-blue-400";
-  if (lower === "commercial") return "bg-purple-500/15 text-purple-600 dark:text-purple-400";
-  return "bg-gray-500/15 text-gray-600 dark:text-gray-400";
-}
+// Re-export from single source of truth
+export { tagColour } from "./status-colours";

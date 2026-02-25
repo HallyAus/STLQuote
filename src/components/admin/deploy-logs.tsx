@@ -134,7 +134,7 @@ export function DeployLogs() {
                 key={idx}
                 className={`transition-colors ${
                   deploy.success
-                    ? "border-l-2 border-l-green-500"
+                    ? "border-l-2 border-l-success"
                     : "border-l-2 border-l-destructive"
                 }`}
               >
@@ -146,7 +146,7 @@ export function DeployLogs() {
                     <div className="flex items-center justify-between gap-4">
                       <div className="flex items-center gap-3 min-w-0">
                         {deploy.success ? (
-                          <CheckCircle className="h-5 w-5 shrink-0 text-green-500" />
+                          <CheckCircle className="h-5 w-5 shrink-0 text-success-foreground" />
                         ) : (
                           <XCircle className="h-5 w-5 shrink-0 text-destructive" />
                         )}

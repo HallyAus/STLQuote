@@ -19,12 +19,7 @@ import {
   Download,
   Briefcase,
 } from "lucide-react";
-
-// ---------------------------------------------------------------------------
-// Types
-// ---------------------------------------------------------------------------
-
-type QuoteStatus = "DRAFT" | "SENT" | "ACCEPTED" | "REJECTED" | "EXPIRED";
+import { QUOTE_STATUS, BANNER, type QuoteStatus } from "@/lib/status-colours";
 
 interface LineItem {
   id: string;
@@ -91,29 +86,7 @@ const EMPTY_LINE_ITEM: LineItemFormData = {
 // Helpers
 // ---------------------------------------------------------------------------
 
-const ALL_STATUSES: QuoteStatus[] = [
-  "DRAFT",
-  "SENT",
-  "ACCEPTED",
-  "REJECTED",
-  "EXPIRED",
-];
-
-const STATUS_LABEL: Record<QuoteStatus, string> = {
-  DRAFT: "Draft",
-  SENT: "Sent",
-  ACCEPTED: "Accepted",
-  REJECTED: "Rejected",
-  EXPIRED: "Expired",
-};
-
-const STATUS_VARIANT: Record<QuoteStatus, "default" | "info" | "success" | "destructive" | "warning"> = {
-  DRAFT: "default",
-  SENT: "info",
-  ACCEPTED: "success",
-  REJECTED: "destructive",
-  EXPIRED: "warning",
-};
+const ALL_STATUSES = Object.keys(QUOTE_STATUS) as QuoteStatus[];
 
 function formatDate(dateStr: string | null): string {
   if (!dateStr) return "\u2014";
@@ -635,7 +608,7 @@ export function QuoteDetail() {
 
       {/* Error banner */}
       {error && (
-        <div className="rounded-md border border-red-300 bg-red-50 p-3 text-sm text-red-700 dark:border-red-800 dark:bg-red-950 dark:text-red-300">
+        <div className={BANNER.error}>
           {error}
         </div>
       )}
@@ -671,12 +644,12 @@ export function QuoteDetail() {
                 onChange={(e) => handleStatusChange(e.target.value)}
                 options={ALL_STATUSES.map((s) => ({
                   value: s,
-                  label: STATUS_LABEL[s],
+                  label: QUOTE_STATUS[s].label,
                 }))}
                 className="w-36"
               />
-              <Badge variant={STATUS_VARIANT[quote.status]}>
-                {STATUS_LABEL[quote.status]}
+              <Badge variant={QUOTE_STATUS[quote.status].variant}>
+                {QUOTE_STATUS[quote.status].label}
               </Badge>
             </div>
           </div>
@@ -960,7 +933,7 @@ export function QuoteDetail() {
           </Button>
           <Button
             variant="ghost"
-            className="text-red-500 hover:text-red-600 hover:bg-red-500/10"
+            className="text-destructive-foreground hover:bg-destructive/10"
             onClick={handleDeleteQuote}
           >
             <Trash2 className="mr-2 h-4 w-4" />
