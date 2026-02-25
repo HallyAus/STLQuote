@@ -1,11 +1,13 @@
 import { NextRequest, NextResponse } from "next/server";
 import { z } from "zod";
+import bcrypt from "bcryptjs";
 import { prisma } from "@/lib/prisma";
 import { requireAdmin } from "@/lib/auth-helpers";
 
 const updateUserSchema = z.object({
   role: z.enum(["USER", "ADMIN"]).optional(),
   disabled: z.boolean().optional(),
+  password: z.string().min(8, "Password must be at least 8 characters").optional(),
 });
 
 export async function PUT(
@@ -42,9 +44,15 @@ export async function PUT(
       );
     }
 
+    const { password, ...rest } = parsed.data;
+    const data: Record<string, unknown> = { ...rest };
+    if (password) {
+      data.passwordHash = await bcrypt.hash(password, 12);
+    }
+
     const user = await prisma.user.update({
       where: { id },
-      data: parsed.data,
+      data,
       select: {
         id: true,
         name: true,

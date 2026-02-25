@@ -15,6 +15,7 @@ import {
   Rocket,
   UserPlus,
   X,
+  KeyRound,
 } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import { Select } from "@/components/ui/select";
@@ -60,6 +61,11 @@ export default function AdminPage() {
   });
   const [createLoading, setCreateLoading] = useState(false);
   const [createError, setCreateError] = useState("");
+  const [resetPasswordUser, setResetPasswordUser] = useState<AdminUser | null>(null);
+  const [resetPassword, setResetPassword] = useState("");
+  const [resetLoading, setResetLoading] = useState(false);
+  const [resetError, setResetError] = useState("");
+  const [resetSuccess, setResetSuccess] = useState(false);
 
   const fetchUsers = useCallback(async () => {
     try {
@@ -162,6 +168,35 @@ export default function AdminPage() {
       setCreateError("Something went wrong");
     } finally {
       setCreateLoading(false);
+    }
+  }
+
+  async function handleResetPassword(e: React.FormEvent) {
+    e.preventDefault();
+    setResetError("");
+    setResetSuccess(false);
+    setResetLoading(true);
+
+    try {
+      const res = await fetch(`/api/admin/users/${resetPasswordUser!.id}`, {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ password: resetPassword }),
+      });
+
+      const data = await res.json();
+
+      if (!res.ok) {
+        setResetError(data.error || "Failed to reset password");
+        return;
+      }
+
+      setResetSuccess(true);
+      setResetPassword("");
+    } catch {
+      setResetError("Something went wrong");
+    } finally {
+      setResetLoading(false);
     }
   }
 
@@ -335,6 +370,88 @@ export default function AdminPage() {
         </div>
       )}
 
+      {/* Reset Password Modal */}
+      {resetPasswordUser && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50">
+          <Card className="w-full max-w-md mx-4">
+            <CardHeader>
+              <div className="flex items-center justify-between">
+                <CardTitle className="flex items-center gap-2">
+                  <KeyRound className="h-5 w-5" />
+                  Reset Password
+                </CardTitle>
+                <button
+                  onClick={() => {
+                    setResetPasswordUser(null);
+                    setResetPassword("");
+                    setResetError("");
+                    setResetSuccess(false);
+                  }}
+                  className="rounded-md p-1.5 hover:bg-muted"
+                >
+                  <X className="h-4 w-4" />
+                </button>
+              </div>
+            </CardHeader>
+            <CardContent>
+              <p className="mb-4 text-sm text-muted-foreground">
+                Set a new password for{" "}
+                <span className="font-medium text-foreground">
+                  {resetPasswordUser.name || resetPasswordUser.email}
+                </span>
+              </p>
+              <form onSubmit={handleResetPassword} className="space-y-4">
+                {resetError && (
+                  <div className="rounded-md bg-destructive/10 px-3 py-2 text-sm text-destructive-foreground">
+                    {resetError}
+                  </div>
+                )}
+                {resetSuccess && (
+                  <div className="rounded-md bg-green-500/10 px-3 py-2 text-sm text-green-500">
+                    Password updated successfully
+                  </div>
+                )}
+                <Input
+                  label="New password"
+                  type="password"
+                  value={resetPassword}
+                  onChange={(e) => setResetPassword(e.target.value)}
+                  placeholder="At least 8 characters"
+                  required
+                  minLength={8}
+                  autoFocus
+                />
+                <div className="flex gap-2 pt-2">
+                  <Button
+                    type="button"
+                    variant="secondary"
+                    className="flex-1"
+                    onClick={() => {
+                      setResetPasswordUser(null);
+                      setResetPassword("");
+                      setResetError("");
+                      setResetSuccess(false);
+                    }}
+                  >
+                    {resetSuccess ? "Done" : "Cancel"}
+                  </Button>
+                  <Button
+                    type="submit"
+                    className="flex-1"
+                    disabled={resetLoading || resetSuccess}
+                  >
+                    {resetLoading && (
+                      <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                    )}
+                    Reset Password
+                  </Button>
+                </div>
+              </form>
+            </CardContent>
+          </Card>
+        </div>
+      )}
+
       {/* Users table */}
       {activeTab === "users" && <Card>
         <CardHeader>
@@ -465,6 +582,14 @@ export default function AdminPage() {
                             <Eye className="h-4 w-4" />
                           )}
                         </Button>
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          onClick={() => setResetPasswordUser(user)}
+                          title="Reset password"
+                        >
+                          <KeyRound className="h-4 w-4" />
+                        </Button>
                       </div>
                     </td>
                   </tr>
@@ -562,6 +687,14 @@ export default function AdminPage() {
                   >
                     <Eye className="mr-1 h-3 w-3" />
                     Impersonate
+                  </Button>
+                  <Button
+                    variant="secondary"
+                    size="sm"
+                    onClick={() => setResetPasswordUser(user)}
+                  >
+                    <KeyRound className="mr-1 h-3 w-3" />
+                    Reset PW
                   </Button>
                 </div>
               </div>
