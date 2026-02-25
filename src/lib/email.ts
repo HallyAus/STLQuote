@@ -1,11 +1,15 @@
 import { Resend } from "resend";
 
-const resend = new Resend(process.env.RESEND_API_KEY);
-const fromAddress = process.env.RESEND_FROM || "Printforge <noreply@printforge.com.au>";
+// Lazy-init — Resend constructor throws if API key is missing (breaks Docker build)
+let resend: Resend | null = null;
 
-function isConfigured(): boolean {
-  return !!process.env.RESEND_API_KEY;
+function getResend(): Resend | null {
+  if (!process.env.RESEND_API_KEY) return null;
+  if (!resend) resend = new Resend(process.env.RESEND_API_KEY);
+  return resend;
 }
+
+const fromAddress = process.env.RESEND_FROM || "Printforge <noreply@printforge.com.au>";
 
 export async function sendEmail({
   to,
@@ -18,13 +22,14 @@ export async function sendEmail({
   html: string;
   attachments?: { filename: string; content: Buffer; contentType?: string }[];
 }): Promise<boolean> {
-  if (!isConfigured()) {
+  const client = getResend();
+  if (!client) {
     console.warn("RESEND_API_KEY not configured — skipping email to", to);
     return false;
   }
 
   try {
-    const { error } = await resend.emails.send({
+    const { error } = await client.emails.send({
       from: fromAddress,
       to,
       subject,
