@@ -15,6 +15,9 @@ import {
   Shield,
   LogOut,
   X,
+  Package,
+  Receipt,
+  Wrench,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import type { LucideIcon } from "lucide-react";
@@ -42,6 +45,7 @@ const navGroups: NavGroup[] = [
     label: "Business",
     items: [
       { href: "/quotes", label: "Quotes", icon: FileText },
+      { href: "/invoices", label: "Invoices", icon: Receipt },
       { href: "/clients", label: "Clients", icon: Users },
       { href: "/jobs", label: "Jobs", icon: Briefcase },
     ],
@@ -51,6 +55,8 @@ const navGroups: NavGroup[] = [
     items: [
       { href: "/printers", label: "Printers", icon: Printer },
       { href: "/materials", label: "Materials", icon: Palette },
+      { href: "/suppliers", label: "Suppliers", icon: Package },
+      { href: "/consumables", label: "Consumables", icon: Wrench },
     ],
   },
 ];

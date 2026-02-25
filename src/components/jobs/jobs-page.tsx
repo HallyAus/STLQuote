@@ -21,8 +21,11 @@ import {
   GripVertical,
   Clock,
   Download,
+  Receipt,
+  Camera,
 } from "lucide-react";
 import { JobTimeline } from "@/components/jobs/job-timeline";
+import { PhotoGallery } from "@/components/jobs/photo-gallery";
 import {
   DndContext,
   DragOverlay,
@@ -777,6 +780,15 @@ function JobDetailModal({
           <JobTimeline jobId={job.id} />
         </div>
 
+        {/* Photos */}
+        <div className="border-t border-border pt-3">
+          <div className="flex items-center gap-2 mb-2">
+            <Camera className="h-3.5 w-3.5 text-muted-foreground" />
+            <span className="text-xs font-medium text-muted-foreground">Photos</span>
+          </div>
+          <PhotoGallery jobId={job.id} />
+        </div>
+
         <div className="flex items-center justify-between pt-2">
           <Button
             variant="ghost"
@@ -792,6 +804,28 @@ function JobDetailModal({
             Delete
           </Button>
           <div className="flex gap-2">
+            {job.status === "COMPLETE" && (
+              <Button
+                variant="secondary"
+                onClick={async () => {
+                  try {
+                    const res = await fetch("/api/invoices", {
+                      method: "POST",
+                      headers: { "Content-Type": "application/json" },
+                      body: JSON.stringify({ jobId: job.id }),
+                    });
+                    if (!res.ok) throw new Error("Failed");
+                    const inv = await res.json();
+                    window.location.href = `/invoices/${inv.id}`;
+                  } catch {
+                    // Best-effort
+                  }
+                }}
+              >
+                <Receipt className="mr-2 h-4 w-4" />
+                Invoice
+              </Button>
+            )}
             <Button
               variant="secondary"
               onClick={onClose}

@@ -4,6 +4,7 @@ import {
   Page,
   Text,
   View,
+  Image,
   StyleSheet,
 } from "@react-pdf/renderer";
 
@@ -334,6 +335,7 @@ export interface QuotePDFData {
     abn: string | null;
     phone: string | null;
     email: string | null;
+    logoUrl: string | null;
   };
 }
 
@@ -365,6 +367,9 @@ export function QuoteDocument({ data }: { data: QuotePDFData }) {
           {/* Header: business + QUOTE label */}
           <View style={s.headerRow}>
             <View style={s.headerLeft}>
+              {biz.logoUrl && (
+                <Image src={biz.logoUrl} style={{ width: 48, height: 48, marginBottom: 6, objectFit: "contain" as any }} />
+              )}
               <Text style={s.businessName}>{businessName}</Text>
               {biz.address && <Text style={s.businessLine}>{biz.address}</Text>}
               <View style={s.businessDetails}>

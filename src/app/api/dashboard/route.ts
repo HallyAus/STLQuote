@@ -45,6 +45,9 @@ export async function GET() {
 
       // Materials
       allMaterials,
+
+      // Consumables
+      consumableAlerts,
     ] = await Promise.all([
       // Quote counts
       prisma.quote.count({ where: { userId: user.id } }),
@@ -110,6 +113,15 @@ export async function GET() {
         where: { userId: user.id },
         orderBy: { stockQty: "asc" },
       }),
+
+      // Consumables (all, filtered client-side like materials)
+      prisma.consumable.findMany({
+        where: { userId: user.id },
+        include: {
+          supplier: { select: { name: true, email: true } },
+        },
+        orderBy: { stockQty: "asc" },
+      }),
     ]);
 
     // Derive job status map
@@ -131,6 +143,18 @@ export async function GET() {
     const totalStockValue = Math.round(
       allMaterials.reduce((sum, m) => sum + m.price * m.stockQty, 0) * 100
     ) / 100;
+
+    // Consumable low-stock filtering
+    const lowStockConsumables = consumableAlerts.filter(
+      (c) => c.stockQty <= c.lowStockThreshold
+    ).map((c) => ({
+      id: c.id,
+      name: c.name,
+      category: c.category,
+      stockQty: c.stockQty,
+      lowStockThreshold: c.lowStockThreshold,
+      supplier: c.supplier ? { name: c.supplier.name, email: c.supplier.email } : null,
+    }));
 
     return NextResponse.json({
       stats: {
@@ -156,6 +180,7 @@ export async function GET() {
       recentQuotes,
       lowStockAlerts,
       activeJobs,
+      consumableAlerts: lowStockConsumables,
     });
   } catch (error) {
     console.error("Failed to fetch dashboard data:", error);

@@ -45,6 +45,9 @@ docker-compose.override.yml
 # Deploy logs (runtime data)
 deploy/logs/
 
+# Uploads (user-generated content, root level only)
+/uploads/
+
 # Misc
 *.tsbuildinfo
 next-env.d.ts

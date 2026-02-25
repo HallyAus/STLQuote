@@ -35,7 +35,7 @@ const updateSettingsSchema = z.object({
   businessAbn: z.string().nullable().optional(),
   businessPhone: z.string().nullable().optional(),
   businessEmail: z.string().email("Invalid email address").nullable().optional(),
-  businessLogoUrl: z.string().url("Invalid URL").nullable().optional(),
+  businessLogoUrl: z.string().max(200000).nullable().optional(),
   quoteTermsText: z.string().nullable().optional(),
   batchPricingTiers: z.string().nullable().optional(),
 });

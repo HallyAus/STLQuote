@@ -1,12 +1,14 @@
 import { roundCurrency } from "./utils";
+import { currencySymbol } from "./currency";
 
 /**
- * Format a number as AUD currency string.
- * Handles both raw decimals and already-rounded values.
+ * Format a number as a currency string.
+ * Defaults to AUD when no currency code is provided.
  */
-export function formatCurrency(value: number): string {
+export function formatCurrency(value: number, currency?: string): string {
+  const sym = currencySymbol(currency ?? "AUD");
   const rounded = roundCurrency(value);
-  return `$${rounded.toLocaleString("en-AU", {
+  return `${sym}${rounded.toLocaleString("en-AU", {
     minimumFractionDigits: 2,
     maximumFractionDigits: 2,
   })}`;

@@ -9,6 +9,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { Loader2, Save, Check } from "lucide-react";
 import { BatchPricingSettings } from "@/components/settings/batch-pricing-settings";
 import { WebhookSettings } from "@/components/settings/webhook-settings";
+import { LogoUpload } from "@/components/settings/logo-upload";
 import type { BatchTier } from "@/lib/batch-pricing";
 
 // ---------------------------------------------------------------------------
@@ -122,6 +123,7 @@ export function SettingsPage() {
     quoteTermsText: "",
   });
   const [batchTiers, setBatchTiers] = useState<BatchTier[]>([]);
+  const [logoUrl, setLogoUrl] = useState<string | null>(null);
 
   // ---- Fetch settings ----
 
@@ -133,6 +135,7 @@ export function SettingsPage() {
       if (!res.ok) throw new Error("Failed to fetch settings");
       const data: Settings & { batchPricingTiers?: string | null } = await res.json();
       setForm(settingsToFormData(data));
+      setLogoUrl(data.businessLogoUrl ?? null);
       if (data.batchPricingTiers) {
         try {
           const tiers = JSON.parse(data.batchPricingTiers);
@@ -176,6 +179,7 @@ export function SettingsPage() {
 
       const payload = {
         ...formDataToPayload(form),
+        businessLogoUrl: logoUrl,
         batchPricingTiers: batchTiers.length > 0 ? JSON.stringify(batchTiers) : null,
       };
 
@@ -192,6 +196,7 @@ export function SettingsPage() {
 
       const data: Settings & { batchPricingTiers?: string | null } = await res.json();
       setForm(settingsToFormData(data));
+      setLogoUrl(data.businessLogoUrl ?? null);
       if (data.batchPricingTiers) {
         try {
           const tiers = JSON.parse(data.batchPricingTiers);
@@ -322,6 +327,9 @@ export function SettingsPage() {
           <CardTitle>Business Details</CardTitle>
         </CardHeader>
         <CardContent>
+          <div className="mb-4">
+            <LogoUpload value={logoUrl} onChange={setLogoUrl} />
+          </div>
           <div className="grid gap-4 sm:grid-cols-2">
             <Input
               label="Business name"

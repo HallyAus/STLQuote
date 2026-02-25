@@ -13,6 +13,7 @@ import {
   Briefcase,
   Users,
   CalendarDays,
+  Mail,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card";
@@ -20,6 +21,7 @@ import { Badge } from "@/components/ui/badge";
 import { cn } from "@/lib/utils";
 import { QUOTE_STATUS, JOB_STATUS, JOB_STATUS_ORDER, BANNER, STATUS_TEXT, type QuoteStatus as QStatus } from "@/lib/status-colours";
 import { RevenueCharts } from "@/components/dashboard/revenue-charts";
+import { AnalyticsCards } from "@/components/dashboard/analytics-cards";
 
 // ---------------------------------------------------------------------------
 // Types
@@ -77,11 +79,21 @@ interface LowStockMaterial {
   price: number;
 }
 
+interface ConsumableAlert {
+  id: string;
+  name: string;
+  category: string;
+  stockQty: number;
+  lowStockThreshold: number;
+  supplier: { name: string; email: string | null } | null;
+}
+
 interface DashboardData {
   stats: DashboardStats;
   recentQuotes: DashboardQuote[];
   lowStockAlerts: LowStockMaterial[];
   activeJobs: DashboardJob[];
+  consumableAlerts: ConsumableAlert[];
 }
 
 // ---------------------------------------------------------------------------
@@ -405,6 +417,68 @@ function LowStockAlertsList({ alerts }: { alerts: LowStockMaterial[] }) {
   );
 }
 
+function ConsumableAlertsList({ alerts }: { alerts: ConsumableAlert[] }) {
+  return (
+    <Card>
+      <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-3">
+        <CardTitle className="text-base font-semibold">
+          <span className="flex items-center gap-2">
+            <AlertTriangle className={cn("h-4 w-4", STATUS_TEXT.warning)} />
+            Consumable Alerts
+          </span>
+        </CardTitle>
+        {alerts.length > 0 && (
+          <Badge variant="warning">{alerts.length}</Badge>
+        )}
+      </CardHeader>
+      <CardContent>
+        {alerts.length === 0 ? (
+          <div className={cn("flex items-center gap-2", BANNER.success)}>
+            All stocked
+          </div>
+        ) : (
+          <div className="space-y-2">
+            {alerts.map((consumable) => (
+              <div
+                key={consumable.id}
+                className="flex items-center justify-between rounded-lg border border-border p-3 text-sm"
+              >
+                <div className="min-w-0">
+                  <p className="font-medium">{consumable.name}</p>
+                  <Badge variant="secondary" className="mt-1 text-[10px]">
+                    {consumable.category}
+                  </Badge>
+                </div>
+                <div className="shrink-0 text-right">
+                  <p
+                    className={cn(
+                      "font-medium tabular-nums",
+                      consumable.stockQty === 0 ? STATUS_TEXT.danger : STATUS_TEXT.warning
+                    )}
+                  >
+                    {consumable.stockQty} / {consumable.lowStockThreshold}
+                  </p>
+                  {consumable.supplier?.email ? (
+                    <a
+                      href={`mailto:${consumable.supplier.email}?subject=${encodeURIComponent(`Reorder: ${consumable.name}`)}&body=${encodeURIComponent(`Hi, I'd like to reorder ${consumable.name}.`)}`}
+                      className="mt-1 inline-flex items-center gap-1 rounded-md bg-primary/10 px-2 py-0.5 text-xs font-medium text-primary hover:bg-primary/20 transition-colors"
+                    >
+                      <Mail className="h-3 w-3" />
+                      Reorder
+                    </a>
+                  ) : (
+                    <p className="mt-1 text-xs text-muted-foreground">No supplier</p>
+                  )}
+                </div>
+              </div>
+            ))}
+          </div>
+        )}
+      </CardContent>
+    </Card>
+  );
+}
+
 // ---------------------------------------------------------------------------
 // Loading skeleton
 // ---------------------------------------------------------------------------
@@ -490,7 +564,7 @@ export function DashboardPage() {
     );
   }
 
-  const { stats, recentQuotes, lowStockAlerts, activeJobs } = data;
+  const { stats, recentQuotes, lowStockAlerts, activeJobs, consumableAlerts } = data;
 
   return (
     <div className="space-y-6">
@@ -577,14 +651,18 @@ export function DashboardPage() {
       </div>
 
       {/* Bottom row: Lists */}
-      <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
+      <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-4">
         <RecentQuotesList quotes={recentQuotes} />
         <ActiveJobsList jobs={activeJobs} />
         <LowStockAlertsList alerts={lowStockAlerts} />
+        <ConsumableAlertsList alerts={consumableAlerts} />
       </div>
 
       {/* Revenue Charts */}
       <RevenueCharts />
+
+      {/* Analytics */}
+      <AnalyticsCards />
     </div>
   );
 }

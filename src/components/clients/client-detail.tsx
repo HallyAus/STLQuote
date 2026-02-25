@@ -8,6 +8,7 @@ import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { cn, roundCurrency } from "@/lib/utils";
 import { tagColour, QUOTE_STATUS, BANNER, type QuoteStatus } from "@/lib/status-colours";
+import { InteractionTimeline } from "@/components/clients/interaction-timeline";
 
 interface ClientQuote {
   id: string;
@@ -539,6 +540,9 @@ export function ClientDetail() {
           )}
         </CardContent>
       </Card>
+
+      {/* Interactions timeline */}
+      <InteractionTimeline clientId={clientId} />
 
       {/* Edit modal */}
       {modalOpen && (

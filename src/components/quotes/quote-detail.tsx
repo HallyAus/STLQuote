@@ -21,6 +21,7 @@ import {
   Send,
   Copy,
   History,
+  Receipt,
 } from "lucide-react";
 import { QUOTE_STATUS, BANNER, type QuoteStatus } from "@/lib/status-colours";
 import { QuoteTimeline } from "@/components/quotes/quote-timeline";
@@ -1003,10 +1004,32 @@ export function QuoteDetail() {
             Send Quote
           </Button>
           {quote.status === "ACCEPTED" && (
-            <Button onClick={() => setConvertModalOpen(true)}>
-              <Briefcase className="mr-2 h-4 w-4" />
-              Convert to Job
-            </Button>
+            <>
+              <Button onClick={() => setConvertModalOpen(true)}>
+                <Briefcase className="mr-2 h-4 w-4" />
+                Convert to Job
+              </Button>
+              <Button
+                variant="secondary"
+                onClick={async () => {
+                  try {
+                    const res = await fetch("/api/invoices", {
+                      method: "POST",
+                      headers: { "Content-Type": "application/json" },
+                      body: JSON.stringify({ quoteId: quote.id }),
+                    });
+                    if (!res.ok) throw new Error("Failed to create invoice");
+                    const inv = await res.json();
+                    router.push(`/invoices/${inv.id}`);
+                  } catch {
+                    // Best-effort — errors will show on the invoices page
+                  }
+                }}
+              >
+                <Receipt className="mr-2 h-4 w-4" />
+                Create Invoice
+              </Button>
+            </>
           )}
           <Button
             variant="secondary"

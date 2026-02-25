@@ -17,6 +17,7 @@ export default auth((req) => {
     "/portal",
     "/api/portal",
     "/api/health",
+    "/api/invoices/portal",
     "/terms",
     "/privacy",
   ];

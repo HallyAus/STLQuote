@@ -66,8 +66,11 @@ model User {
   clients           Client[]
   quotes            Quote[]
   jobs              Job[]
+  invoices          Invoice[]
   calculatorPresets CalculatorPreset[]
   webhooks          Webhook[]
+  suppliers         Supplier[]
+  consumables       Consumable[]
 }
 
 model Settings {
@@ -113,6 +116,7 @@ model Printer {
 
   quoteLineItems QuoteLineItem[]
   jobs           Job[]
+  consumables    Consumable[]
 
   @@index([userId])
 }
@@ -131,12 +135,15 @@ model Material {
   stockQty           Int      @default(0)
   lowStockThreshold  Int      @default(2)
   supplier           String?
+  supplierId         String?
+  supplierRef        Supplier? @relation(fields: [supplierId], references: [id], onDelete: SetNull)
   notes              String?  @db.Text
   createdAt          DateTime @default(now())
   updatedAt          DateTime @updatedAt
 
   quoteLineItems QuoteLineItem[]
   jobs           Job[]
+  supplierItems  SupplierItem[]
 
   @@index([userId])
 }
@@ -157,7 +164,9 @@ model Client {
   createdAt             DateTime @default(now())
   updatedAt             DateTime @updatedAt
 
-  quotes Quote[]
+  quotes       Quote[]
+  invoices     Invoice[]
+  interactions ClientInteraction[]
 
   @@index([userId])
 }
@@ -193,6 +202,7 @@ model Quote {
   lineItems QuoteLineItem[]
   jobs      Job[]
   events    QuoteEvent[]
+  invoices  Invoice[]
 
   @@index([userId])
 }
@@ -260,7 +270,9 @@ model Job {
   createdAt         DateTime  @default(now())
   updatedAt         DateTime  @updatedAt
 
-  events JobEvent[]
+  events   JobEvent[]
+  photos   JobPhoto[]
+  invoices Invoice[]
 
   @@index([userId])
 }
@@ -333,6 +345,151 @@ model EmailLog {
 
   @@index([createdAt])
   @@index([type])
+}
+
+// --- Suppliers ---
+
+model Supplier {
+  id        String   @id @default(cuid())
+  userId    String
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  name      String
+  email     String?
+  phone     String?
+  website   String?
+  notes     String?  @db.Text
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  items      SupplierItem[]
+  materials  Material[]
+  consumables Consumable[]
+
+  @@index([userId])
+}
+
+model SupplierItem {
+  id          String    @id @default(cuid())
+  supplierId  String
+  supplier    Supplier  @relation(fields: [supplierId], references: [id], onDelete: Cascade)
+  materialId  String?
+  material    Material? @relation(fields: [materialId], references: [id], onDelete: SetNull)
+  partNumber  String?
+  supplierSku String?
+  unitCost    Float?
+  url         String?
+  notes       String?  @db.Text
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  @@index([supplierId])
+  @@index([materialId])
+}
+
+// --- Client Interactions ---
+
+model ClientInteraction {
+  id        String   @id @default(cuid())
+  clientId  String
+  client    Client   @relation(fields: [clientId], references: [id], onDelete: Cascade)
+  userId    String
+  type      String   // note | call | email | meeting
+  content   String   @db.Text
+  createdAt DateTime @default(now())
+
+  @@index([clientId])
+}
+
+// --- Job Photos ---
+
+model JobPhoto {
+  id           String   @id @default(cuid())
+  jobId        String
+  job          Job      @relation(fields: [jobId], references: [id], onDelete: Cascade)
+  userId       String
+  filename     String
+  originalName String
+  mimeType     String   @default("image/jpeg")
+  sizeBytes    Int      @default(0)
+  createdAt    DateTime @default(now())
+
+  @@index([jobId])
+}
+
+// --- Consumables ---
+
+model Consumable {
+  id                String    @id @default(cuid())
+  userId            String
+  user              User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  name              String
+  category          String    @default("other") // nozzle | build_plate | belt | lubricant | other
+  stockQty          Int       @default(0)
+  lowStockThreshold Int       @default(1)
+  unitCost          Float?
+  supplierId        String?
+  supplier          Supplier? @relation(fields: [supplierId], references: [id], onDelete: SetNull)
+  printerId         String?
+  printer           Printer?  @relation(fields: [printerId], references: [id], onDelete: SetNull)
+  notes             String?   @db.Text
+  createdAt         DateTime  @default(now())
+  updatedAt         DateTime  @updatedAt
+
+  @@index([userId])
+}
+
+// --- Invoices ---
+
+enum InvoiceStatus {
+  DRAFT
+  SENT
+  PAID
+  OVERDUE
+  VOID
+}
+
+model Invoice {
+  id            String        @id @default(cuid())
+  userId        String
+  user          User          @relation(fields: [userId], references: [id], onDelete: Cascade)
+  quoteId       String?
+  quote         Quote?        @relation(fields: [quoteId], references: [id])
+  jobId         String?
+  job           Job?          @relation(fields: [jobId], references: [id])
+  clientId      String?
+  client        Client?       @relation(fields: [clientId], references: [id])
+  invoiceNumber String        @unique
+  status        InvoiceStatus @default(DRAFT)
+  portalToken   String?       @unique
+  subtotal      Float         @default(0)
+  taxPct        Float         @default(10) // GST
+  tax           Float         @default(0)
+  total         Float         @default(0)
+  currency      String        @default("AUD")
+  dueDate       DateTime?
+  paidAt        DateTime?
+  notes         String?       @db.Text
+  terms         String?       @db.Text
+  sentAt        DateTime?
+  createdAt     DateTime      @default(now())
+  updatedAt     DateTime      @updatedAt
+
+  lineItems InvoiceLineItem[]
+
+  @@index([userId])
+}
+
+model InvoiceLineItem {
+  id          String  @id @default(cuid())
+  invoiceId   String
+  invoice     Invoice @relation(fields: [invoiceId], references: [id], onDelete: Cascade)
+  description String
+  quantity    Int     @default(1)
+  unitPrice   Float   @default(0)
+  lineTotal   Float   @default(0)
+  notes       String? @db.Text
+
+  @@index([invoiceId])
 }
 
 // --- Webhooks ---

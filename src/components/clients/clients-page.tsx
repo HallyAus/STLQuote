@@ -2,13 +2,14 @@
 
 import { useEffect, useState, useCallback } from "react";
 import { useRouter } from "next/navigation";
+import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card";
-import { Select } from "@/components/ui/select";
 import { Textarea } from "@/components/ui/textarea";
 import { Badge } from "@/components/ui/badge";
 import { Dialog, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
+import { TagInput } from "@/components/ui/tag-input";
 import { tagColour, BANNER } from "@/lib/status-colours";
 import { Download } from "lucide-react";
 
@@ -38,7 +39,7 @@ interface ClientFormData {
   billingAddress: string;
   shippingAddress: string;
   shippingSameAsBilling: boolean;
-  tags: string;
+  tags: string[];
   notes: string;
 }
 
@@ -50,13 +51,13 @@ const emptyForm: ClientFormData = {
   billingAddress: "",
   shippingAddress: "",
   shippingSameAsBilling: true,
-  tags: "",
+  tags: [],
   notes: "",
 };
 
-// ---------- Helpers ----------
+const SUGGESTED_TAGS = ["Tradie", "EV Owner", "Maker", "Commercial"];
 
-const TAG_FILTER_OPTIONS = ["All", "Tradie", "EV Owner", "Maker", "Commercial", "Other"] as const;
+// ---------- Helpers ----------
 
 function clientToFormData(client: Client): ClientFormData {
   return {
@@ -67,7 +68,7 @@ function clientToFormData(client: Client): ClientFormData {
     billingAddress: client.billingAddress ?? "",
     shippingAddress: client.shippingAddress ?? "",
     shippingSameAsBilling: client.shippingSameAsBilling,
-    tags: client.tags.join(", "),
+    tags: [...client.tags],
     notes: client.notes ?? "",
   };
 }
@@ -83,10 +84,7 @@ function formDataToPayload(form: ClientFormData) {
       ? null
       : (form.shippingAddress.trim() || null),
     shippingSameAsBilling: form.shippingSameAsBilling,
-    tags: form.tags
-      .split(",")
-      .map((t) => t.trim())
-      .filter((t) => t.length > 0),
+    tags: form.tags.map((t) => t.trim()).filter((t) => t.length > 0),
     notes: form.notes.trim() || null,
   };
 }
@@ -106,7 +104,7 @@ export function ClientsPage() {
   const [form, setForm] = useState<ClientFormData>(emptyForm);
 
   // Filter state
-  const [tagFilter, setTagFilter] = useState<string>("All");
+  const [activeTagFilter, setActiveTagFilter] = useState<string | null>(null);
   const [searchQuery, setSearchQuery] = useState("");
 
   // --- Fetch clients ---
@@ -130,19 +128,23 @@ export function ClientsPage() {
     fetchClients();
   }, [fetchClients]);
 
+  // --- Collect all unique tags across all clients ---
+
+  const allTags = Array.from(
+    new Set(clients.flatMap((c) => c.tags))
+  ).sort((a, b) => a.localeCompare(b));
+
   // --- Filtered clients ---
 
   const filteredClients = clients.filter((client) => {
     // Tag filter
-    if (tagFilter !== "All") {
-      if (tagFilter === "Other") {
-        const knownTags = ["tradie", "ev owner", "maker", "commercial"];
-        const hasKnown = client.tags.some((t) => knownTags.includes(t.toLowerCase()));
-        if (hasKnown || client.tags.length === 0) return false;
-      } else {
-        if (!client.tags.some((t) => t.toLowerCase() === tagFilter.toLowerCase())) {
-          return false;
-        }
+    if (activeTagFilter) {
+      if (
+        !client.tags.some(
+          (t) => t.toLowerCase() === activeTagFilter.toLowerCase()
+        )
+      ) {
+        return false;
       }
     }
 
@@ -185,7 +187,7 @@ export function ClientsPage() {
     setForm(emptyForm);
   }
 
-  function updateField(field: keyof ClientFormData, value: string | boolean) {
+  function updateField(field: keyof ClientFormData, value: string | boolean | string[]) {
     setForm((prev) => ({ ...prev, [field]: value }));
   }
 
@@ -269,21 +271,50 @@ export function ClientsPage() {
       </div>
 
       {/* Filters */}
-      <div className="flex flex-col gap-3 sm:flex-row sm:items-center">
+      <div className="space-y-3">
         <Input
           placeholder="Search clients..."
           value={searchQuery}
           onChange={(e) => setSearchQuery(e.target.value)}
           className="sm:max-w-xs"
         />
-        <Select
-          value={tagFilter}
-          onChange={(e) => setTagFilter(e.target.value)}
-          options={TAG_FILTER_OPTIONS.map((tag) => ({
-            value: tag,
-            label: tag === "All" ? "All Tags" : tag,
-          }))}
-        />
+
+        {/* Tag filter chips */}
+        {allTags.length > 0 && (
+          <div className="flex flex-wrap items-center gap-2">
+            <span className="text-xs font-medium text-muted-foreground">
+              Filter by tag:
+            </span>
+            {allTags.map((tag) => (
+              <button
+                key={tag}
+                type="button"
+                onClick={() =>
+                  setActiveTagFilter((prev) =>
+                    prev?.toLowerCase() === tag.toLowerCase() ? null : tag
+                  )
+                }
+                className={cn(
+                  "inline-flex items-center rounded-full px-2.5 py-0.5 text-xs font-medium transition-colors",
+                  activeTagFilter?.toLowerCase() === tag.toLowerCase()
+                    ? cn(tagColour(tag), "ring-2 ring-ring ring-offset-1 ring-offset-background")
+                    : cn(tagColour(tag), "opacity-60 hover:opacity-100")
+                )}
+              >
+                {tag}
+              </button>
+            ))}
+            {activeTagFilter && (
+              <button
+                type="button"
+                onClick={() => setActiveTagFilter(null)}
+                className="text-xs text-muted-foreground underline hover:text-foreground"
+              >
+                Clear filter
+              </button>
+            )}
+          </div>
+        )}
       </div>
 
       {/* Error banner */}
@@ -436,7 +467,7 @@ function ClientModal({
   title: string;
   form: ClientFormData;
   saving: boolean;
-  onFieldChange: (field: keyof ClientFormData, value: string | boolean) => void;
+  onFieldChange: (field: keyof ClientFormData, value: string | boolean | string[]) => void;
   onSave: () => void;
   onClose: () => void;
 }) {
@@ -514,15 +545,13 @@ function ClientModal({
         )}
 
         {/* Tags */}
-        <Input
+        <TagInput
           label="Tags"
           value={form.tags}
-          onChange={(e) => onFieldChange("tags", e.target.value)}
-          placeholder="Tradie, Commercial (comma-separated)"
+          onChange={(tags) => onFieldChange("tags", tags)}
+          placeholder="Add a tag..."
+          suggestions={SUGGESTED_TAGS}
         />
-        <p className="!mt-1 text-xs text-muted-foreground">
-          Common tags: Tradie, EV Owner, Maker, Commercial
-        </p>
 
         {/* Notes */}
         <Textarea

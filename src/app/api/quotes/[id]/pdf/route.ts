@@ -74,6 +74,7 @@ export async function GET(
         abn: settings?.businessAbn || null,
         phone: settings?.businessPhone || null,
         email: settings?.businessEmail || null,
+        logoUrl: settings?.businessLogoUrl || null,
       },
     };
 

@@ -5,6 +5,7 @@ services:
       - "3000:3000"
     volumes:
       - ./deploy/logs:/app/deploy-logs:ro
+      - ./uploads:/app/uploads
     env_file:
       - .env
     environment:
