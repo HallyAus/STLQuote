@@ -52,6 +52,11 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
           return null;
         }
 
+        // Enforce email verification for regular users (admins skip)
+        if (!user.emailVerified && user.role === "USER") {
+          throw new Error("Please verify your email before signing in. Check your inbox.");
+        }
+
         // Record last login time
         await prisma.user.update({
           where: { id: user.id },

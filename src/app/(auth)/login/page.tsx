@@ -29,7 +29,7 @@ function LoginForm() {
   const resetDone = searchParams.get("reset") === "true";
 
   const [error, setError] = useState(
-    errorParam === "AccountDisabled"
+    errorParam === "AccountDisabled" || errorParam === "disabled"
       ? "Your account has been disabled. Contact your administrator."
       : errorParam === "InvalidToken"
         ? "Invalid verification link."
