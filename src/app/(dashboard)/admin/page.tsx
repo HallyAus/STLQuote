@@ -73,6 +73,7 @@ export default function AdminPage() {
     email: "",
     password: "",
     role: "USER",
+    sendEmail: true,
   });
   const [createLoading, setCreateLoading] = useState(false);
   const [createError, setCreateError] = useState("");
@@ -206,7 +207,7 @@ export default function AdminPage() {
         return;
       }
       setShowCreateModal(false);
-      setCreateForm({ name: "", email: "", password: "", role: "USER" });
+      setCreateForm({ name: "", email: "", password: "", role: "USER", sendEmail: true });
       fetchUsers();
     } catch {
       setCreateError("Something went wrong");
@@ -852,6 +853,15 @@ export default function AdminPage() {
                   value={createForm.role}
                   onChange={(e) => setCreateForm((f) => ({ ...f, role: e.target.value }))}
                 />
+                <label className="flex items-center gap-2 cursor-pointer">
+                  <input
+                    type="checkbox"
+                    checked={createForm.sendEmail}
+                    onChange={(e) => setCreateForm((f) => ({ ...f, sendEmail: e.target.checked }))}
+                    className="h-4 w-4 rounded border-input text-primary focus:ring-primary"
+                  />
+                  <span className="text-sm text-foreground">Send welcome email with password reset link</span>
+                </label>
                 <div className="flex gap-2 pt-2">
                   <Button type="button" variant="secondary" className="flex-1" onClick={() => { setShowCreateModal(false); setCreateError(""); }}>
                     Cancel

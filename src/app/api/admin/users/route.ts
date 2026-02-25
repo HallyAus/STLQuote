@@ -11,6 +11,7 @@ const createUserSchema = z.object({
   email: z.string().email("Invalid email"),
   password: z.string().min(8, "Password must be at least 8 characters"),
   role: z.enum(["USER", "ADMIN"]).default("USER"), // Only SUPER_ADMIN can create ADMINs (enforced below)
+  sendEmail: z.boolean().default(true),
 });
 
 export async function POST(request: Request) {
@@ -27,7 +28,7 @@ export async function POST(request: Request) {
       );
     }
 
-    const { name, email, password, role } = parsed.data;
+    const { name, email, password, role, sendEmail } = parsed.data;
 
     // Only SUPER_ADMIN can create ADMIN users
     if (role === "ADMIN" && !isSuperAdminRole(admin.role)) {
@@ -62,11 +63,13 @@ export async function POST(request: Request) {
     });
 
     // Send invitation email with password reset link (non-blocking)
-    try {
-      const resetToken = await createPasswordResetToken(email);
-      await sendAccountCreatedEmail(email, name, resetToken);
-    } catch (emailError) {
-      console.error("Failed to send account created email:", emailError);
+    if (sendEmail) {
+      try {
+        const resetToken = await createPasswordResetToken(email);
+        await sendAccountCreatedEmail(email, name, resetToken);
+      } catch (emailError) {
+        console.error("Failed to send account created email:", emailError);
+      }
     }
 
     return NextResponse.json(user, { status: 201 });
