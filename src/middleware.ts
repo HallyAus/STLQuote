@@ -50,8 +50,15 @@ export default auth((req) => {
     return NextResponse.redirect(loginUrl);
   }
 
-  // Disabled users are blocked at login (auth.ts authorize callback).
-  // No mid-session check needed — JWT doesn't carry disabled state.
+  // Block disabled users mid-session (disabled flag synced via JWT refresh)
+  if ((req.auth as any)?.user?.disabled || (req.auth as any)?.token?.disabled) {
+    // For API routes, return 403
+    if (pathname.startsWith("/api/")) {
+      return NextResponse.json({ error: "Account disabled" }, { status: 403 });
+    }
+    // For pages, redirect to login
+    return NextResponse.redirect(new URL("/login?error=disabled", req.url));
+  }
 
   // Protect admin routes (ADMIN and SUPER_ADMIN)
   if (pathname.startsWith("/admin") || pathname.startsWith("/api/admin")) {

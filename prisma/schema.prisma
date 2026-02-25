@@ -298,6 +298,14 @@ model EmailVerificationToken {
   @@index([email])
 }
 
+// --- System Config (global key-value settings) ---
+
+model SystemConfig {
+  key       String   @id
+  value     String
+  updatedAt DateTime @updatedAt
+}
+
 // --- Email Logs ---
 
 model EmailLog {

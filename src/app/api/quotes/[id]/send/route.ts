@@ -3,6 +3,7 @@ import { prisma } from "@/lib/prisma";
 import { getSessionUser } from "@/lib/auth-helpers";
 import { sendQuoteEmail } from "@/lib/email";
 import { generateToken } from "@/lib/tokens";
+import { rateLimit } from "@/lib/rate-limit";
 import { renderToBuffer, type DocumentProps } from "@react-pdf/renderer";
 import { QuoteDocument } from "@/lib/pdf/quote-document";
 import React, { type ReactElement, type JSXElementConstructor } from "react";
@@ -18,6 +19,18 @@ export async function POST(
     if (!user) return NextResponse.json({ error: "Unauthorised" }, { status: 401 });
 
     const { id } = await context.params;
+
+    // Rate limit: 3 sends per hour per quote per user
+    const rlResult = rateLimit(`send-quote:${user.id}:${id}`, {
+      windowMs: 60 * 60 * 1000,
+      maxRequests: 3,
+    });
+    if (rlResult.limited) {
+      return NextResponse.json(
+        { error: `Too many sends. Try again in ${Math.ceil(rlResult.retryAfterSeconds / 60)} minutes.` },
+        { status: 429 }
+      );
+    }
 
     const quote = await prisma.quote.findFirst({
       where: { id, userId: user.id },

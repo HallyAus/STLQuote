@@ -34,21 +34,25 @@ export const authConfig = {
       if (user) {
         token.id = user.id as string;
         token.role = (user as any).role as string;
+        token.disabled = false;
         token.lastTouched = Date.now();
       }
 
-      // Throttled lastLogin update — once per 30 minutes while session is active.
+      // Throttled refresh — once per 30 minutes while session is active.
+      // Updates lastLogin and syncs disabled/role state from DB.
       // Dynamic import: fails silently in Edge Runtime (middleware), works in Node.js.
-      // Only update lastTouched if the DB write succeeds, so Edge won't block Node.js.
       const now = Date.now();
       const lastTouched = (token.lastTouched as number) || 0;
       if (token.id && now - lastTouched > 30 * 60 * 1000) {
         try {
           const { prisma: db } = await import("@/lib/prisma");
-          await db.user.update({
+          const fresh = await db.user.update({
             where: { id: token.id as string },
             data: { lastLogin: new Date() },
+            select: { disabled: true, role: true },
           });
+          token.disabled = fresh.disabled;
+          token.role = fresh.role;
           token.lastTouched = now;
         } catch {
           // Edge Runtime or DB error — skip, Node.js will catch it next

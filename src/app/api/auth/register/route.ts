@@ -14,6 +14,15 @@ const registerSchema = z.object({
 
 export async function POST(request: NextRequest) {
   try {
+    // Check if registration is open
+    const regConfig = await prisma.systemConfig.findUnique({ where: { key: "registrationOpen" } }).catch(() => null);
+    if (regConfig?.value === "false") {
+      return NextResponse.json(
+        { error: "Registration is currently closed. Contact your administrator." },
+        { status: 403 }
+      );
+    }
+
     // Rate limit: 5 registrations per 15 minutes per IP
     const ip = getClientIp(request);
     const result = rateLimit(`register:${ip}`, {

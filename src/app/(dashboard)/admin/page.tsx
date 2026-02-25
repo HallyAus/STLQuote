@@ -28,6 +28,7 @@ import {
   ChevronRight,
   XCircle,
   SkipForward,
+  Settings,
 } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import { Select } from "@/components/ui/select";
@@ -68,7 +69,7 @@ export default function AdminPage() {
   const [users, setUsers] = useState<AdminUser[]>([]);
   const [loading, setLoading] = useState(true);
   const [actionLoading, setActionLoading] = useState<string | null>(null);
-  const [activeTab, setActiveTab] = useState<"users" | "deploys" | "email" | "newsletter">("users");
+  const [activeTab, setActiveTab] = useState<"users" | "deploys" | "email" | "newsletter" | "config">("users");
 
   // Create user modal
   const [showCreateModal, setShowCreateModal] = useState(false);
@@ -116,6 +117,11 @@ export default function AdminPage() {
   const [emailLogsPagination, setEmailLogsPagination] = useState({ page: 1, total: 0, totalPages: 1 });
   const [emailLogsLoading, setEmailLogsLoading] = useState(false);
   const [emailLogsFilter, setEmailLogsFilter] = useState("all");
+
+  // System config
+  const [sysConfig, setSysConfig] = useState<Record<string, string>>({});
+  const [configLoading, setConfigLoading] = useState(false);
+  const [configSaving, setConfigSaving] = useState<string | null>(null);
 
   // Newsletter
   const [nlSubject, setNlSubject] = useState("");
@@ -186,6 +192,23 @@ export default function AdminPage() {
           )
         );
       }
+    } finally {
+      setActionLoading(null);
+    }
+  }
+
+  async function resendWelcome(user: AdminUser) {
+    setActionLoading(user.id + "-welcome");
+    try {
+      const res = await fetch(`/api/admin/users/${user.id}/resend-welcome`, { method: "POST" });
+      const data = await res.json();
+      if (res.ok) {
+        alert(data.message);
+      } else {
+        alert(data.error || "Failed to send");
+      }
+    } catch {
+      alert("Something went wrong");
     } finally {
       setActionLoading(null);
     }
@@ -367,6 +390,39 @@ export default function AdminPage() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [activeTab]);
 
+  // Fetch system config when config tab is opened
+  const fetchConfig = useCallback(async () => {
+    setConfigLoading(true);
+    try {
+      const res = await fetch("/api/admin/config");
+      if (res.ok) setSysConfig(await res.json());
+    } catch { /* ignore */ } finally {
+      setConfigLoading(false);
+    }
+  }, []);
+
+  useEffect(() => {
+    if (activeTab !== "config") return;
+    fetchConfig();
+  }, [activeTab, fetchConfig]);
+
+  async function toggleConfig(key: string, currentValue: string) {
+    const newValue = currentValue === "true" ? "false" : "true";
+    setConfigSaving(key);
+    try {
+      const res = await fetch("/api/admin/config", {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ key, value: newValue }),
+      });
+      if (res.ok) {
+        setSysConfig((prev) => ({ ...prev, [key]: newValue }));
+      }
+    } catch { /* ignore */ } finally {
+      setConfigSaving(null);
+    }
+  }
+
   async function handleSendNewsletter(e: React.FormEvent) {
     e.preventDefault();
     setNlLoading(true);
@@ -413,6 +469,7 @@ export default function AdminPage() {
           { key: "deploys", icon: Rocket, label: "Deploys" },
           { key: "email", icon: Mail, label: "Email" },
           { key: "newsletter", icon: Megaphone, label: "Newsletter" },
+          { key: "config", icon: Settings, label: "Config" },
         ] as const).map((tab) => (
           <button
             key={tab.key}
@@ -740,6 +797,56 @@ export default function AdminPage() {
         </Card>
       )}
 
+      {/* Config tab */}
+      {activeTab === "config" && (
+        <Card>
+          <CardHeader>
+            <CardTitle className="flex items-center gap-2">
+              <Settings className="h-5 w-5" />
+              System Configuration
+            </CardTitle>
+          </CardHeader>
+          <CardContent>
+            {configLoading ? (
+              <div className="flex items-center justify-center py-8">
+                <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
+              </div>
+            ) : (
+              <div className="space-y-4">
+                <div className="flex items-center justify-between rounded-lg border border-border p-4">
+                  <div>
+                    <p className="font-medium">Public Registration</p>
+                    <p className="text-sm text-muted-foreground">
+                      Allow new users to create accounts via the register page.
+                      When disabled, only admins can create user accounts.
+                    </p>
+                  </div>
+                  <button
+                    onClick={() => toggleConfig("registrationOpen", sysConfig.registrationOpen ?? "true")}
+                    disabled={configSaving === "registrationOpen"}
+                    className={cn(
+                      "relative inline-flex h-6 w-11 shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring disabled:opacity-50",
+                      (sysConfig.registrationOpen ?? "true") === "true"
+                        ? "bg-primary"
+                        : "bg-muted"
+                    )}
+                  >
+                    <span
+                      className={cn(
+                        "pointer-events-none inline-block h-5 w-5 rounded-full bg-white shadow-lg ring-0 transition-transform",
+                        (sysConfig.registrationOpen ?? "true") === "true"
+                          ? "translate-x-5"
+                          : "translate-x-0"
+                      )}
+                    />
+                  </button>
+                </div>
+              </div>
+            )}
+          </CardContent>
+        </Card>
+      )}
+
       {/* Users tab */}
       {activeTab === "users" && (
         <>
@@ -915,6 +1022,21 @@ export default function AdminPage() {
                               <Button
                                 variant="ghost"
                                 size="sm"
+                                onClick={() => resendWelcome(user)}
+                                disabled={actionLoading === user.id + "-welcome"}
+                                title="Resend welcome email"
+                              >
+                                {actionLoading === user.id + "-welcome" ? (
+                                  <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                                ) : (
+                                  <Mail className="h-3.5 w-3.5" />
+                                )}
+                              </Button>
+                            )}
+                            {canModifyUser(user) && (
+                              <Button
+                                variant="ghost"
+                                size="sm"
                                 onClick={() => setDeleteUser(user)}
                                 title="Delete user"
                                 className="text-destructive-foreground hover:text-destructive-foreground"
@@ -1007,6 +1129,12 @@ export default function AdminPage() {
                         <Button variant="secondary" size="sm" onClick={() => impersonate(user)} disabled={actionLoading === user.id + "-impersonate"}>
                           <Eye className="mr-1 h-3 w-3" />
                           Impersonate
+                        </Button>
+                      )}
+                      {canModifyUser(user) && (
+                        <Button variant="secondary" size="sm" onClick={() => resendWelcome(user)} disabled={actionLoading === user.id + "-welcome"}>
+                          <Mail className="mr-1 h-3 w-3" />
+                          Resend Welcome
                         </Button>
                       )}
                       {canModifyUser(user) && (

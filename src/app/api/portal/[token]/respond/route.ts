@@ -41,6 +41,14 @@ export async function POST(
       );
     }
 
+    // Enforce expiry date
+    if (quote.expiryDate && new Date(quote.expiryDate) < new Date()) {
+      return NextResponse.json(
+        { error: "This quote has expired and can no longer be accepted." },
+        { status: 400 }
+      );
+    }
+
     const body = await request.json();
     const parsed = schema.safeParse(body);
     if (!parsed.success) {
