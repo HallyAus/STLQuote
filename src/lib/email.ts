@@ -101,6 +101,56 @@ export async function sendVerificationEmail(email: string, token: string): Promi
   });
 }
 
+export async function sendWelcomeEmail(email: string, name: string): Promise<boolean> {
+  const appUrl = process.env.NEXT_PUBLIC_APP_URL || "http://localhost:3000";
+
+  return sendEmail({
+    to: email,
+    subject: "Welcome to Printforge!",
+    html: `
+      <div style="font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; max-width: 600px; margin: 0 auto;">
+        <h2 style="color: #171717;">Welcome, ${name}!</h2>
+        <p>Your Printforge account is ready. Here&rsquo;s what you can do:</p>
+        <ul style="padding-left: 20px; color: #333;">
+          <li><strong>Calculate costs</strong> — upload STL/G-code files and get instant estimates</li>
+          <li><strong>Create quotes</strong> — professional quotes with your business branding</li>
+          <li><strong>Manage inventory</strong> — track materials, printers, and stock levels</li>
+          <li><strong>Track jobs</strong> — kanban board from queue to completion</li>
+        </ul>
+        <p style="margin: 24px 0;">
+          <a href="${appUrl}/dashboard" style="background-color: #2563eb; color: white; padding: 12px 24px; border-radius: 6px; text-decoration: none; font-weight: 600;">
+            Go to Dashboard
+          </a>
+        </p>
+        <p style="color: #666; font-size: 14px;">Happy printing!</p>
+        <hr style="border: none; border-top: 1px solid #e5e5e5; margin: 24px 0;" />
+        <p style="color: #999; font-size: 12px;">Printforge — 3D Print Cost Calculator</p>
+      </div>
+    `,
+  });
+}
+
+export async function sendBulkEmail({
+  recipients,
+  subject,
+  html,
+}: {
+  recipients: string[];
+  subject: string;
+  html: string;
+}): Promise<{ sent: number; failed: number }> {
+  let sent = 0;
+  let failed = 0;
+
+  for (const to of recipients) {
+    const ok = await sendEmail({ to, subject, html });
+    if (ok) sent++;
+    else failed++;
+  }
+
+  return { sent, failed };
+}
+
 export async function sendQuoteEmail({
   to,
   quoteNumber,

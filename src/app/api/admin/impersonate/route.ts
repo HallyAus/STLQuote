@@ -17,13 +17,21 @@ export async function POST(request: NextRequest) {
 
     const target = await prisma.user.findUnique({
       where: { id: userId },
-      select: { id: true, name: true, email: true },
+      select: { id: true, name: true, email: true, role: true },
     });
 
     if (!target) {
       return NextResponse.json(
         { error: "User not found" },
         { status: 404 }
+      );
+    }
+
+    // Cannot impersonate a SUPER_ADMIN
+    if (target.role === "SUPER_ADMIN") {
+      return NextResponse.json(
+        { error: "Cannot impersonate a Super Admin" },
+        { status: 403 }
       );
     }
 

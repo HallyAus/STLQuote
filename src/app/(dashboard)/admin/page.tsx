@@ -2,6 +2,7 @@
 
 import { useState, useEffect, useCallback } from "react";
 import { useRouter } from "next/navigation";
+import { useSession } from "next-auth/react";
 import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import {
@@ -22,6 +23,7 @@ import {
   Pencil,
   Trash2,
   AlertTriangle,
+  Megaphone,
 } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import { Select } from "@/components/ui/select";
@@ -55,11 +57,14 @@ interface AdminUser {
 
 export default function AdminPage() {
   const router = useRouter();
+  const { data: session } = useSession();
+  const myRole = session?.user?.role || "USER";
+  const isSuperAdmin = myRole === "SUPER_ADMIN";
   const [stats, setStats] = useState<UserStats | null>(null);
   const [users, setUsers] = useState<AdminUser[]>([]);
   const [loading, setLoading] = useState(true);
   const [actionLoading, setActionLoading] = useState<string | null>(null);
-  const [activeTab, setActiveTab] = useState<"users" | "deploys" | "email">("users");
+  const [activeTab, setActiveTab] = useState<"users" | "deploys" | "email" | "newsletter">("users");
 
   // Create user modal
   const [showCreateModal, setShowCreateModal] = useState(false);
@@ -92,6 +97,14 @@ export default function AdminPage() {
   const [testEmailTo, setTestEmailTo] = useState("");
   const [testEmailLoading, setTestEmailLoading] = useState(false);
   const [testEmailResult, setTestEmailResult] = useState<{ ok: boolean; message: string } | null>(null);
+
+  // Newsletter
+  const [nlSubject, setNlSubject] = useState("");
+  const [nlBody, setNlBody] = useState("");
+  const [nlAudience, setNlAudience] = useState<"all" | "active" | "admins">("all");
+  const [nlCounts, setNlCounts] = useState<{ all: number; active: number; admins: number } | null>(null);
+  const [nlLoading, setNlLoading] = useState(false);
+  const [nlResult, setNlResult] = useState<{ ok: boolean; message: string } | null>(null);
 
   const fetchUsers = useCallback(async () => {
     try {
@@ -130,6 +143,13 @@ export default function AdminPage() {
     } finally {
       setActionLoading(null);
     }
+  }
+
+  // Helper: can the current admin modify this user?
+  function canModifyUser(user: AdminUser): boolean {
+    if (user.role === "SUPER_ADMIN") return false;
+    if (user.role === "ADMIN" && !isSuperAdmin) return false;
+    return true;
   }
 
   async function toggleDisabled(user: AdminUser) {
@@ -293,6 +313,45 @@ export default function AdminPage() {
     }
   }
 
+  // Fetch newsletter recipient counts when tab is opened
+  useEffect(() => {
+    if (activeTab !== "newsletter" || nlCounts) return;
+    async function fetchCounts() {
+      try {
+        const res = await fetch("/api/admin/newsletter");
+        if (res.ok) setNlCounts(await res.json());
+      } catch { /* ignore */ }
+    }
+    fetchCounts();
+  }, [activeTab, nlCounts]);
+
+  async function handleSendNewsletter(e: React.FormEvent) {
+    e.preventDefault();
+    setNlLoading(true);
+    setNlResult(null);
+
+    try {
+      const res = await fetch("/api/admin/newsletter", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ subject: nlSubject, html: nlBody, audience: nlAudience }),
+      });
+      const data = await res.json();
+      setNlResult({
+        ok: res.ok,
+        message: res.ok ? data.message : data.error || "Failed to send",
+      });
+      if (res.ok) {
+        setNlSubject("");
+        setNlBody("");
+      }
+    } catch {
+      setNlResult({ ok: false, message: "Something went wrong" });
+    } finally {
+      setNlLoading(false);
+    }
+  }
+
   // --- Render ---
 
   if (loading) {
@@ -311,6 +370,7 @@ export default function AdminPage() {
           { key: "users", icon: Users, label: "Users" },
           { key: "deploys", icon: Rocket, label: "Deploys" },
           { key: "email", icon: Mail, label: "Email" },
+          { key: "newsletter", icon: Megaphone, label: "Newsletter" },
         ] as const).map((tab) => (
           <button
             key={tab.key}
@@ -375,6 +435,83 @@ export default function AdminPage() {
                     <Send className="mr-2 h-4 w-4" />
                   )}
                   Send Test
+                </Button>
+              </div>
+            </form>
+          </CardContent>
+        </Card>
+      )}
+
+      {/* Newsletter tab */}
+      {activeTab === "newsletter" && (
+        <Card>
+          <CardHeader>
+            <CardTitle className="flex items-center gap-2">
+              <Megaphone className="h-5 w-5" />
+              Send Newsletter
+            </CardTitle>
+          </CardHeader>
+          <CardContent>
+            <form onSubmit={handleSendNewsletter} className="space-y-4">
+              {nlResult && (
+                <div
+                  className={cn(
+                    "flex items-center gap-2 rounded-md px-3 py-2 text-sm",
+                    nlResult.ok
+                      ? "bg-success/10 text-success-foreground"
+                      : "bg-destructive/10 text-destructive-foreground"
+                  )}
+                >
+                  {nlResult.ok && <CheckCircle2 className="h-4 w-4 shrink-0" />}
+                  {nlResult.message}
+                </div>
+              )}
+
+              <Select
+                label="Audience"
+                options={[
+                  { value: "all", label: `All users${nlCounts ? ` (${nlCounts.all})` : ""}` },
+                  { value: "active", label: `Active users${nlCounts ? ` (${nlCounts.active})` : ""}` },
+                  { value: "admins", label: `Admins only${nlCounts ? ` (${nlCounts.admins})` : ""}` },
+                ]}
+                value={nlAudience}
+                onChange={(e) => setNlAudience(e.target.value as "all" | "active" | "admins")}
+              />
+
+              <Input
+                label="Subject"
+                type="text"
+                value={nlSubject}
+                onChange={(e) => setNlSubject(e.target.value)}
+                placeholder="e.g. New features in Printforge"
+                required
+              />
+
+              <div className="space-y-1">
+                <label className="text-sm font-medium text-foreground">
+                  Body (HTML)
+                </label>
+                <textarea
+                  value={nlBody}
+                  onChange={(e) => setNlBody(e.target.value)}
+                  placeholder="<h2>Hello!</h2><p>Here's what's new...</p>"
+                  required
+                  rows={10}
+                  className="w-full rounded-md border border-input bg-background px-3 py-2 text-sm text-foreground placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring font-mono"
+                />
+                <p className="text-xs text-muted-foreground">
+                  Write HTML directly. The email will be wrapped in a standard Printforge template.
+                </p>
+              </div>
+
+              <div className="flex gap-2 pt-2">
+                <Button type="submit" disabled={nlLoading || !nlSubject || !nlBody}>
+                  {nlLoading ? (
+                    <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                  ) : (
+                    <Send className="mr-2 h-4 w-4" />
+                  )}
+                  Send to {nlAudience === "all" ? "all users" : nlAudience === "active" ? "active users" : "admins"}
                 </Button>
               </div>
             </form>
@@ -458,13 +595,15 @@ export default function AdminPage() {
                           <span
                             className={cn(
                               "inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-xs font-medium",
-                              user.role === "ADMIN"
-                                ? "bg-primary/10 text-primary"
-                                : "bg-muted text-muted-foreground"
+                              user.role === "SUPER_ADMIN"
+                                ? "bg-amber-500/15 text-amber-500"
+                                : user.role === "ADMIN"
+                                  ? "bg-primary/10 text-primary"
+                                  : "bg-muted text-muted-foreground"
                             )}
                           >
-                            {user.role === "ADMIN" && <Shield className="h-3 w-3" />}
-                            {user.role}
+                            {(user.role === "ADMIN" || user.role === "SUPER_ADMIN") && <Shield className="h-3 w-3" />}
+                            {user.role === "SUPER_ADMIN" ? "Super Admin" : user.role === "ADMIN" ? "Admin" : "User"}
                           </span>
                         </td>
                         <td className="py-3 pr-4">
@@ -492,66 +631,79 @@ export default function AdminPage() {
                         </td>
                         <td className="py-3">
                           <div className="flex items-center gap-0.5">
-                            <Button
-                              variant="ghost"
-                              size="sm"
-                              onClick={() => openEditModal(user)}
-                              title="Edit user"
-                            >
-                              <Pencil className="h-3.5 w-3.5" />
-                            </Button>
-                            <Button
-                              variant="ghost"
-                              size="sm"
-                              onClick={() => toggleRole(user)}
-                              disabled={actionLoading === user.id + "-role"}
-                              title={user.role === "ADMIN" ? "Demote to user" : "Promote to admin"}
-                            >
-                              {actionLoading === user.id + "-role" ? (
-                                <Loader2 className="h-3.5 w-3.5 animate-spin" />
-                              ) : user.role === "ADMIN" ? (
-                                <ShieldOff className="h-3.5 w-3.5" />
-                              ) : (
-                                <Shield className="h-3.5 w-3.5" />
-                              )}
-                            </Button>
-                            <Button
-                              variant="ghost"
-                              size="sm"
-                              onClick={() => toggleDisabled(user)}
-                              disabled={actionLoading === user.id + "-disabled"}
-                              title={user.disabled ? "Enable account" : "Disable account"}
-                            >
-                              {actionLoading === user.id + "-disabled" ? (
-                                <Loader2 className="h-3.5 w-3.5 animate-spin" />
-                              ) : user.disabled ? (
-                                <UserCheck className="h-3.5 w-3.5" />
-                              ) : (
-                                <UserX className="h-3.5 w-3.5" />
-                              )}
-                            </Button>
-                            <Button
-                              variant="ghost"
-                              size="sm"
-                              onClick={() => impersonate(user)}
-                              disabled={actionLoading === user.id + "-impersonate"}
-                              title="Impersonate user"
-                            >
-                              {actionLoading === user.id + "-impersonate" ? (
-                                <Loader2 className="h-3.5 w-3.5 animate-spin" />
-                              ) : (
-                                <Eye className="h-3.5 w-3.5" />
-                              )}
-                            </Button>
-                            <Button
-                              variant="ghost"
-                              size="sm"
-                              onClick={() => setDeleteUser(user)}
-                              title="Delete user"
-                              className="text-destructive-foreground hover:text-destructive-foreground"
-                            >
-                              <Trash2 className="h-3.5 w-3.5" />
-                            </Button>
+                            {canModifyUser(user) && (
+                              <>
+                                <Button
+                                  variant="ghost"
+                                  size="sm"
+                                  onClick={() => openEditModal(user)}
+                                  title="Edit user"
+                                >
+                                  <Pencil className="h-3.5 w-3.5" />
+                                </Button>
+                                {isSuperAdmin && (
+                                  <Button
+                                    variant="ghost"
+                                    size="sm"
+                                    onClick={() => toggleRole(user)}
+                                    disabled={actionLoading === user.id + "-role"}
+                                    title={user.role === "ADMIN" ? "Demote to user" : "Promote to admin"}
+                                  >
+                                    {actionLoading === user.id + "-role" ? (
+                                      <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                                    ) : user.role === "ADMIN" ? (
+                                      <ShieldOff className="h-3.5 w-3.5" />
+                                    ) : (
+                                      <Shield className="h-3.5 w-3.5" />
+                                    )}
+                                  </Button>
+                                )}
+                                <Button
+                                  variant="ghost"
+                                  size="sm"
+                                  onClick={() => toggleDisabled(user)}
+                                  disabled={actionLoading === user.id + "-disabled"}
+                                  title={user.disabled ? "Enable account" : "Disable account"}
+                                >
+                                  {actionLoading === user.id + "-disabled" ? (
+                                    <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                                  ) : user.disabled ? (
+                                    <UserCheck className="h-3.5 w-3.5" />
+                                  ) : (
+                                    <UserX className="h-3.5 w-3.5" />
+                                  )}
+                                </Button>
+                              </>
+                            )}
+                            {user.role !== "SUPER_ADMIN" && (
+                              <Button
+                                variant="ghost"
+                                size="sm"
+                                onClick={() => impersonate(user)}
+                                disabled={actionLoading === user.id + "-impersonate"}
+                                title="Impersonate user"
+                              >
+                                {actionLoading === user.id + "-impersonate" ? (
+                                  <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                                ) : (
+                                  <Eye className="h-3.5 w-3.5" />
+                                )}
+                              </Button>
+                            )}
+                            {canModifyUser(user) && (
+                              <Button
+                                variant="ghost"
+                                size="sm"
+                                onClick={() => setDeleteUser(user)}
+                                title="Delete user"
+                                className="text-destructive-foreground hover:text-destructive-foreground"
+                              >
+                                <Trash2 className="h-3.5 w-3.5" />
+                              </Button>
+                            )}
+                            {!canModifyUser(user) && user.role !== "SUPER_ADMIN" && (
+                              <span className="text-xs text-muted-foreground px-2">No actions</span>
+                            )}
                           </div>
                         </td>
                       </tr>
@@ -576,12 +728,14 @@ export default function AdminPage() {
                         <span
                           className={cn(
                             "inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-xs font-medium",
-                            user.role === "ADMIN"
-                              ? "bg-primary/10 text-primary"
-                              : "bg-muted text-muted-foreground"
+                            user.role === "SUPER_ADMIN"
+                              ? "bg-amber-500/15 text-amber-500"
+                              : user.role === "ADMIN"
+                                ? "bg-primary/10 text-primary"
+                                : "bg-muted text-muted-foreground"
                           )}
                         >
-                          {user.role}
+                          {user.role === "SUPER_ADMIN" ? "Super Admin" : user.role === "ADMIN" ? "Admin" : "User"}
                         </span>
                         <span
                           className={cn(
@@ -604,37 +758,47 @@ export default function AdminPage() {
                       <span>{user._count.jobs} jobs</span>
                     </div>
                     <div className="flex flex-wrap items-center gap-2">
-                      <Button variant="secondary" size="sm" onClick={() => openEditModal(user)}>
-                        <Pencil className="mr-1 h-3 w-3" />
-                        Edit
-                      </Button>
-                      <Button variant="secondary" size="sm" onClick={() => toggleRole(user)} disabled={actionLoading === user.id + "-role"}>
-                        {user.role === "ADMIN" ? (
-                          <><ShieldOff className="mr-1 h-3 w-3" />Demote</>
-                        ) : (
-                          <><Shield className="mr-1 h-3 w-3" />Promote</>
-                        )}
-                      </Button>
-                      <Button variant="secondary" size="sm" onClick={() => toggleDisabled(user)} disabled={actionLoading === user.id + "-disabled"}>
-                        {user.disabled ? (
-                          <><UserCheck className="mr-1 h-3 w-3" />Enable</>
-                        ) : (
-                          <><UserX className="mr-1 h-3 w-3" />Disable</>
-                        )}
-                      </Button>
-                      <Button variant="secondary" size="sm" onClick={() => impersonate(user)} disabled={actionLoading === user.id + "-impersonate"}>
-                        <Eye className="mr-1 h-3 w-3" />
-                        Impersonate
-                      </Button>
-                      <Button
-                        variant="secondary"
-                        size="sm"
-                        onClick={() => setDeleteUser(user)}
-                        className="text-destructive-foreground"
-                      >
-                        <Trash2 className="mr-1 h-3 w-3" />
-                        Delete
-                      </Button>
+                      {canModifyUser(user) && (
+                        <>
+                          <Button variant="secondary" size="sm" onClick={() => openEditModal(user)}>
+                            <Pencil className="mr-1 h-3 w-3" />
+                            Edit
+                          </Button>
+                          {isSuperAdmin && (
+                            <Button variant="secondary" size="sm" onClick={() => toggleRole(user)} disabled={actionLoading === user.id + "-role"}>
+                              {user.role === "ADMIN" ? (
+                                <><ShieldOff className="mr-1 h-3 w-3" />Demote</>
+                              ) : (
+                                <><Shield className="mr-1 h-3 w-3" />Promote</>
+                              )}
+                            </Button>
+                          )}
+                          <Button variant="secondary" size="sm" onClick={() => toggleDisabled(user)} disabled={actionLoading === user.id + "-disabled"}>
+                            {user.disabled ? (
+                              <><UserCheck className="mr-1 h-3 w-3" />Enable</>
+                            ) : (
+                              <><UserX className="mr-1 h-3 w-3" />Disable</>
+                            )}
+                          </Button>
+                        </>
+                      )}
+                      {user.role !== "SUPER_ADMIN" && (
+                        <Button variant="secondary" size="sm" onClick={() => impersonate(user)} disabled={actionLoading === user.id + "-impersonate"}>
+                          <Eye className="mr-1 h-3 w-3" />
+                          Impersonate
+                        </Button>
+                      )}
+                      {canModifyUser(user) && (
+                        <Button
+                          variant="secondary"
+                          size="sm"
+                          onClick={() => setDeleteUser(user)}
+                          className="text-destructive-foreground"
+                        >
+                          <Trash2 className="mr-1 h-3 w-3" />
+                          Delete
+                        </Button>
+                      )}
                     </div>
                   </div>
                 ))}
@@ -677,10 +841,14 @@ export default function AdminPage() {
                 <Input label="Password" type="password" value={createForm.password} onChange={(e) => setCreateForm((f) => ({ ...f, password: e.target.value }))} placeholder="At least 8 characters" required minLength={8} />
                 <Select
                   label="Role"
-                  options={[
-                    { value: "USER", label: "User" },
-                    { value: "ADMIN", label: "Admin" },
-                  ]}
+                  options={
+                    isSuperAdmin
+                      ? [
+                          { value: "USER", label: "User" },
+                          { value: "ADMIN", label: "Admin" },
+                        ]
+                      : [{ value: "USER", label: "User" }]
+                  }
                   value={createForm.role}
                   onChange={(e) => setCreateForm((f) => ({ ...f, role: e.target.value }))}
                 />
@@ -731,12 +899,17 @@ export default function AdminPage() {
                 <Input label="Email" type="email" value={editForm.email} onChange={(e) => setEditForm((f) => ({ ...f, email: e.target.value }))} placeholder="user@example.com" required />
                 <Select
                   label="Role"
-                  options={[
-                    { value: "USER", label: "User" },
-                    { value: "ADMIN", label: "Admin" },
-                  ]}
+                  options={
+                    isSuperAdmin
+                      ? [
+                          { value: "USER", label: "User" },
+                          { value: "ADMIN", label: "Admin" },
+                        ]
+                      : [{ value: "USER", label: "User" }]
+                  }
                   value={editForm.role}
                   onChange={(e) => setEditForm((f) => ({ ...f, role: e.target.value }))}
+                  disabled={!isSuperAdmin}
                 />
                 <Input label="New Password (optional)" type="password" value={editForm.password} onChange={(e) => setEditForm((f) => ({ ...f, password: e.target.value }))} placeholder="Leave blank to keep current" minLength={8} />
                 <div className="flex gap-2 pt-2">

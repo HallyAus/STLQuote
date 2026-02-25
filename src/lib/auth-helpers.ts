@@ -23,8 +23,8 @@ export async function getSessionUser(): Promise<SessionUser | null> {
   const realUserId = session.user.id;
   const role = session.user.role;
 
-  // Check for impersonation (admin only)
-  if (role === "ADMIN") {
+  // Check for impersonation (admin or super admin only)
+  if (isAdminRole(role)) {
     const cookieStore = await cookies();
     const impersonateId = cookieStore.get("impersonate-user-id")?.value;
 
@@ -70,8 +70,18 @@ export async function requireAuth(): Promise<SessionUser> {
   return user;
 }
 
+/** Check if a role has admin-level access (ADMIN or SUPER_ADMIN) */
+export function isAdminRole(role: string): boolean {
+  return role === "ADMIN" || role === "SUPER_ADMIN";
+}
+
+/** Check if a role is SUPER_ADMIN */
+export function isSuperAdminRole(role: string): boolean {
+  return role === "SUPER_ADMIN";
+}
+
 /**
- * Require admin role — returns user or throws 403.
+ * Require admin role (ADMIN or SUPER_ADMIN) — returns user or throws 403.
  */
 export async function requireAdmin(): Promise<SessionUser> {
   const session = await auth();
@@ -81,8 +91,34 @@ export async function requireAdmin(): Promise<SessionUser> {
       headers: { "Content-Type": "application/json" },
     });
   }
-  if (session.user.role !== "ADMIN") {
+  if (!isAdminRole(session.user.role)) {
     throw new Response(JSON.stringify({ error: "Forbidden" }), {
+      status: 403,
+      headers: { "Content-Type": "application/json" },
+    });
+  }
+  return {
+    id: session.user.id,
+    email: session.user.email ?? null,
+    name: session.user.name ?? null,
+    role: session.user.role,
+    isImpersonating: false,
+  };
+}
+
+/**
+ * Require SUPER_ADMIN role — returns user or throws 403.
+ */
+export async function requireSuperAdmin(): Promise<SessionUser> {
+  const session = await auth();
+  if (!session?.user?.id) {
+    throw new Response(JSON.stringify({ error: "Unauthorised" }), {
+      status: 401,
+      headers: { "Content-Type": "application/json" },
+    });
+  }
+  if (!isSuperAdminRole(session.user.role)) {
+    throw new Response(JSON.stringify({ error: "Forbidden — Super Admin required" }), {
       status: 403,
       headers: { "Content-Type": "application/json" },
     });

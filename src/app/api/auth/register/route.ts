@@ -4,7 +4,7 @@ import bcrypt from "bcryptjs";
 import { prisma } from "@/lib/prisma";
 import { rateLimit, getClientIp } from "@/lib/rate-limit";
 import { createEmailVerificationToken } from "@/lib/tokens";
-import { sendVerificationEmail } from "@/lib/email";
+import { sendVerificationEmail, sendWelcomeEmail } from "@/lib/email";
 
 const registerSchema = z.object({
   name: z.string().min(1, "Name is required"),
@@ -57,9 +57,9 @@ export async function POST(request: NextRequest) {
     // Hash password
     const passwordHash = await bcrypt.hash(password, 12);
 
-    // Auto-assign ADMIN role if email matches ADMIN_EMAIL env var
+    // Auto-assign SUPER_ADMIN role if email matches ADMIN_EMAIL env var
     const adminEmail = process.env.ADMIN_EMAIL?.toLowerCase();
-    const role = adminEmail && email.toLowerCase() === adminEmail ? "ADMIN" : "USER";
+    const role = adminEmail && email.toLowerCase() === adminEmail ? "SUPER_ADMIN" : "USER";
 
     const user = await prisma.user.create({
       data: {
@@ -77,14 +77,15 @@ export async function POST(request: NextRequest) {
       },
     });
 
-    // Send verification email (non-blocking)
+    // Send verification + welcome emails (non-blocking)
     try {
       if (email) {
         const token = await createEmailVerificationToken(email);
         await sendVerificationEmail(email, token);
+        await sendWelcomeEmail(email, name);
       }
     } catch (emailError) {
-      console.error("Failed to send verification email:", emailError);
+      console.error("Failed to send registration emails:", emailError);
     }
 
     return NextResponse.json(user, { status: 201 });

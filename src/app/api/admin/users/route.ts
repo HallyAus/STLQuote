@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
-import { requireAdmin } from "@/lib/auth-helpers";
+import { requireAdmin, isSuperAdminRole } from "@/lib/auth-helpers";
 import bcrypt from "bcryptjs";
 import { z } from "zod";
 
@@ -8,12 +8,12 @@ const createUserSchema = z.object({
   name: z.string().min(1, "Name is required"),
   email: z.string().email("Invalid email"),
   password: z.string().min(8, "Password must be at least 8 characters"),
-  role: z.enum(["USER", "ADMIN"]).default("USER"),
+  role: z.enum(["USER", "ADMIN"]).default("USER"), // Only SUPER_ADMIN can create ADMINs (enforced below)
 });
 
 export async function POST(request: Request) {
   try {
-    await requireAdmin();
+    const admin = await requireAdmin();
 
     const body = await request.json();
     const parsed = createUserSchema.safeParse(body);
@@ -26,6 +26,14 @@ export async function POST(request: Request) {
     }
 
     const { name, email, password, role } = parsed.data;
+
+    // Only SUPER_ADMIN can create ADMIN users
+    if (role === "ADMIN" && !isSuperAdminRole(admin.role)) {
+      return NextResponse.json(
+        { error: "Only Super Admins can create Admin users" },
+        { status: 403 }
+      );
+    }
 
     // Check if email already exists
     const existing = await prisma.user.findUnique({ where: { email } });
@@ -90,7 +98,7 @@ export async function GET() {
 
     // Summary stats
     const totalUsers = users.length;
-    const adminCount = users.filter((u) => u.role === "ADMIN").length;
+    const adminCount = users.filter((u) => u.role === "ADMIN" || u.role === "SUPER_ADMIN").length;
     const disabledCount = users.filter((u) => u.disabled).length;
 
     const oneWeekAgo = new Date();

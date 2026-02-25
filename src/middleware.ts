@@ -53,9 +53,10 @@ export default auth((req) => {
   // Disabled users are blocked at login (auth.ts authorize callback).
   // No mid-session check needed — JWT doesn't carry disabled state.
 
-  // Protect admin routes
+  // Protect admin routes (ADMIN and SUPER_ADMIN)
   if (pathname.startsWith("/admin") || pathname.startsWith("/api/admin")) {
-    if (req.auth.user.role !== "ADMIN") {
+    const role = req.auth.user.role;
+    if (role !== "ADMIN" && role !== "SUPER_ADMIN") {
       return NextResponse.redirect(new URL("/dashboard", req.url));
     }
   }

@@ -11,6 +11,8 @@ Each entry: `[YYYY-MM-DD] Decision — Rationale`
 
 <!-- Claude: add new entries at the top -->
 
+- [2026-02-26] Three-tier role system: SUPER_ADMIN > ADMIN > USER — SUPER_ADMIN (ADMIN_EMAIL) is undeletable/unmodifiable, only SUPER_ADMIN can promote/demote ADMINs, both ADMIN and SUPER_ADMIN access admin portal. Role is a plain string column, no enum migration needed.
+- [2026-02-26] Email provider: Resend SDK (not Nodemailer) — lazy-init pattern to avoid Docker build crash, domain verified at printforge.com.au
 - [2026-02-25] Auth config split pattern: auth.config.ts (edge-safe, no bcryptjs) + auth.ts (Node.js with Credentials) — standard NextAuth v5 pattern to avoid Edge Runtime warnings in middleware
 - [2026-02-25] G-code parser reads comment lines only, supports Bambu Studio/OrcaSlicer/PrusaSlicer/Cura — covers Daniel's Bambu Lab fleet and common community slicers
 - [2026-02-25] Prisma migrate deploy in Dockerfile instead of db push — production-safe schema changes with tracked migration history

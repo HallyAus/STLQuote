@@ -7,7 +7,8 @@ export async function GET() {
   try {
     // Use raw session (not getSessionUser) to get the real admin identity
     const session = await auth();
-    if (!session?.user?.id || session.user.role !== "ADMIN") {
+    const role = session?.user?.role;
+    if (!session?.user?.id || (role !== "ADMIN" && role !== "SUPER_ADMIN")) {
       return NextResponse.json({ impersonating: false });
     }
 

@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { z } from "zod";
 import bcrypt from "bcryptjs";
 import { prisma } from "@/lib/prisma";
-import { requireAdmin } from "@/lib/auth-helpers";
+import { requireAdmin, isAdminRole, isSuperAdminRole } from "@/lib/auth-helpers";
 
 const updateUserSchema = z.object({
   name: z.string().min(1).optional(),
@@ -43,6 +43,30 @@ export async function PUT(
       return NextResponse.json(
         { error: "User not found" },
         { status: 404 }
+      );
+    }
+
+    // SUPER_ADMIN accounts cannot be modified by anyone
+    if (isSuperAdminRole(existing.role)) {
+      return NextResponse.json(
+        { error: "Super Admin accounts cannot be modified" },
+        { status: 403 }
+      );
+    }
+
+    // Regular ADMINs can only modify USERs, not other ADMINs
+    if (isAdminRole(existing.role) && !isSuperAdminRole(admin.role)) {
+      return NextResponse.json(
+        { error: "Only Super Admins can modify Admin accounts" },
+        { status: 403 }
+      );
+    }
+
+    // Only SUPER_ADMIN can promote to ADMIN
+    if (parsed.data.role === "ADMIN" && !isSuperAdminRole(admin.role)) {
+      return NextResponse.json(
+        { error: "Only Super Admins can promote users to Admin" },
+        { status: 403 }
       );
     }
 
@@ -95,6 +119,22 @@ export async function DELETE(
     const existing = await prisma.user.findUnique({ where: { id } });
     if (!existing) {
       return NextResponse.json({ error: "User not found" }, { status: 404 });
+    }
+
+    // SUPER_ADMIN accounts cannot be deleted
+    if (isSuperAdminRole(existing.role)) {
+      return NextResponse.json(
+        { error: "Super Admin accounts cannot be deleted" },
+        { status: 403 }
+      );
+    }
+
+    // Regular ADMINs cannot delete other ADMINs
+    if (isAdminRole(existing.role) && !isSuperAdminRole(admin.role)) {
+      return NextResponse.json(
+        { error: "Only Super Admins can delete Admin accounts" },
+        { status: 403 }
+      );
     }
 
     await prisma.user.delete({ where: { id } });

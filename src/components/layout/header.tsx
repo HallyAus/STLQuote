@@ -30,7 +30,8 @@ export function Header({ title, breadcrumb, onMenuToggle }: HeaderProps) {
   // Check impersonation status via server endpoint (cookie is httpOnly)
   useEffect(() => {
     async function checkImpersonation() {
-      if (session?.user?.role !== "ADMIN") return;
+      const role = session?.user?.role;
+      if (role !== "ADMIN" && role !== "SUPER_ADMIN") return;
       try {
         const res = await fetch("/api/admin/impersonate/status");
         if (res.ok) {
@@ -174,7 +175,7 @@ export function Header({ title, breadcrumb, onMenuToggle }: HeaderProps) {
                   </div>
                 </div>
 
-                {session.user.role === "ADMIN" && (
+                {(session.user.role === "ADMIN" || session.user.role === "SUPER_ADMIN") && (
                   <Link
                     href="/admin"
                     onClick={() => setMenuOpen(false)}

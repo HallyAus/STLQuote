@@ -108,7 +108,8 @@ function isRouteActive(href: string, pathname: string): boolean {
 export function Sidebar({ open, onClose }: SidebarProps) {
   const pathname = usePathname();
   const { data: session } = useSession();
-  const isAdmin = session?.user?.role === "ADMIN";
+  const role = session?.user?.role;
+  const isAdmin = role === "ADMIN" || role === "SUPER_ADMIN";
 
   return (
     <>
