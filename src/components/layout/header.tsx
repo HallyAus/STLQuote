@@ -48,6 +48,11 @@ export function Header({ title, breadcrumb, onMenuToggle }: HeaderProps) {
       {/* Spacer */}
       <div className="flex-1" />
 
+      {/* Version */}
+      <span className="hidden text-[11px] text-muted-foreground/50 sm:inline">
+        v{process.env.NEXT_PUBLIC_APP_VERSION}
+      </span>
+
       {/* Quick action: New Quote (desktop only) */}
       <Link href="/quotes/new" className="hidden sm:flex">
         <Button variant="secondary" size="sm" className="gap-1.5">
