@@ -55,6 +55,7 @@ interface Quote {
   client: {
     id: string;
     name: string;
+    email: string | null;
   } | null;
   lineItems: LineItem[];
   jobs?: { id: string; status: string }[];
