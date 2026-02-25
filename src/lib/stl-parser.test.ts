@@ -267,10 +267,10 @@ describe("estimateFromSTL", () => {
       filename: "test-part.stl",
     });
 
-    // Weight = 10 * 1.24 * 0.20 * 1.15 = 2.852
-    expect(estimates.weightG).toBeCloseTo(2.852, 3);
-    // Time = 10 * 3.5 = 35
-    expect(estimates.printTimeMinutes).toBeCloseTo(35, 1);
+    // Weight = 10 * 1.24 * 0.20 = 2.48
+    expect(estimates.weightG).toBeCloseTo(2.48, 3);
+    // Time = 10 * 0.75 = 7.5
+    expect(estimates.printTimeMinutes).toBeCloseTo(7.5, 1);
     expect(estimates.volumeCm3).toBe(10);
     expect(estimates.triangleCount).toBe(12);
     expect(estimates.filename).toBe("test-part.stl");

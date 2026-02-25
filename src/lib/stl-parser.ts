@@ -37,10 +37,10 @@ export const MATERIAL_DENSITIES: Record<string, number> = {
   "ABS-Like Resin": 1.12,
 };
 
-export const SPEED_PRESETS: Record<SpeedPreset, number> = {
-  fast: 2.5,
-  standard: 3.5,
-  quality: 5.0,
+export const SPEED_PRESETS: Record<SpeedPreset, { minPerCm3: number; label: string }> = {
+  fast: { minPerCm3: 0.5, label: "Fast (Bambu/high-speed)" },
+  standard: { minPerCm3: 0.75, label: "Standard" },
+  quality: { minPerCm3: 1.5, label: "Quality (slow/detailed)" },
 };
 
 export const MAX_FILE_SIZE = 50 * 1024 * 1024; // 50MB
@@ -254,8 +254,7 @@ export function parseASCIISTL(text: string): STLParseResult {
 /**
  * Estimate weight and print time from parsed STL data.
  *
- * Weight formula: volumeCm3 * density * (infill/100) * 1.15
- *   The 1.15 multiplier accounts for solid walls, top, and bottom layers.
+ * Weight formula: volumeCm3 * density * (infill/100)
  *
  * Print time formula: volumeCm3 * speedPresetFactor (minutes per cm³)
  */
@@ -268,15 +267,13 @@ export function estimateFromSTL(
     filename: string;
   }
 ): STLEstimates {
-  const wallFactor = 1.15;
   const weightG =
     result.volumeCm3 *
     options.densityGPerCm3 *
-    (options.infillPercent / 100) *
-    wallFactor;
+    (options.infillPercent / 100);
 
   const printTimeMinutes =
-    result.volumeCm3 * SPEED_PRESETS[options.speedPreset];
+    result.volumeCm3 * SPEED_PRESETS[options.speedPreset].minPerCm3;
 
   return {
     volumeCm3: result.volumeCm3,
