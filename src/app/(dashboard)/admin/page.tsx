@@ -20,6 +20,7 @@ import {
 import { Input } from "@/components/ui/input";
 import { Select } from "@/components/ui/select";
 import { cn } from "@/lib/utils";
+import { formatRelativeTime } from "@/lib/format";
 import { DeployLogs } from "@/components/admin/deploy-logs";
 
 interface UserStats {
@@ -35,6 +36,7 @@ interface AdminUser {
   email: string | null;
   role: string;
   disabled: boolean;
+  lastLogin: string | null;
   createdAt: string;
   updatedAt: string;
   _count: {
@@ -476,6 +478,7 @@ export default function AdminPage() {
                   <th className="pb-3 pr-4 font-medium">Role</th>
                   <th className="pb-3 pr-4 font-medium">Status</th>
                   <th className="pb-3 pr-4 font-medium">Joined</th>
+                  <th className="pb-3 pr-4 font-medium">Last Login</th>
                   <th className="pb-3 pr-4 font-medium">Quotes</th>
                   <th className="pb-3 pr-4 font-medium">Jobs</th>
                   <th className="pb-3 font-medium">Actions</th>
@@ -522,6 +525,11 @@ export default function AdminPage() {
                     </td>
                     <td className="py-3 pr-4 text-muted-foreground">
                       {new Date(user.createdAt).toLocaleDateString()}
+                    </td>
+                    <td className="py-3 pr-4 text-muted-foreground">
+                      {user.lastLogin
+                        ? formatRelativeTime(user.lastLogin)
+                        : "Never"}
                     </td>
                     <td className="py-3 pr-4 text-muted-foreground">
                       {user._count.quotes}
@@ -635,9 +643,15 @@ export default function AdminPage() {
                     </span>
                   </div>
                 </div>
-                <div className="flex items-center gap-4 text-sm text-muted-foreground">
+                <div className="flex flex-wrap items-center gap-x-4 gap-y-1 text-sm text-muted-foreground">
                   <span>
                     Joined {new Date(user.createdAt).toLocaleDateString()}
+                  </span>
+                  <span>
+                    Login{" "}
+                    {user.lastLogin
+                      ? formatRelativeTime(user.lastLogin)
+                      : "never"}
                   </span>
                   <span>{user._count.quotes} quotes</span>
                   <span>{user._count.jobs} jobs</span>

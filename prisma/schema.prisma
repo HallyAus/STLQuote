@@ -54,6 +54,7 @@ model User {
   passwordHash  String?
   role          String    @default("USER") // USER | ADMIN
   disabled      Boolean   @default(false)
+  lastLogin     DateTime?
   createdAt     DateTime  @default(now())
   updatedAt     DateTime  @updatedAt
 

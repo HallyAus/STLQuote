@@ -74,6 +74,7 @@ export async function GET() {
         email: true,
         role: true,
         disabled: true,
+        lastLogin: true,
         createdAt: true,
         updatedAt: true,
         _count: {
