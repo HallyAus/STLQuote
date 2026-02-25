@@ -1,9 +1,10 @@
 import { NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
+import { JobStatus } from "@prisma/client";
 
 const TEMP_USER_ID = "temp-user";
 
-const ACTIVE_JOB_STATUSES = [
+const ACTIVE_JOB_STATUSES: JobStatus[] = [
   "QUEUED",
   "PRINTING",
   "POST_PROCESSING",
