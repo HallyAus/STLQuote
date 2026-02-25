@@ -267,8 +267,9 @@ describe("estimateFromSTL", () => {
       filename: "test-part.stl",
     });
 
-    // Weight = 10 * 1.24 * 0.20 = 2.48
-    expect(estimates.weightG).toBeCloseTo(2.48, 3);
+    // effectiveFill = 0.25 + 0.75 * 0.20 = 0.40
+    // Weight = 10 * 1.24 * 0.40 = 4.96
+    expect(estimates.weightG).toBeCloseTo(4.96, 2);
     // Time = 10 * 0.75 = 7.5
     expect(estimates.printTimeMinutes).toBeCloseTo(7.5, 1);
     expect(estimates.volumeCm3).toBe(10);

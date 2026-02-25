@@ -254,7 +254,12 @@ export function parseASCIISTL(text: string): STLParseResult {
 /**
  * Estimate weight and print time from parsed STL data.
  *
- * Weight formula: volumeCm3 * density * (infill/100)
+ * Weight formula accounts for solid shells (walls, top/bottom layers):
+ *   effectiveFill = shellFraction + (1 - shellFraction) * (infill / 100)
+ *   weight = volumeCm3 * density * effectiveFill
+ *
+ * ~25% of print volume is solid shell regardless of infill setting.
+ * This gives conservative estimates suitable for quoting.
  *
  * Print time formula: volumeCm3 * speedPresetFactor (minutes per cm³)
  */
@@ -267,10 +272,10 @@ export function estimateFromSTL(
     filename: string;
   }
 ): STLEstimates {
-  const weightG =
-    result.volumeCm3 *
-    options.densityGPerCm3 *
-    (options.infillPercent / 100);
+  const shellFraction = 0.25;
+  const effectiveFill =
+    shellFraction + (1 - shellFraction) * (options.infillPercent / 100);
+  const weightG = result.volumeCm3 * options.densityGPerCm3 * effectiveFill;
 
   const printTimeMinutes =
     result.volumeCm3 * SPEED_PRESETS[options.speedPreset].minPerCm3;

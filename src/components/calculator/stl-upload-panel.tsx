@@ -54,7 +54,7 @@ export function STLUploadPanel({ onEstimatesReady }: STLUploadPanelProps) {
   const [error, setError] = useState<string | null>(null);
   const [result, setResult] = useState<STLParseResult | null>(null);
   const [estimates, setEstimates] = useState<STLEstimates | null>(null);
-  const [infillPercent, setInfillPercent] = useState(20);
+  const [infillPercent, setInfillPercent] = useState(15);
   const [speedPreset, setSpeedPreset] = useState<SpeedPreset>("standard");
   const [materialType, setMaterialType] = useState("PLA");
   const [dragActive, setDragActive] = useState(false);
