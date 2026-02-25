@@ -1,8 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { z } from "zod";
 import { prisma } from "@/lib/prisma";
-
-const TEMP_USER_ID = "temp-user";
+import { getSessionUser } from "@/lib/auth-helpers";
 
 const lineItemSchema = z.object({
   description: z.string().min(1, "Description is required"),
@@ -48,8 +47,11 @@ async function generateQuoteNumber(): Promise<string> {
 
 export async function GET() {
   try {
+    const user = await getSessionUser();
+    if (!user) return NextResponse.json({ error: "Unauthorised" }, { status: 401 });
+
     const quotes = await prisma.quote.findMany({
-      where: { userId: TEMP_USER_ID },
+      where: { userId: user.id },
       include: {
         client: { select: { name: true } },
         lineItems: { select: { id: true } },
@@ -69,6 +71,9 @@ export async function GET() {
 
 export async function POST(request: NextRequest) {
   try {
+    const user = await getSessionUser();
+    if (!user) return NextResponse.json({ error: "Unauthorised" }, { status: 401 });
+
     const body = await request.json();
     const parsed = createQuoteSchema.safeParse(body);
 
@@ -98,7 +103,7 @@ export async function POST(request: NextRequest) {
           expiryDate: quoteData.expiryDate
             ? new Date(quoteData.expiryDate)
             : null,
-          userId: TEMP_USER_ID,
+          userId: user.id,
           quoteNumber,
           subtotal,
           total,

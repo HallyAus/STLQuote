@@ -1,8 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { z } from "zod";
 import { prisma } from "@/lib/prisma";
-
-const TEMP_USER_ID = "temp-user";
+import { getSessionUser } from "@/lib/auth-helpers";
 
 const materialCostSchema = z.object({
   spoolPrice: z.number().min(0),
@@ -57,8 +56,11 @@ const createPresetSchema = z.object({
 
 export async function GET() {
   try {
+    const user = await getSessionUser();
+    if (!user) return NextResponse.json({ error: "Unauthorised" }, { status: 401 });
+
     const presets = await prisma.calculatorPreset.findMany({
-      where: { userId: TEMP_USER_ID },
+      where: { userId: user.id },
       orderBy: { updatedAt: "desc" },
     });
 
@@ -80,6 +82,9 @@ export async function GET() {
 
 export async function POST(request: NextRequest) {
   try {
+    const user = await getSessionUser();
+    if (!user) return NextResponse.json({ error: "Unauthorised" }, { status: 401 });
+
     const body = await request.json();
     const parsed = createPresetSchema.safeParse(body);
 
@@ -94,7 +99,7 @@ export async function POST(request: NextRequest) {
       data: {
         name: parsed.data.name,
         configJson: JSON.stringify(parsed.data.configJson),
-        userId: TEMP_USER_ID,
+        userId: user.id,
       },
     });
 

@@ -1,8 +1,7 @@
 import { NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { JobStatus } from "@prisma/client";
-
-const TEMP_USER_ID = "temp-user";
+import { getSessionUser } from "@/lib/auth-helpers";
 
 const ACTIVE_JOB_STATUSES: JobStatus[] = [
   "QUEUED",
@@ -14,6 +13,9 @@ const ACTIVE_JOB_STATUSES: JobStatus[] = [
 
 export async function GET() {
   try {
+    const user = await getSessionUser();
+    if (!user) return NextResponse.json({ error: "Unauthorised" }, { status: 401 });
+
     const now = new Date();
     const startOfMonth = new Date(now.getFullYear(), now.getMonth(), 1);
 
@@ -45,21 +47,21 @@ export async function GET() {
       allMaterials,
     ] = await Promise.all([
       // Quote counts
-      prisma.quote.count({ where: { userId: TEMP_USER_ID } }),
-      prisma.quote.count({ where: { userId: TEMP_USER_ID, status: "DRAFT" } }),
-      prisma.quote.count({ where: { userId: TEMP_USER_ID, status: "SENT" } }),
-      prisma.quote.count({ where: { userId: TEMP_USER_ID, status: "ACCEPTED" } }),
-      prisma.quote.count({ where: { userId: TEMP_USER_ID, status: "REJECTED" } }),
-      prisma.quote.count({ where: { userId: TEMP_USER_ID, status: "EXPIRED" } }),
+      prisma.quote.count({ where: { userId: user.id } }),
+      prisma.quote.count({ where: { userId: user.id, status: "DRAFT" } }),
+      prisma.quote.count({ where: { userId: user.id, status: "SENT" } }),
+      prisma.quote.count({ where: { userId: user.id, status: "ACCEPTED" } }),
+      prisma.quote.count({ where: { userId: user.id, status: "REJECTED" } }),
+      prisma.quote.count({ where: { userId: user.id, status: "EXPIRED" } }),
       prisma.quote.aggregate({
-        where: { userId: TEMP_USER_ID, status: "ACCEPTED" },
+        where: { userId: user.id, status: "ACCEPTED" },
         _sum: { total: true },
       }),
       prisma.quote.count({
-        where: { userId: TEMP_USER_ID, createdAt: { gte: startOfMonth } },
+        where: { userId: user.id, createdAt: { gte: startOfMonth } },
       }),
       prisma.quote.findMany({
-        where: { userId: TEMP_USER_ID },
+        where: { userId: user.id },
         include: {
           client: { select: { name: true } },
           _count: { select: { lineItems: true } },
@@ -69,15 +71,15 @@ export async function GET() {
       }),
 
       // Job counts
-      prisma.job.count({ where: { userId: TEMP_USER_ID } }),
+      prisma.job.count({ where: { userId: user.id } }),
       prisma.job.groupBy({
         by: ["status"],
-        where: { userId: TEMP_USER_ID },
+        where: { userId: user.id },
         _count: true,
       }),
       prisma.job.findMany({
         where: {
-          userId: TEMP_USER_ID,
+          userId: user.id,
           status: { in: ACTIVE_JOB_STATUSES },
         },
         include: {
@@ -89,7 +91,7 @@ export async function GET() {
       }),
       prisma.job.findMany({
         where: {
-          userId: TEMP_USER_ID,
+          userId: user.id,
           status: { in: ACTIVE_JOB_STATUSES },
           printerId: { not: null },
         },
@@ -98,14 +100,14 @@ export async function GET() {
       }),
 
       // Clients
-      prisma.client.count({ where: { userId: TEMP_USER_ID } }),
+      prisma.client.count({ where: { userId: user.id } }),
 
       // Printers
-      prisma.printer.count({ where: { userId: TEMP_USER_ID } }),
+      prisma.printer.count({ where: { userId: user.id } }),
 
       // Materials
       prisma.material.findMany({
-        where: { userId: TEMP_USER_ID },
+        where: { userId: user.id },
         orderBy: { stockQty: "asc" },
       }),
     ]);

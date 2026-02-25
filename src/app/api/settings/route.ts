@@ -1,8 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { z } from "zod";
 import { prisma } from "@/lib/prisma";
-
-const TEMP_USER_ID = "temp-user";
+import { getSessionUser } from "@/lib/auth-helpers";
 
 const updateSettingsSchema = z.object({
   defaultCurrency: z.enum(["AUD", "USD", "EUR", "GBP"]).optional(),
@@ -42,10 +41,13 @@ const updateSettingsSchema = z.object({
 
 export async function GET() {
   try {
+    const user = await getSessionUser();
+    if (!user) return NextResponse.json({ error: "Unauthorised" }, { status: 401 });
+
     const settings = await prisma.settings.upsert({
-      where: { userId: TEMP_USER_ID },
+      where: { userId: user.id },
       update: {},
-      create: { userId: TEMP_USER_ID },
+      create: { userId: user.id },
     });
 
     return NextResponse.json(settings);
@@ -60,6 +62,9 @@ export async function GET() {
 
 export async function PUT(request: NextRequest) {
   try {
+    const user = await getSessionUser();
+    if (!user) return NextResponse.json({ error: "Unauthorised" }, { status: 401 });
+
     const body = await request.json();
     const parsed = updateSettingsSchema.safeParse(body);
 
@@ -71,10 +76,10 @@ export async function PUT(request: NextRequest) {
     }
 
     const settings = await prisma.settings.upsert({
-      where: { userId: TEMP_USER_ID },
+      where: { userId: user.id },
       update: parsed.data,
       create: {
-        userId: TEMP_USER_ID,
+        userId: user.id,
         ...parsed.data,
       },
     });

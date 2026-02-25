@@ -1,8 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { z } from "zod";
 import { prisma } from "@/lib/prisma";
-
-const TEMP_USER_ID = "temp-user";
+import { getSessionUser } from "@/lib/auth-helpers";
 
 const updateClientSchema = z.object({
   name: z.string().min(1, "Name is required").optional(),
@@ -21,9 +20,12 @@ export async function GET(
   { params }: { params: Promise<{ id: string }> }
 ) {
   try {
+    const user = await getSessionUser();
+    if (!user) return NextResponse.json({ error: "Unauthorised" }, { status: 401 });
+
     const { id } = await params;
     const client = await prisma.client.findFirst({
-      where: { id, userId: TEMP_USER_ID },
+      where: { id, userId: user.id },
       include: {
         quotes: {
           select: {
@@ -60,11 +62,14 @@ export async function PUT(
   { params }: { params: Promise<{ id: string }> }
 ) {
   try {
+    const user = await getSessionUser();
+    if (!user) return NextResponse.json({ error: "Unauthorised" }, { status: 401 });
+
     const { id } = await params;
 
     // Verify ownership
     const existing = await prisma.client.findFirst({
-      where: { id, userId: TEMP_USER_ID },
+      where: { id, userId: user.id },
     });
 
     if (!existing) {
@@ -132,11 +137,14 @@ export async function DELETE(
   { params }: { params: Promise<{ id: string }> }
 ) {
   try {
+    const user = await getSessionUser();
+    if (!user) return NextResponse.json({ error: "Unauthorised" }, { status: 401 });
+
     const { id } = await params;
 
     // Verify ownership
     const existing = await prisma.client.findFirst({
-      where: { id, userId: TEMP_USER_ID },
+      where: { id, userId: user.id },
     });
 
     if (!existing) {

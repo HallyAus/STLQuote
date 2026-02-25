@@ -1,8 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { z } from "zod";
 import { prisma } from "@/lib/prisma";
-
-const TEMP_USER_ID = "temp-user";
+import { getSessionUser } from "@/lib/auth-helpers";
 
 const updateLineItemSchema = z.object({
   description: z.string().min(1, "Description is required").optional(),
@@ -55,11 +54,14 @@ export async function PUT(
   context: RouteContext
 ) {
   try {
+    const user = await getSessionUser();
+    if (!user) return NextResponse.json({ error: "Unauthorised" }, { status: 401 });
+
     const { id: quoteId, lineItemId } = await context.params;
 
     // Verify quote ownership
     const quote = await prisma.quote.findFirst({
-      where: { id: quoteId, userId: TEMP_USER_ID },
+      where: { id: quoteId, userId: user.id },
     });
 
     if (!quote) {
@@ -117,11 +119,14 @@ export async function DELETE(
   context: RouteContext
 ) {
   try {
+    const user = await getSessionUser();
+    if (!user) return NextResponse.json({ error: "Unauthorised" }, { status: 401 });
+
     const { id: quoteId, lineItemId } = await context.params;
 
     // Verify quote ownership
     const quote = await prisma.quote.findFirst({
-      where: { id: quoteId, userId: TEMP_USER_ID },
+      where: { id: quoteId, userId: user.id },
     });
 
     if (!quote) {

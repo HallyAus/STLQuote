@@ -15,6 +15,7 @@ const pageTitles: Record<string, string> = {
   "/clients": "Clients",
   "/jobs": "Jobs",
   "/settings": "Settings",
+  "/admin": "Admin",
 };
 
 function resolveTitle(pathname: string): string {

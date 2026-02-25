@@ -1,8 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { z } from "zod";
 import { prisma } from "@/lib/prisma";
-
-const TEMP_USER_ID = "temp-user";
+import { getSessionUser } from "@/lib/auth-helpers";
 
 const createJobSchema = z.object({
   quoteId: z.string().optional().nullable(),
@@ -12,8 +11,11 @@ const createJobSchema = z.object({
 
 export async function GET() {
   try {
+    const user = await getSessionUser();
+    if (!user) return NextResponse.json({ error: "Unauthorised" }, { status: 401 });
+
     const jobs = await prisma.job.findMany({
-      where: { userId: TEMP_USER_ID },
+      where: { userId: user.id },
       include: {
         quote: { select: { quoteNumber: true, total: true } },
         printer: { select: { name: true } },
@@ -33,6 +35,9 @@ export async function GET() {
 
 export async function POST(request: NextRequest) {
   try {
+    const user = await getSessionUser();
+    if (!user) return NextResponse.json({ error: "Unauthorised" }, { status: 401 });
+
     const body = await request.json();
     const parsed = createJobSchema.safeParse(body);
 
@@ -46,7 +51,7 @@ export async function POST(request: NextRequest) {
     const job = await prisma.job.create({
       data: {
         ...parsed.data,
-        userId: TEMP_USER_ID,
+        userId: user.id,
       },
       include: {
         quote: { select: { quoteNumber: true, total: true } },

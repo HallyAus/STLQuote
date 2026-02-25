@@ -1,8 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { z } from "zod";
 import { prisma } from "@/lib/prisma";
-
-const TEMP_USER_ID = "temp-user";
+import { getSessionUser } from "@/lib/auth-helpers";
 
 const createMaterialSchema = z.object({
   type: z.enum(["filament", "resin"]).default("filament"),
@@ -20,8 +19,11 @@ const createMaterialSchema = z.object({
 
 export async function GET() {
   try {
+    const user = await getSessionUser();
+    if (!user) return NextResponse.json({ error: "Unauthorised" }, { status: 401 });
+
     const materials = await prisma.material.findMany({
-      where: { userId: TEMP_USER_ID },
+      where: { userId: user.id },
       orderBy: [{ materialType: "asc" }, { brand: "asc" }],
     });
 
@@ -37,6 +39,9 @@ export async function GET() {
 
 export async function POST(request: NextRequest) {
   try {
+    const user = await getSessionUser();
+    if (!user) return NextResponse.json({ error: "Unauthorised" }, { status: 401 });
+
     const body = await request.json();
     const parsed = createMaterialSchema.safeParse(body);
 
@@ -50,7 +55,7 @@ export async function POST(request: NextRequest) {
     const material = await prisma.material.create({
       data: {
         ...parsed.data,
-        userId: TEMP_USER_ID,
+        userId: user.id,
       },
     });
 

@@ -1,8 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { z } from "zod";
 import { prisma } from "@/lib/prisma";
-
-const TEMP_USER_ID = "temp-user";
+import { getSessionUser } from "@/lib/auth-helpers";
 
 const updateQuoteSchema = z.object({
   status: z.enum(["DRAFT", "SENT", "ACCEPTED", "REJECTED", "EXPIRED"]).optional(),
@@ -20,10 +19,13 @@ export async function GET(
   context: RouteContext
 ) {
   try {
+    const user = await getSessionUser();
+    if (!user) return NextResponse.json({ error: "Unauthorised" }, { status: 401 });
+
     const { id } = await context.params;
 
     const quote = await prisma.quote.findFirst({
-      where: { id, userId: TEMP_USER_ID },
+      where: { id, userId: user.id },
       include: {
         client: true,
         lineItems: {
@@ -60,11 +62,14 @@ export async function PUT(
   context: RouteContext
 ) {
   try {
+    const user = await getSessionUser();
+    if (!user) return NextResponse.json({ error: "Unauthorised" }, { status: 401 });
+
     const { id } = await context.params;
 
     // Verify ownership
     const existing = await prisma.quote.findFirst({
-      where: { id, userId: TEMP_USER_ID },
+      where: { id, userId: user.id },
       include: { lineItems: true },
     });
 
@@ -135,11 +140,14 @@ export async function DELETE(
   context: RouteContext
 ) {
   try {
+    const user = await getSessionUser();
+    if (!user) return NextResponse.json({ error: "Unauthorised" }, { status: 401 });
+
     const { id } = await context.params;
 
     // Verify ownership
     const existing = await prisma.quote.findFirst({
-      where: { id, userId: TEMP_USER_ID },
+      where: { id, userId: user.id },
     });
 
     if (!existing) {

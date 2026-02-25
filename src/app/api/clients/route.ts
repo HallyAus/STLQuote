@@ -1,8 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { z } from "zod";
 import { prisma } from "@/lib/prisma";
-
-const TEMP_USER_ID = "temp-user";
+import { getSessionUser } from "@/lib/auth-helpers";
 
 const createClientSchema = z.object({
   name: z.string().min(1, "Name is required"),
@@ -18,8 +17,11 @@ const createClientSchema = z.object({
 
 export async function GET() {
   try {
+    const user = await getSessionUser();
+    if (!user) return NextResponse.json({ error: "Unauthorised" }, { status: 401 });
+
     const clients = await prisma.client.findMany({
-      where: { userId: TEMP_USER_ID },
+      where: { userId: user.id },
       orderBy: { name: "asc" },
       include: {
         _count: { select: { quotes: true } },
@@ -38,6 +40,9 @@ export async function GET() {
 
 export async function POST(request: NextRequest) {
   try {
+    const user = await getSessionUser();
+    if (!user) return NextResponse.json({ error: "Unauthorised" }, { status: 401 });
+
     const body = await request.json();
     const parsed = createClientSchema.safeParse(body);
 
@@ -65,7 +70,7 @@ export async function POST(request: NextRequest) {
     const client = await prisma.client.create({
       data: {
         ...data,
-        userId: TEMP_USER_ID,
+        userId: user.id,
       },
       include: {
         _count: { select: { quotes: true } },

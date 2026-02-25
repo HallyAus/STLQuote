@@ -2,6 +2,7 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
+import { useSession, signOut } from "next-auth/react";
 import {
   LayoutDashboard,
   Calculator,
@@ -11,6 +12,8 @@ import {
   Users,
   Briefcase,
   Settings,
+  Shield,
+  LogOut,
   X,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
@@ -104,6 +107,8 @@ function isRouteActive(href: string, pathname: string): boolean {
 
 export function Sidebar({ open, onClose }: SidebarProps) {
   const pathname = usePathname();
+  const { data: session } = useSession();
+  const isAdmin = session?.user?.role === "ADMIN";
 
   return (
     <>
@@ -164,6 +169,22 @@ export function Sidebar({ open, onClose }: SidebarProps) {
               </div>
             </div>
           ))}
+
+          {/* Admin nav item — only for ADMIN role */}
+          {isAdmin && (
+            <div>
+              <p className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground/60 px-3 pt-4 pb-1">
+                Admin
+              </p>
+              <div className="space-y-0.5">
+                <NavLink
+                  item={{ href: "/admin", label: "Admin", icon: Shield }}
+                  isActive={isRouteActive("/admin", pathname)}
+                  onClose={onClose}
+                />
+              </div>
+            </div>
+          )}
         </nav>
 
         {/* Settings — separated */}
@@ -178,10 +199,19 @@ export function Sidebar({ open, onClose }: SidebarProps) {
 
         {/* Footer */}
         <div className="border-t border-sidebar-border px-4 py-3">
-          <p className="text-xs font-medium text-muted-foreground">
+          {session?.user && (
+            <button
+              onClick={() => signOut({ callbackUrl: "/login" })}
+              className="flex w-full items-center gap-3 border-l-2 border-transparent px-3 py-2 text-[13px] font-medium text-sidebar-foreground/80 hover:border-sidebar-accent hover:bg-sidebar-accent/30 hover:text-sidebar-foreground transition-colors"
+            >
+              <LogOut className="h-[14px] w-[14px] shrink-0 text-sidebar-foreground/50" />
+              Sign out
+            </button>
+          )}
+          <p className="px-3 mt-1 text-xs font-medium text-muted-foreground">
             Printforge
           </p>
-          <p className="mt-0.5 text-[10px] text-muted-foreground/50">
+          <p className="px-3 mt-0.5 text-[10px] text-muted-foreground/50">
             v{process.env.NEXT_PUBLIC_APP_VERSION}
           </p>
         </div>

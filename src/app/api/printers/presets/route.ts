@@ -1,8 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { PRINTER_PRESETS } from "@/lib/presets";
-
-const TEMP_USER_ID = "temp-user";
+import { getSessionUser } from "@/lib/auth-helpers";
 
 export async function GET() {
   return NextResponse.json(PRINTER_PRESETS);
@@ -10,6 +9,9 @@ export async function GET() {
 
 export async function POST(request: NextRequest) {
   try {
+    const user = await getSessionUser();
+    if (!user) return NextResponse.json({ error: "Unauthorised" }, { status: 401 });
+
     const body = await request.json();
     const { presetIndex } = body;
 
@@ -37,7 +39,7 @@ export async function POST(request: NextRequest) {
         bedSizeY: preset.bedSizeY,
         bedSizeZ: preset.bedSizeZ,
         maintenanceCostPerHour: preset.maintenanceCostPerHour,
-        userId: TEMP_USER_ID,
+        userId: user.id,
       },
     });
 

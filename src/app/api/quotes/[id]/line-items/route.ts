@@ -1,8 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { z } from "zod";
 import { prisma } from "@/lib/prisma";
-
-const TEMP_USER_ID = "temp-user";
+import { getSessionUser } from "@/lib/auth-helpers";
 
 const createLineItemSchema = z.object({
   description: z.string().min(1, "Description is required"),
@@ -26,11 +25,14 @@ export async function POST(
   context: RouteContext
 ) {
   try {
+    const user = await getSessionUser();
+    if (!user) return NextResponse.json({ error: "Unauthorised" }, { status: 401 });
+
     const { id: quoteId } = await context.params;
 
     // Verify ownership
     const quote = await prisma.quote.findFirst({
-      where: { id: quoteId, userId: TEMP_USER_ID },
+      where: { id: quoteId, userId: user.id },
       include: { lineItems: true },
     });
 

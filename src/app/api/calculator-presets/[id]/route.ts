@@ -1,8 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { z } from "zod";
 import { prisma } from "@/lib/prisma";
-
-const TEMP_USER_ID = "temp-user";
+import { getSessionUser } from "@/lib/auth-helpers";
 
 type RouteContext = { params: Promise<{ id: string }> };
 
@@ -62,11 +61,14 @@ export async function PUT(
   { params }: RouteContext
 ) {
   try {
+    const user = await getSessionUser();
+    if (!user) return NextResponse.json({ error: "Unauthorised" }, { status: 401 });
+
     const { id } = await params;
 
     // Verify the preset belongs to the user
     const existing = await prisma.calculatorPreset.findFirst({
-      where: { id, userId: TEMP_USER_ID },
+      where: { id, userId: user.id },
     });
 
     if (!existing) {
@@ -117,11 +119,14 @@ export async function DELETE(
   { params }: RouteContext
 ) {
   try {
+    const user = await getSessionUser();
+    if (!user) return NextResponse.json({ error: "Unauthorised" }, { status: 401 });
+
     const { id } = await params;
 
     // Verify the preset belongs to the user
     const existing = await prisma.calculatorPreset.findFirst({
-      where: { id, userId: TEMP_USER_ID },
+      where: { id, userId: user.id },
     });
 
     if (!existing) {

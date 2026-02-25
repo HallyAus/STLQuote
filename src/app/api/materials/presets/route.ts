@@ -1,8 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { MATERIAL_PRESETS } from "@/lib/presets";
-
-const TEMP_USER_ID = "temp-user";
+import { getSessionUser } from "@/lib/auth-helpers";
 
 export async function GET() {
   return NextResponse.json(MATERIAL_PRESETS);
@@ -10,6 +9,9 @@ export async function GET() {
 
 export async function POST(request: NextRequest) {
   try {
+    const user = await getSessionUser();
+    if (!user) return NextResponse.json({ error: "Unauthorised" }, { status: 401 });
+
     const body = await request.json();
     const { presetIndex } = body;
 
@@ -35,7 +37,7 @@ export async function POST(request: NextRequest) {
         spoolWeightG: preset.spoolWeightG,
         price: preset.price,
         density: preset.density,
-        userId: TEMP_USER_ID,
+        userId: user.id,
       },
     });
 
