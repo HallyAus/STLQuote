@@ -17,6 +17,7 @@ import {
   Pencil,
   Trash2,
   Download,
+  Briefcase,
 } from "lucide-react";
 
 // ---------------------------------------------------------------------------
@@ -43,6 +44,7 @@ interface Quote {
   id: string;
   quoteNumber: string;
   status: QuoteStatus;
+  clientId: string | null;
   subtotal: number;
   markupPct: number;
   total: number;
@@ -58,6 +60,7 @@ interface Quote {
     name: string;
   } | null;
   lineItems: LineItem[];
+  jobs?: { id: string; status: string }[];
 }
 
 interface LineItemFormData {
@@ -163,7 +166,6 @@ function LineItemModal({
       </DialogHeader>
 
       <div className="space-y-4">
-        {/* Description */}
         <Input
           label="Description *"
           value={form.description}
@@ -171,7 +173,6 @@ function LineItemModal({
           placeholder="e.g. Custom bracket — PLA"
         />
 
-        {/* Print weight & time */}
         <div className="grid grid-cols-2 gap-4">
           <Input
             label="Print Weight (g)"
@@ -193,7 +194,6 @@ function LineItemModal({
           />
         </div>
 
-        {/* Cost fields */}
         <div className="grid grid-cols-2 gap-4">
           <Input
             label="Material Cost ($)"
@@ -231,7 +231,6 @@ function LineItemModal({
           />
         </div>
 
-        {/* Quantity */}
         <Input
           label="Quantity"
           type="number"
@@ -241,7 +240,6 @@ function LineItemModal({
           onChange={(e) => onFieldChange("quantity", e.target.value)}
         />
 
-        {/* Notes */}
         <Textarea
           label="Notes"
           value={form.notes}
@@ -250,7 +248,6 @@ function LineItemModal({
           className="min-h-[60px]"
         />
 
-        {/* Preview total */}
         <div className="rounded-md bg-primary/10 px-3 py-2 text-center">
           <p className="text-xs text-muted-foreground">Line Total</p>
           <p className="text-lg font-bold text-primary">
@@ -263,7 +260,6 @@ function LineItemModal({
           </p>
         </div>
 
-        {/* Actions */}
         <DialogFooter>
           <Button variant="secondary" onClick={onClose} disabled={saving}>
             Cancel
@@ -303,6 +299,17 @@ export function QuoteDetail() {
   const [notes, setNotes] = useState("");
   const [terms, setTerms] = useState("");
 
+  // Client assignment
+  const [clients, setClients] = useState<{ id: string; name: string; company: string | null }[]>([]);
+  const [selectedClientId, setSelectedClientId] = useState("");
+
+  // Convert to job modal
+  const [convertModalOpen, setConvertModalOpen] = useState(false);
+  const [printers, setPrinters] = useState<{ id: string; name: string }[]>([]);
+  const [jobPrinterId, setJobPrinterId] = useState("");
+  const [jobNotes, setJobNotes] = useState("");
+  const [convertSaving, setConvertSaving] = useState(false);
+
   // Line item modal
   const [lineItemModalOpen, setLineItemModalOpen] = useState(false);
   const [editingLineItemId, setEditingLineItemId] = useState<string | null>(
@@ -324,6 +331,7 @@ export function QuoteDetail() {
       setMarkupPct(String(data.markupPct));
       setNotes(data.notes ?? "");
       setTerms(data.terms ?? "");
+      setSelectedClientId(data.clientId ?? "");
     } catch (err) {
       setError(err instanceof Error ? err.message : "Unknown error");
     } finally {
@@ -334,6 +342,36 @@ export function QuoteDetail() {
   useEffect(() => {
     fetchQuote();
   }, [fetchQuote]);
+
+  // Fetch clients and printers for dropdowns
+  useEffect(() => {
+    async function loadDropdownData() {
+      const [clientsRes, printersRes] = await Promise.all([
+        fetch("/api/clients").catch(() => null),
+        fetch("/api/printers").catch(() => null),
+      ]);
+      if (clientsRes?.ok) {
+        const data = await clientsRes.json();
+        setClients(
+          data.map((c: { id: string; name: string; company: string | null }) => ({
+            id: c.id,
+            name: c.name,
+            company: c.company,
+          }))
+        );
+      }
+      if (printersRes?.ok) {
+        const data = await printersRes.json();
+        setPrinters(
+          data.map((p: { id: string; name: string }) => ({
+            id: p.id,
+            name: p.name,
+          }))
+        );
+      }
+    }
+    loadDropdownData();
+  }, []);
 
   // ---- Handlers ----
 
@@ -347,6 +385,22 @@ export function QuoteDetail() {
         body: JSON.stringify({ status: newStatus }),
       });
       if (!res.ok) throw new Error("Failed to update status");
+      await fetchQuote();
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Unknown error");
+    }
+  }
+
+  async function handleClientChange(newClientId: string) {
+    setSelectedClientId(newClientId);
+    try {
+      setError(null);
+      const res = await fetch(`/api/quotes/${quoteId}`, {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ clientId: newClientId || null }),
+      });
+      if (!res.ok) throw new Error("Failed to update client");
       await fetchQuote();
     } catch (err) {
       setError(err instanceof Error ? err.message : "Unknown error");
@@ -385,6 +439,36 @@ export function QuoteDetail() {
       router.push("/quotes");
     } catch (err) {
       setError(err instanceof Error ? err.message : "Unknown error");
+    }
+  }
+
+  // ---- Convert to job ----
+
+  async function handleConvertToJob() {
+    try {
+      setConvertSaving(true);
+      setError(null);
+      const res = await fetch("/api/jobs", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          quoteId,
+          printerId: jobPrinterId || null,
+          notes: jobNotes.trim() || null,
+        }),
+      });
+      if (!res.ok) {
+        const body = await res.json().catch(() => null);
+        throw new Error(body?.error || "Failed to create job");
+      }
+      setConvertModalOpen(false);
+      setJobPrinterId("");
+      setJobNotes("");
+      await fetchQuote();
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Unknown error");
+    } finally {
+      setConvertSaving(false);
     }
   }
 
@@ -505,6 +589,15 @@ export function QuoteDetail() {
   const markup = parseFloat(markupPct) || 0;
   const total = roundCurrency(subtotal * (1 + markup / 100));
 
+  // ---- Client options ----
+  const clientOptions = [
+    { value: "", label: "-- No client --" },
+    ...clients.map((c) => ({
+      value: c.id,
+      label: c.company ? `${c.name} (${c.company})` : c.name,
+    })),
+  ];
+
   // ---- Loading state ----
   if (loading) {
     return (
@@ -525,6 +618,8 @@ export function QuoteDetail() {
       </div>
     );
   }
+
+  const jobCount = quote.jobs?.length ?? 0;
 
   return (
     <div className="space-y-6">
@@ -551,11 +646,26 @@ export function QuoteDetail() {
           <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
             <div>
               <CardTitle className="text-2xl">{quote.quoteNumber}</CardTitle>
-              <p className="mt-1 text-sm text-muted-foreground">
-                {quote.client?.name ?? "No client"}
-              </p>
+              <div className="mt-2 w-56">
+                <Select
+                  label="Client"
+                  options={clientOptions}
+                  value={selectedClientId}
+                  onChange={(e) => handleClientChange(e.target.value)}
+                />
+              </div>
             </div>
-            <div className="flex items-center gap-3">
+            <div className="flex flex-wrap items-center gap-3">
+              {jobCount > 0 && (
+                <Badge
+                  variant="info"
+                  className="cursor-pointer"
+                  onClick={() => router.push("/jobs")}
+                >
+                  <Briefcase className="mr-1 h-3 w-3" />
+                  {jobCount} job{jobCount !== 1 ? "s" : ""}
+                </Badge>
+              )}
               <Select
                 value={quote.status}
                 onChange={(e) => handleStatusChange(e.target.value)}
@@ -835,6 +945,12 @@ export function QuoteDetail() {
       {/* Actions */}
       <Card>
         <CardContent className="flex flex-wrap gap-3 pt-6">
+          {quote.status === "ACCEPTED" && (
+            <Button onClick={() => setConvertModalOpen(true)}>
+              <Briefcase className="mr-2 h-4 w-4" />
+              Convert to Job
+            </Button>
+          )}
           <Button
             variant="secondary"
             onClick={() => router.push(`/quotes/${quoteId}/pdf`)}
@@ -863,6 +979,61 @@ export function QuoteDetail() {
           onClose={closeLineItemModal}
           saving={lineItemSaving}
         />
+      )}
+
+      {/* Convert to Job modal */}
+      {convertModalOpen && (
+        <Dialog open={true} onClose={() => setConvertModalOpen(false)}>
+          <DialogHeader onClose={() => setConvertModalOpen(false)}>
+            <DialogTitle>Convert to Job</DialogTitle>
+          </DialogHeader>
+          <div className="space-y-4">
+            <div>
+              <p className="text-sm font-medium text-foreground">Quote</p>
+              <p className="text-sm text-muted-foreground">
+                {quote.quoteNumber}
+                {quote.client ? ` — ${quote.client.name}` : ""}
+              </p>
+            </div>
+
+            <Select
+              label="Printer (optional)"
+              value={jobPrinterId}
+              onChange={(e) => setJobPrinterId(e.target.value)}
+              options={[
+                { value: "", label: "-- Select printer --" },
+                ...printers.map((p) => ({ value: p.id, label: p.name })),
+              ]}
+            />
+
+            <Textarea
+              label="Notes"
+              value={jobNotes}
+              onChange={(e) => setJobNotes(e.target.value)}
+              placeholder="Job notes..."
+            />
+
+            <DialogFooter>
+              <Button
+                variant="secondary"
+                onClick={() => setConvertModalOpen(false)}
+                disabled={convertSaving}
+              >
+                Cancel
+              </Button>
+              <Button onClick={handleConvertToJob} disabled={convertSaving}>
+                {convertSaving ? (
+                  <>
+                    <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                    Creating...
+                  </>
+                ) : (
+                  "Create Job"
+                )}
+              </Button>
+            </DialogFooter>
+          </div>
+        </Dialog>
       )}
     </div>
   );

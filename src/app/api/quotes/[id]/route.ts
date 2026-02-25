@@ -32,6 +32,9 @@ export async function GET(
             material: { select: { materialType: true, brand: true, colour: true } },
           },
         },
+        jobs: {
+          select: { id: true, status: true },
+        },
       },
     });
 

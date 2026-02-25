@@ -4,9 +4,10 @@ import { useState, useEffect } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { Select } from "@/components/ui/select";
 import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card";
 import { Textarea } from "@/components/ui/textarea";
-import { ArrowLeft, Loader2, Calculator } from "lucide-react";
+import { ArrowLeft, Loader2, Calculator, UserPlus, X } from "lucide-react";
 
 // ---------------------------------------------------------------------------
 // Types
@@ -24,11 +25,16 @@ interface CalculatorLineItem {
   quantity: number;
 }
 
+interface ClientOption {
+  id: string;
+  name: string;
+  company: string | null;
+}
+
 // ---------------------------------------------------------------------------
 // Helpers
 // ---------------------------------------------------------------------------
 
-/** Returns an ISO date string 30 days from now (YYYY-MM-DD for the input) */
 function defaultExpiryDate(): string {
   const d = new Date();
   d.setDate(d.getDate() + 30);
@@ -39,13 +45,11 @@ function formatAUD(value: number): string {
   return `$${value.toFixed(2)}`;
 }
 
-/** Try to read and parse calculator data from sessionStorage. Returns null on failure. */
 function readCalculatorData(): CalculatorLineItem | null {
   try {
     const raw = sessionStorage.getItem("calculatorToQuote");
     if (!raw) return null;
     const data = JSON.parse(raw) as CalculatorLineItem;
-    // Basic shape validation
     if (
       typeof data.description !== "string" ||
       typeof data.lineTotal !== "number"
@@ -66,6 +70,17 @@ export function NewQuote() {
   const router = useRouter();
   const searchParams = useSearchParams();
 
+  // Client state
+  const [clients, setClients] = useState<ClientOption[]>([]);
+  const [loadingClients, setLoadingClients] = useState(true);
+  const [selectedClientId, setSelectedClientId] = useState("");
+  const [showNewClient, setShowNewClient] = useState(false);
+  const [newClientName, setNewClientName] = useState("");
+  const [newClientEmail, setNewClientEmail] = useState("");
+  const [newClientPhone, setNewClientPhone] = useState("");
+  const [creatingClient, setCreatingClient] = useState(false);
+
+  // Quote fields
   const [notes, setNotes] = useState("");
   const [terms, setTerms] = useState("");
   const [expiryDate, setExpiryDate] = useState(defaultExpiryDate());
@@ -78,21 +93,83 @@ export function NewQuote() {
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
+  // Load clients on mount
+  useEffect(() => {
+    async function loadClients() {
+      try {
+        const res = await fetch("/api/clients");
+        if (res.ok) {
+          const data = await res.json();
+          setClients(
+            data.map((c: { id: string; name: string; company: string | null }) => ({
+              id: c.id,
+              name: c.name,
+              company: c.company,
+            }))
+          );
+        }
+      } catch {
+        // ignore — clients list will be empty
+      } finally {
+        setLoadingClients(false);
+      }
+    }
+    loadClients();
+  }, []);
+
   // Read calculator data from sessionStorage when arriving from calculator
   useEffect(() => {
     if (searchParams.get("fromCalculator") === "true") {
       const data = readCalculatorData();
       if (data) {
         setCalcLineItem(data);
-        // Set markup to 0 since the calculator already applied markup
         setMarkupPct("0");
       }
-      // Clean up — only use once
       sessionStorage.removeItem("calculatorToQuote");
     }
   }, [searchParams]);
 
+  async function handleQuickCreateClient() {
+    if (!newClientName.trim()) return;
+    setCreatingClient(true);
+    setError(null);
+    try {
+      const res = await fetch("/api/clients", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          name: newClientName.trim(),
+          email: newClientEmail.trim() || null,
+          phone: newClientPhone.trim() || null,
+        }),
+      });
+      if (!res.ok) {
+        const body = await res.json().catch(() => null);
+        throw new Error(body?.error || "Failed to create client");
+      }
+      const created = await res.json();
+      setClients((prev) => [
+        ...prev,
+        { id: created.id, name: created.name, company: created.company },
+      ]);
+      setSelectedClientId(created.id);
+      setShowNewClient(false);
+      setNewClientName("");
+      setNewClientEmail("");
+      setNewClientPhone("");
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Failed to create client");
+    } finally {
+      setCreatingClient(false);
+    }
+  }
+
   async function handleCreate() {
+    if (!selectedClientId) {
+      setError("Please select a client before creating a quote.");
+      return;
+    }
+
     try {
       setSaving(true);
       setError(null);
@@ -114,6 +191,7 @@ export function NewQuote() {
         : [];
 
       const payload = {
+        clientId: selectedClientId,
         notes: notes.trim() || null,
         terms: terms.trim() || null,
         expiryDate: expiryDate ? new Date(expiryDate).toISOString() : null,
@@ -141,6 +219,14 @@ export function NewQuote() {
     }
   }
 
+  const clientOptions = [
+    { value: "", label: loadingClients ? "Loading clients..." : "-- Select a client --" },
+    ...clients.map((c) => ({
+      value: c.id,
+      label: c.company ? `${c.name} (${c.company})` : c.name,
+    })),
+  ];
+
   return (
     <div className="mx-auto max-w-xl space-y-6">
       {/* Back button */}
@@ -165,6 +251,86 @@ export function NewQuote() {
                 {error}
               </div>
             )}
+
+            {/* ---- Client selector (required, first thing) ---- */}
+            <div className="space-y-2">
+              <Select
+                label="Client *"
+                options={clientOptions}
+                value={selectedClientId}
+                onChange={(e) => {
+                  setSelectedClientId(e.target.value);
+                  setError(null);
+                }}
+                disabled={loadingClients}
+              />
+
+              {!showNewClient ? (
+                <button
+                  type="button"
+                  onClick={() => setShowNewClient(true)}
+                  className="flex items-center gap-1.5 text-xs text-primary hover:underline"
+                >
+                  <UserPlus className="h-3 w-3" />
+                  Create new client
+                </button>
+              ) : (
+                <div className="rounded-md border border-border bg-muted/30 p-3 space-y-3">
+                  <div className="flex items-center justify-between">
+                    <span className="text-sm font-medium text-foreground">
+                      New Client
+                    </span>
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setShowNewClient(false);
+                        setNewClientName("");
+                        setNewClientEmail("");
+                        setNewClientPhone("");
+                      }}
+                      className="rounded p-1 text-muted-foreground hover:text-foreground"
+                    >
+                      <X className="h-3.5 w-3.5" />
+                    </button>
+                  </div>
+                  <Input
+                    label="Name *"
+                    value={newClientName}
+                    onChange={(e) => setNewClientName(e.target.value)}
+                    placeholder="Client name"
+                  />
+                  <div className="grid grid-cols-2 gap-3">
+                    <Input
+                      label="Email"
+                      type="email"
+                      value={newClientEmail}
+                      onChange={(e) => setNewClientEmail(e.target.value)}
+                      placeholder="Optional"
+                    />
+                    <Input
+                      label="Phone"
+                      value={newClientPhone}
+                      onChange={(e) => setNewClientPhone(e.target.value)}
+                      placeholder="Optional"
+                    />
+                  </div>
+                  <Button
+                    size="sm"
+                    onClick={handleQuickCreateClient}
+                    disabled={creatingClient || !newClientName.trim()}
+                  >
+                    {creatingClient ? (
+                      <>
+                        <Loader2 className="mr-2 h-3 w-3 animate-spin" />
+                        Creating...
+                      </>
+                    ) : (
+                      "Create Client"
+                    )}
+                  </Button>
+                </div>
+              )}
+            </div>
 
             {/* Calculator line item preview */}
             {calcLineItem && (
@@ -262,7 +428,10 @@ export function NewQuote() {
               >
                 Cancel
               </Button>
-              <Button onClick={handleCreate} disabled={saving}>
+              <Button
+                onClick={handleCreate}
+                disabled={saving || !selectedClientId}
+              >
                 {saving ? (
                   <>
                     <Loader2 className="mr-2 h-4 w-4 animate-spin" />
