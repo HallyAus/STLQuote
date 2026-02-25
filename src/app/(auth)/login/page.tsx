@@ -52,6 +52,15 @@ function LoginForm() {
     setLoading(true);
 
     try {
+      // Check rate limit before attempting login
+      const rlRes = await fetch("/api/auth/login", { method: "POST" });
+      if (rlRes.status === 429) {
+        const data = await rlRes.json();
+        setError(data.error || "Too many login attempts. Please try again later.");
+        setLoading(false);
+        return;
+      }
+
       const result = await signIn("credentials", {
         email,
         password,

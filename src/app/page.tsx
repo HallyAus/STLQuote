@@ -257,9 +257,14 @@ export default function LandingPage() {
             <Printer className="h-4 w-4" />
             <span>Printforge</span>
           </div>
-          <p className="text-xs text-muted-foreground/60">
-            Built for makers, by makers
-          </p>
+          <div className="flex items-center gap-4">
+            <Link href="/terms" className="text-xs text-muted-foreground/60 hover:text-muted-foreground transition-colors">
+              Terms
+            </Link>
+            <Link href="/privacy" className="text-xs text-muted-foreground/60 hover:text-muted-foreground transition-colors">
+              Privacy
+            </Link>
+          </div>
         </div>
       </footer>
     </div>

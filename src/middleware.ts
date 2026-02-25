@@ -16,6 +16,9 @@ export default auth((req) => {
     "/api/auth",
     "/portal",
     "/api/portal",
+    "/api/health",
+    "/terms",
+    "/privacy",
   ];
   const isPublic = publicPaths.some((p) => pathname.startsWith(p));
 
