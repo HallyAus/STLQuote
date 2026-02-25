@@ -7,6 +7,7 @@ import { Header } from "@/components/layout/header";
 import { DebugPanel } from "@/components/debug/debug-panel";
 
 const pageTitles: Record<string, string> = {
+  "/dashboard": "Dashboard",
   "/calculator": "Calculator",
   "/printers": "Printers",
   "/materials": "Materials",

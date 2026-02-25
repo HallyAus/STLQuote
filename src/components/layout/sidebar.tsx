@@ -31,7 +31,7 @@ const navGroups: NavGroup[] = [
   {
     label: "Main",
     items: [
-      { href: "/", label: "Dashboard", icon: LayoutDashboard },
+      { href: "/dashboard", label: "Dashboard", icon: LayoutDashboard },
       { href: "/calculator", label: "Calculator", icon: Calculator },
     ],
   },
@@ -99,7 +99,6 @@ function NavLink({
 }
 
 function isRouteActive(href: string, pathname: string): boolean {
-  if (href === "/") return pathname === "/";
   return pathname === href || pathname?.startsWith(href + "/");
 }
 
