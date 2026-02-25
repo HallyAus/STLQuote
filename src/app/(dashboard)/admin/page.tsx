@@ -98,6 +98,7 @@ export default function AdminPage() {
   // Delete confirmation
   const [deleteUser, setDeleteUser] = useState<AdminUser | null>(null);
   const [deleteLoading, setDeleteLoading] = useState(false);
+  const [deleteConfirmText, setDeleteConfirmText] = useState("");
 
   // Test email
   const [testEmailTo, setTestEmailTo] = useState("");
@@ -323,6 +324,7 @@ export default function AdminPage() {
       if (res.ok) {
         setUsers((prev) => prev.filter((u) => u.id !== deleteUser.id));
         setDeleteUser(null);
+        setDeleteConfirmText("");
         fetchUsers(); // Refresh stats
       }
     } catch {
@@ -1299,16 +1301,26 @@ export default function AdminPage() {
                   Permanently delete <strong>{deleteUser.name || deleteUser.email}</strong>?
                   This will remove all their data including {deleteUser._count.quotes} quotes and {deleteUser._count.jobs} jobs.
                 </p>
+                <p className="mt-3 text-sm text-muted-foreground">
+                  Type <strong className="text-foreground">{deleteUser.email}</strong> to confirm:
+                </p>
+                <Input
+                  className="mt-2 text-center"
+                  value={deleteConfirmText}
+                  onChange={(e) => setDeleteConfirmText(e.target.value)}
+                  placeholder={deleteUser.email || ""}
+                  autoFocus
+                />
               </div>
               <div className="flex gap-2">
-                <Button variant="secondary" className="flex-1" onClick={() => setDeleteUser(null)} disabled={deleteLoading}>
+                <Button variant="secondary" className="flex-1" onClick={() => { setDeleteUser(null); setDeleteConfirmText(""); }} disabled={deleteLoading}>
                   Cancel
                 </Button>
                 <Button
                   variant="destructive"
                   className="flex-1"
                   onClick={handleDeleteUser}
-                  disabled={deleteLoading}
+                  disabled={deleteLoading || deleteConfirmText !== deleteUser.email}
                 >
                   {deleteLoading && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
                   Delete
