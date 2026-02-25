@@ -7,6 +7,9 @@ import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card";
 import { Select } from "@/components/ui/select";
 import { Textarea } from "@/components/ui/textarea";
 import { Loader2, Save, Check } from "lucide-react";
+import { BatchPricingSettings } from "@/components/settings/batch-pricing-settings";
+import { WebhookSettings } from "@/components/settings/webhook-settings";
+import type { BatchTier } from "@/lib/batch-pricing";
 
 // ---------------------------------------------------------------------------
 // Types
@@ -118,6 +121,7 @@ export function SettingsPage() {
     businessEmail: "",
     quoteTermsText: "",
   });
+  const [batchTiers, setBatchTiers] = useState<BatchTier[]>([]);
 
   // ---- Fetch settings ----
 
@@ -127,8 +131,16 @@ export function SettingsPage() {
       setError(null);
       const res = await fetch("/api/settings");
       if (!res.ok) throw new Error("Failed to fetch settings");
-      const data: Settings = await res.json();
+      const data: Settings & { batchPricingTiers?: string | null } = await res.json();
       setForm(settingsToFormData(data));
+      if (data.batchPricingTiers) {
+        try {
+          const tiers = JSON.parse(data.batchPricingTiers);
+          if (Array.isArray(tiers)) setBatchTiers(tiers);
+        } catch {
+          // Invalid JSON, use empty
+        }
+      }
     } catch (err) {
       setError(err instanceof Error ? err.message : "Unknown error");
     } finally {
@@ -162,7 +174,10 @@ export function SettingsPage() {
       setError(null);
       setSuccess(false);
 
-      const payload = formDataToPayload(form);
+      const payload = {
+        ...formDataToPayload(form),
+        batchPricingTiers: batchTiers.length > 0 ? JSON.stringify(batchTiers) : null,
+      };
 
       const res = await fetch("/api/settings", {
         method: "PUT",
@@ -175,8 +190,16 @@ export function SettingsPage() {
         throw new Error(body?.error || "Failed to save settings");
       }
 
-      const data: Settings = await res.json();
+      const data: Settings & { batchPricingTiers?: string | null } = await res.json();
       setForm(settingsToFormData(data));
+      if (data.batchPricingTiers) {
+        try {
+          const tiers = JSON.parse(data.batchPricingTiers);
+          if (Array.isArray(tiers)) setBatchTiers(tiers);
+        } catch {
+          // Ignore
+        }
+      }
       setSuccess(true);
     } catch (err) {
       setError(err instanceof Error ? err.message : "Unknown error");
@@ -355,6 +378,12 @@ export function SettingsPage() {
         </CardContent>
       </Card>
 
+      {/* Batch Pricing */}
+      <BatchPricingSettings
+        tiers={batchTiers}
+        onChange={setBatchTiers}
+      />
+
       {/* Save button */}
       <div className="flex justify-end">
         <Button onClick={handleSave} disabled={saving}>
@@ -371,6 +400,9 @@ export function SettingsPage() {
           )}
         </Button>
       </div>
+
+      {/* Webhooks (independent save) */}
+      <WebhookSettings />
     </div>
   );
 }

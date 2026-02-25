@@ -19,6 +19,7 @@ import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { cn } from "@/lib/utils";
 import { QUOTE_STATUS, JOB_STATUS, JOB_STATUS_ORDER, BANNER, STATUS_TEXT, type QuoteStatus as QStatus } from "@/lib/status-colours";
+import { RevenueCharts } from "@/components/dashboard/revenue-charts";
 
 // ---------------------------------------------------------------------------
 // Types
@@ -591,6 +592,9 @@ export function DashboardPage() {
         <ActiveJobsList jobs={activeJobs} />
         <LowStockAlertsList alerts={lowStockAlerts} />
       </div>
+
+      {/* Revenue Charts */}
+      <RevenueCharts />
 
       {/* Quick Actions */}
       <QuickActions />

@@ -7,7 +7,7 @@ import { Card, CardContent } from "@/components/ui/card";
 import { roundCurrency } from "@/lib/utils";
 import { Select } from "@/components/ui/select";
 import { Badge } from "@/components/ui/badge";
-import { Plus, FileText, Loader2 } from "lucide-react";
+import { Plus, FileText, Loader2, Download } from "lucide-react";
 import { QUOTE_STATUS, BANNER, type QuoteStatus } from "@/lib/status-colours";
 
 // ---------------------------------------------------------------------------
@@ -166,10 +166,21 @@ export function QuotesPage() {
             {filtered.length} quote{filtered.length !== 1 ? "s" : ""}
           </span>
         </div>
-        <Button onClick={() => router.push("/quotes/new")}>
-          <Plus className="mr-2 h-4 w-4" />
-          New Quote
-        </Button>
+        <div className="flex gap-2">
+          <Button
+            variant="secondary"
+            onClick={() => {
+              window.location.href = "/api/export/quotes";
+            }}
+          >
+            <Download className="mr-2 h-4 w-4" />
+            Export CSV
+          </Button>
+          <Button onClick={() => router.push("/quotes/new")}>
+            <Plus className="mr-2 h-4 w-4" />
+            New Quote
+          </Button>
+        </div>
       </div>
 
       {/* Error banner */}

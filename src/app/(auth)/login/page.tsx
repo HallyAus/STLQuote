@@ -25,10 +25,24 @@ function LoginForm() {
 
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
+  const verified = searchParams.get("verified") === "true";
+  const resetDone = searchParams.get("reset") === "true";
+
   const [error, setError] = useState(
     errorParam === "AccountDisabled"
       ? "Your account has been disabled. Contact your administrator."
-      : ""
+      : errorParam === "InvalidToken"
+        ? "Invalid verification link."
+        : errorParam === "ExpiredToken"
+          ? "Verification link has expired. Please request a new one."
+          : ""
+  );
+  const [successBanner] = useState(
+    verified
+      ? "Email verified successfully. You can now sign in."
+      : resetDone
+        ? "Password reset successfully. Sign in with your new password."
+        : ""
   );
   const [loading, setLoading] = useState(false);
 
@@ -68,6 +82,11 @@ function LoginForm() {
       </CardHeader>
       <CardContent>
         <form onSubmit={handleSubmit} className="space-y-4">
+          {successBanner && (
+            <div className="rounded-md border border-success/30 bg-success/10 px-3 py-2 text-sm text-success-foreground">
+              {successBanner}
+            </div>
+          )}
           {error && (
             <div className="rounded-md bg-destructive/10 px-3 py-2 text-sm text-destructive-foreground">
               {error}
@@ -94,6 +113,15 @@ function LoginForm() {
             required
             autoComplete="current-password"
           />
+
+          <div className="flex justify-end">
+            <Link
+              href="/forgot-password"
+              className="text-xs text-muted-foreground hover:text-foreground"
+            >
+              Forgot password?
+            </Link>
+          </div>
 
           <Button
             type="submit"

@@ -37,6 +37,7 @@ const updateSettingsSchema = z.object({
   businessEmail: z.string().email("Invalid email address").nullable().optional(),
   businessLogoUrl: z.string().url("Invalid URL").nullable().optional(),
   quoteTermsText: z.string().nullable().optional(),
+  batchPricingTiers: z.string().nullable().optional(),
 });
 
 export async function GET() {

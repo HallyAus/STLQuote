@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { z } from "zod";
 import { prisma } from "@/lib/prisma";
 import { getSessionUser } from "@/lib/auth-helpers";
+import { fireWebhooks } from "@/lib/webhooks";
 
 const updateQuoteSchema = z.object({
   status: z.enum(["DRAFT", "SENT", "ACCEPTED", "REJECTED", "EXPIRED"]).optional(),
@@ -124,6 +125,21 @@ export async function PUT(
         },
       },
     });
+
+    // Fire webhooks on status change
+    if (parsed.data.status && parsed.data.status !== existing.status) {
+      const eventMap: Record<string, string> = {
+        ACCEPTED: "quote.accepted",
+        REJECTED: "quote.rejected",
+      };
+      const event = eventMap[parsed.data.status] || "quote.updated";
+      fireWebhooks(user.id, event, {
+        quoteId: quote.id,
+        quoteNumber: quote.quoteNumber,
+        status: quote.status,
+        total: quote.total,
+      });
+    }
 
     return NextResponse.json(quote);
   } catch (error) {

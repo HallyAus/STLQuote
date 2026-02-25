@@ -19,7 +19,10 @@ import {
   List,
   Trash2,
   GripVertical,
+  Clock,
+  Download,
 } from "lucide-react";
+import { JobTimeline } from "@/components/jobs/job-timeline";
 import {
   DndContext,
   DragOverlay,
@@ -65,6 +68,13 @@ interface Job {
 interface PrinterOption {
   id: string;
   name: string;
+}
+
+interface MaterialOption {
+  id: string;
+  materialType: string;
+  brand: string | null;
+  colour: string | null;
 }
 
 interface QuoteOption {
@@ -434,17 +444,20 @@ function NewJobModal({
   open,
   onClose,
   printers,
+  materials,
   quotes,
   onCreated,
 }: {
   open: boolean;
   onClose: () => void;
   printers: PrinterOption[];
+  materials: MaterialOption[];
   quotes: QuoteOption[];
   onCreated: () => void;
 }) {
   const [quoteId, setQuoteId] = useState("");
   const [printerId, setPrinterId] = useState("");
+  const [materialId, setMaterialId] = useState("");
   const [notes, setNotes] = useState("");
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -462,6 +475,7 @@ function NewJobModal({
         body: JSON.stringify({
           quoteId: quoteId || null,
           printerId: printerId || null,
+          materialId: materialId || null,
           notes: notes || null,
         }),
       });
@@ -473,6 +487,7 @@ function NewJobModal({
 
       setQuoteId("");
       setPrinterId("");
+      setMaterialId("");
       setNotes("");
       onCreated();
       onClose();
@@ -517,6 +532,19 @@ function NewJobModal({
             ...printers.map((p) => ({
               value: p.id,
               label: p.name,
+            })),
+          ]}
+        />
+
+        <Select
+          label="Material (optional)"
+          value={materialId}
+          onChange={(e) => setMaterialId(e.target.value)}
+          options={[
+            { value: "", label: "None" },
+            ...materials.map((m) => ({
+              value: m.id,
+              label: `${m.materialType}${m.brand ? ` - ${m.brand}` : ""}${m.colour ? ` (${m.colour})` : ""}`,
             })),
           ]}
         />
@@ -740,6 +768,15 @@ function JobDetailModal({
           rows={3}
         />
 
+        {/* Timeline */}
+        <div className="border-t border-border pt-3">
+          <div className="flex items-center gap-2 mb-2">
+            <Clock className="h-3.5 w-3.5 text-muted-foreground" />
+            <span className="text-xs font-medium text-muted-foreground">Timeline</span>
+          </div>
+          <JobTimeline jobId={job.id} />
+        </div>
+
         <div className="flex items-center justify-between pt-2">
           <Button
             variant="ghost"
@@ -786,6 +823,7 @@ function JobDetailModal({
 export function JobsPage() {
   const [jobs, setJobs] = useState<Job[]>([]);
   const [printers, setPrinters] = useState<PrinterOption[]>([]);
+  const [materials, setMaterials] = useState<MaterialOption[]>([]);
   const [quotes, setQuotes] = useState<QuoteOption[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -818,14 +856,27 @@ export function JobsPage() {
 
   const fetchDropdownData = useCallback(async () => {
     try {
-      const [printersRes, quotesRes] = await Promise.all([
+      const [printersRes, materialsRes, quotesRes] = await Promise.all([
         fetch("/api/printers"),
+        fetch("/api/materials"),
         fetch("/api/quotes"),
       ]);
 
       if (printersRes.ok) {
         const data = await printersRes.json();
         setPrinters(data.map((p: { id: string; name: string }) => ({ id: p.id, name: p.name })));
+      }
+
+      if (materialsRes.ok) {
+        const data = await materialsRes.json();
+        setMaterials(
+          data.map((m: { id: string; materialType: string; brand: string | null; colour: string | null }) => ({
+            id: m.id,
+            materialType: m.materialType,
+            brand: m.brand,
+            colour: m.colour,
+          }))
+        );
       }
 
       if (quotesRes.ok) {
@@ -992,10 +1043,21 @@ export function JobsPage() {
           </span>
         </div>
 
-        <Button onClick={() => setNewModalOpen(true)}>
-          <Plus className="mr-2 h-4 w-4" />
-          New Job
-        </Button>
+        <div className="flex gap-2">
+          <Button
+            variant="secondary"
+            onClick={() => {
+              window.location.href = "/api/export/jobs";
+            }}
+          >
+            <Download className="mr-2 h-4 w-4" />
+            Export CSV
+          </Button>
+          <Button onClick={() => setNewModalOpen(true)}>
+            <Plus className="mr-2 h-4 w-4" />
+            New Job
+          </Button>
+        </div>
       </div>
 
       {/* Error banner */}
@@ -1077,6 +1139,7 @@ export function JobsPage() {
         open={newModalOpen}
         onClose={() => setNewModalOpen(false)}
         printers={printers}
+        materials={materials}
         quotes={quotes}
         onCreated={fetchJobs}
       />

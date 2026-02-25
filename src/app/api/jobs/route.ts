@@ -6,6 +6,7 @@ import { getSessionUser } from "@/lib/auth-helpers";
 const createJobSchema = z.object({
   quoteId: z.string().optional().nullable(),
   printerId: z.string().optional().nullable(),
+  materialId: z.string().optional().nullable(),
   notes: z.string().optional().nullable(),
 });
 
@@ -49,15 +50,28 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    const job = await prisma.job.create({
-      data: {
-        ...parsed.data,
-        userId: user.id,
-      },
-      include: {
-        quote: { select: { quoteNumber: true, total: true } },
-        printer: { select: { name: true } },
-      },
+    const job = await prisma.$transaction(async (tx) => {
+      const created = await tx.job.create({
+        data: {
+          ...parsed.data,
+          userId: user.id,
+        },
+        include: {
+          quote: { select: { quoteNumber: true, total: true } },
+          printer: { select: { name: true } },
+        },
+      });
+
+      // Create initial JobEvent
+      await tx.jobEvent.create({
+        data: {
+          jobId: created.id,
+          fromStatus: null,
+          toStatus: "QUEUED",
+        },
+      });
+
+      return created;
     });
 
     return NextResponse.json(job, { status: 201 });

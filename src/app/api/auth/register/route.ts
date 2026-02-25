@@ -3,6 +3,8 @@ import { z } from "zod";
 import bcrypt from "bcryptjs";
 import { prisma } from "@/lib/prisma";
 import { rateLimit, getClientIp } from "@/lib/rate-limit";
+import { createEmailVerificationToken } from "@/lib/tokens";
+import { sendVerificationEmail } from "@/lib/email";
 
 const registerSchema = z.object({
   name: z.string().min(1, "Name is required"),
@@ -74,6 +76,16 @@ export async function POST(request: NextRequest) {
         createdAt: true,
       },
     });
+
+    // Send verification email (non-blocking)
+    try {
+      if (email) {
+        const token = await createEmailVerificationToken(email);
+        await sendVerificationEmail(email, token);
+      }
+    } catch (emailError) {
+      console.error("Failed to send verification email:", emailError);
+    }
 
     return NextResponse.json(user, { status: 201 });
   } catch (error) {

@@ -143,7 +143,14 @@ export function CostBreakdownPanel({
               <span>
                 {quantity} x {formatAUD(unitPrice)}
               </span>
-              <span className="font-mono">{formatAUD(totalPrice)}</span>
+              <span className="font-mono">{formatAUD(unitPrice * quantity)}</span>
+            </div>
+          )}
+
+          {breakdown.batchDiscount > 0 && (
+            <div className="flex items-center justify-between text-sm text-primary">
+              <span>Batch discount ({breakdown.batchDiscountPct}%)</span>
+              <span className="font-mono">-{formatAUD(breakdown.batchDiscount)}</span>
             </div>
           )}
 

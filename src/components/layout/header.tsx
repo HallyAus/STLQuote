@@ -7,6 +7,7 @@ import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { Menu, Moon, Sun, FileText, User, LogOut, Shield, ChevronDown } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { GlobalSearch } from "@/components/layout/global-search";
 
 interface HeaderProps {
   title: string;
@@ -136,6 +137,9 @@ export function Header({ title, breadcrumb, onMenuToggle }: HeaderProps) {
 
         {/* Spacer */}
         <div className="flex-1" />
+
+        {/* Global search */}
+        <GlobalSearch />
 
         {/* Version */}
         <span className="hidden text-[11px] text-muted-foreground/50 sm:inline">

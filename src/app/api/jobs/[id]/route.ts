@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { z } from "zod";
 import { prisma } from "@/lib/prisma";
 import { getSessionUser } from "@/lib/auth-helpers";
+import { fireWebhooks } from "@/lib/webhooks";
 
 const JOB_STATUS_VALUES = [
   "QUEUED",
@@ -16,6 +17,7 @@ const JOB_STATUS_VALUES = [
 const updateJobSchema = z.object({
   status: z.enum(JOB_STATUS_VALUES).optional(),
   printerId: z.string().optional().nullable(),
+  materialId: z.string().optional().nullable(),
   actualTimeMinutes: z.number().min(0).optional().nullable(),
   actualWeightG: z.number().min(0).optional().nullable(),
   notes: z.string().optional().nullable(),
@@ -69,6 +71,10 @@ export async function PUT(
 
     const existing = await prisma.job.findFirst({
       where: { id, userId: user.id },
+      include: {
+        material: { select: { id: true, spoolWeightG: true, stockQty: true } },
+        printer: { select: { id: true, name: true, currentHours: true } },
+      },
     });
 
     if (!existing) {
@@ -89,6 +95,7 @@ export async function PUT(
     }
 
     const data: Record<string, unknown> = { ...parsed.data };
+    const statusChanged = parsed.data.status && parsed.data.status !== existing.status;
 
     // Auto-set startedAt when status changes to PRINTING (if not already set)
     if (
@@ -112,14 +119,66 @@ export async function PUT(
       data.completedAt = new Date(data.completedAt);
     }
 
-    const job = await prisma.job.update({
-      where: { id },
-      data,
-      include: {
-        quote: { select: { quoteNumber: true, total: true, status: true } },
-        printer: { select: { name: true } },
-      },
+    // Use transaction for stock deduction, printer hours, and event logging
+    const job = await prisma.$transaction(async (tx) => {
+      const updated = await tx.job.update({
+        where: { id },
+        data,
+        include: {
+          quote: { select: { quoteNumber: true, total: true, status: true } },
+          printer: { select: { name: true } },
+        },
+      });
+
+      // Create JobEvent on status change
+      if (statusChanged && parsed.data.status) {
+        await tx.jobEvent.create({
+          data: {
+            jobId: id,
+            fromStatus: existing.status,
+            toStatus: parsed.data.status,
+          },
+        });
+      }
+
+      // On COMPLETE: deduct stock + increment printer hours
+      if (parsed.data.status === "COMPLETE") {
+        // Weight-based stock deduction
+        const weightG = parsed.data.actualWeightG ?? existing.actualWeightG;
+        if (weightG && existing.material) {
+          const spoolWeightG = existing.material.spoolWeightG || 1000;
+          const spoolsUsed = Math.ceil(weightG / spoolWeightG);
+          const newQty = Math.max(0, existing.material.stockQty - spoolsUsed);
+          await tx.material.update({
+            where: { id: existing.material.id },
+            data: { stockQty: newQty },
+          });
+        }
+
+        // Increment printer hours
+        const timeMinutes = parsed.data.actualTimeMinutes ?? existing.actualTimeMinutes;
+        if (timeMinutes && existing.printer?.id) {
+          const hoursToAdd = timeMinutes / 60;
+          await tx.printer.update({
+            where: { id: existing.printer.id },
+            data: { currentHours: (existing.printer.currentHours || 0) + hoursToAdd },
+          });
+        }
+      }
+
+      return updated;
     });
+
+    // Fire webhooks on status change
+    if (statusChanged && parsed.data.status) {
+      const event =
+        parsed.data.status === "COMPLETE" ? "job.completed" : "job.updated";
+      fireWebhooks(user.id, event, {
+        jobId: job.id,
+        status: parsed.data.status,
+        quoteNumber: job.quote?.quoteNumber ?? null,
+      });
+    }
 
     return NextResponse.json(job);
   } catch (error) {

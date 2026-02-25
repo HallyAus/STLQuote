@@ -67,6 +67,7 @@ model User {
   quotes            Quote[]
   jobs              Job[]
   calculatorPresets CalculatorPreset[]
+  webhooks          Webhook[]
 }
 
 model Settings {
@@ -87,6 +88,7 @@ model Settings {
   businessEmail         String?
   businessLogoUrl       String?
   quoteTermsText        String? @db.Text
+  batchPricingTiers     String? @db.Text // JSON string of batch pricing tiers
   createdAt             DateTime @default(now())
   updatedAt             DateTime @updatedAt
 }
@@ -134,6 +136,7 @@ model Material {
   updatedAt          DateTime @updatedAt
 
   quoteLineItems QuoteLineItem[]
+  jobs           Job[]
 
   @@index([userId])
 }
@@ -175,6 +178,7 @@ model Quote {
   client      Client?     @relation(fields: [clientId], references: [id])
   quoteNumber String      @unique
   status      QuoteStatus @default(DRAFT)
+  portalToken String?     @unique
   subtotal    Float       @default(0)
   markupPct   Float       @default(0)
   total       Float       @default(0)
@@ -232,6 +236,8 @@ model Job {
   quote             Quote?    @relation(fields: [quoteId], references: [id])
   printerId         String?
   printer           Printer?  @relation(fields: [printerId], references: [id])
+  materialId        String?
+  material          Material? @relation(fields: [materialId], references: [id])
   status            JobStatus @default(QUEUED)
   actualTimeMinutes Float?
   actualWeightG     Float?
@@ -241,7 +247,21 @@ model Job {
   createdAt         DateTime  @default(now())
   updatedAt         DateTime  @updatedAt
 
+  events JobEvent[]
+
   @@index([userId])
+}
+
+model JobEvent {
+  id         String   @id @default(cuid())
+  jobId      String
+  job        Job      @relation(fields: [jobId], references: [id], onDelete: Cascade)
+  fromStatus String?
+  toStatus   String
+  notes      String?  @db.Text
+  createdAt  DateTime @default(now())
+
+  @@index([jobId])
 }
 
 model CalculatorPreset {
@@ -252,6 +272,46 @@ model CalculatorPreset {
   configJson String   @db.Text // JSON blob of calculator input values
   createdAt  DateTime @default(now())
   updatedAt  DateTime @updatedAt
+
+  @@index([userId])
+}
+
+// --- Auth Tokens ---
+
+model PasswordResetToken {
+  id        String   @id @default(cuid())
+  email     String
+  token     String   @unique
+  expires   DateTime
+  createdAt DateTime @default(now())
+
+  @@index([email])
+}
+
+model EmailVerificationToken {
+  id        String   @id @default(cuid())
+  email     String
+  token     String   @unique
+  expires   DateTime
+  createdAt DateTime @default(now())
+
+  @@index([email])
+}
+
+// --- Webhooks ---
+
+model Webhook {
+  id          String    @id @default(cuid())
+  userId      String
+  user        User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  url         String
+  secret      String
+  events      String[]  @default([])
+  active      Boolean   @default(true)
+  lastFiredAt DateTime?
+  lastStatus  Int?
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
 
   @@index([userId])
 }

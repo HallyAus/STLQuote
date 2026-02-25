@@ -1,4 +1,5 @@
 import { roundCurrency } from "./utils";
+import { type BatchTier, applyBatchDiscount } from "./batch-pricing";
 
 // --- Input types ---
 
@@ -85,6 +86,8 @@ export interface CostBreakdown {
   totalPrice: number;
   quantity: number;
   pricePerUnit: number;
+  batchDiscount: number;
+  batchDiscountPct: number;
 }
 
 // --- Calculator functions ---
@@ -119,7 +122,10 @@ export function calculateOverheadCost(input: OverheadCostInput): number {
   return roundCurrency(input.monthlyOverhead / input.estimatedMonthlyJobs);
 }
 
-export function calculateTotalCost(input: CalculatorInput): CostBreakdown {
+export function calculateTotalCost(
+  input: CalculatorInput,
+  batchTiers?: BatchTier[] | null
+): CostBreakdown {
   const materialCost = calculateMaterialCost(input.material);
   const machineCost = calculateMachineCost(input.machine);
   const labourCost = calculateLabourCost(input.labour);
@@ -142,7 +148,10 @@ export function calculateTotalCost(input: CalculatorInput): CostBreakdown {
   }
 
   const quantity = Math.max(1, input.pricing.quantity);
-  const totalPrice = roundCurrency(unitPrice * quantity);
+  const totalBeforeDiscount = roundCurrency(unitPrice * quantity);
+
+  // Apply batch discount
+  const batch = applyBatchDiscount(totalBeforeDiscount, quantity, batchTiers ?? null);
 
   return {
     materialCost,
@@ -153,8 +162,10 @@ export function calculateTotalCost(input: CalculatorInput): CostBreakdown {
     markup,
     rushSurcharge,
     unitPrice,
-    totalPrice,
+    totalPrice: batch.finalPrice,
     quantity,
     pricePerUnit: unitPrice,
+    batchDiscount: batch.discountAmount,
+    batchDiscountPct: batch.discountPct,
   };
 }

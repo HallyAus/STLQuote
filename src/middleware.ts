@@ -7,8 +7,16 @@ const { auth } = NextAuth(authConfig);
 export default auth((req) => {
   const { pathname } = req.nextUrl;
 
-  // Allow auth routes, static assets, and API auth routes
-  const publicPaths = ["/login", "/register", "/api/auth"];
+  // Allow auth routes, static assets, API auth routes, and public portal
+  const publicPaths = [
+    "/login",
+    "/register",
+    "/forgot-password",
+    "/reset-password",
+    "/api/auth",
+    "/portal",
+    "/api/portal",
+  ];
   const isPublic = publicPaths.some((p) => pathname.startsWith(p));
 
   if (isPublic) {

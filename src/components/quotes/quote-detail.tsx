@@ -18,6 +18,8 @@ import {
   Trash2,
   Download,
   Briefcase,
+  Send,
+  Copy,
 } from "lucide-react";
 import { QUOTE_STATUS, BANNER, type QuoteStatus } from "@/lib/status-colours";
 
@@ -276,6 +278,13 @@ export function QuoteDetail() {
   const [clients, setClients] = useState<{ id: string; name: string; company: string | null }[]>([]);
   const [selectedClientId, setSelectedClientId] = useState("");
 
+  // Send quote state
+  const [sending, setSending] = useState(false);
+  const [sendSuccess, setSendSuccess] = useState<string | null>(null);
+
+  // Duplicate state
+  const [duplicating, setDuplicating] = useState(false);
+
   // Convert to job modal
   const [convertModalOpen, setConvertModalOpen] = useState(false);
   const [printers, setPrinters] = useState<{ id: string; name: string }[]>([]);
@@ -412,6 +421,50 @@ export function QuoteDetail() {
       router.push("/quotes");
     } catch (err) {
       setError(err instanceof Error ? err.message : "Unknown error");
+    }
+  }
+
+  // ---- Send quote ----
+
+  async function handleSendQuote() {
+    if (!quote) return;
+    if (!quote.client?.email) {
+      setError("Client has no email address. Assign a client with an email first.");
+      return;
+    }
+    if (!confirm(`Send quote ${quote.quoteNumber} to ${quote.client.email}?`)) return;
+
+    try {
+      setSending(true);
+      setError(null);
+      setSendSuccess(null);
+      const res = await fetch(`/api/quotes/${quoteId}/send`, { method: "POST" });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error || "Failed to send quote");
+      setSendSuccess(data.message);
+      await fetchQuote();
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Unknown error");
+    } finally {
+      setSending(false);
+    }
+  }
+
+  // ---- Duplicate quote ----
+
+  async function handleDuplicateQuote() {
+    if (!quote) return;
+    try {
+      setDuplicating(true);
+      setError(null);
+      const res = await fetch(`/api/quotes/${quoteId}/duplicate`, { method: "POST" });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error || "Failed to duplicate quote");
+      router.push(`/quotes/${data.id}`);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Unknown error");
+    } finally {
+      setDuplicating(false);
     }
   }
 
@@ -605,6 +658,13 @@ export function QuoteDetail() {
         <ArrowLeft className="mr-2 h-4 w-4" />
         Back to Quotes
       </Button>
+
+      {/* Success banner */}
+      {sendSuccess && (
+        <div className={BANNER.success}>
+          {sendSuccess}
+        </div>
+      )}
 
       {/* Error banner */}
       {error && (
@@ -918,6 +978,14 @@ export function QuoteDetail() {
       {/* Actions */}
       <Card>
         <CardContent className="flex flex-wrap gap-3 pt-6">
+          <Button onClick={handleSendQuote} disabled={sending}>
+            {sending ? (
+              <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+            ) : (
+              <Send className="mr-2 h-4 w-4" />
+            )}
+            Send Quote
+          </Button>
           {quote.status === "ACCEPTED" && (
             <Button onClick={() => setConvertModalOpen(true)}>
               <Briefcase className="mr-2 h-4 w-4" />
@@ -926,10 +994,22 @@ export function QuoteDetail() {
           )}
           <Button
             variant="secondary"
-            onClick={() => router.push(`/quotes/${quoteId}/pdf`)}
+            onClick={() => window.open(`/api/quotes/${quoteId}/pdf`, "_blank")}
           >
             <Download className="mr-2 h-4 w-4" />
-            Export PDF
+            Download PDF
+          </Button>
+          <Button
+            variant="secondary"
+            onClick={handleDuplicateQuote}
+            disabled={duplicating}
+          >
+            {duplicating ? (
+              <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+            ) : (
+              <Copy className="mr-2 h-4 w-4" />
+            )}
+            Duplicate
           </Button>
           <Button
             variant="ghost"

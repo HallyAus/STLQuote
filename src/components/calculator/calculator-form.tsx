@@ -6,6 +6,7 @@ import {
   type CalculatorInput,
   calculateTotalCost,
 } from "@/lib/calculator";
+import { type BatchTier } from "@/lib/batch-pricing";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Select } from "@/components/ui/select";
@@ -272,6 +273,7 @@ export function CalculatorForm() {
   const [selectedPrinterId, setSelectedPrinterId] = useState<string>("");
   const [selectedMaterialId, setSelectedMaterialId] = useState<string>("");
   const [fileEstimatesList, setFileEstimatesList] = useState<FileEstimates[]>([]);
+  const [batchTiers, setBatchTiers] = useState<BatchTier[] | null>(null);
 
   // Preset state
   const [presets, setPresets] = useState<CalculatorPreset[]>([]);
@@ -298,6 +300,25 @@ export function CalculatorForm() {
       .catch(() => {});
   }, []);
 
+  // Fetch batch pricing tiers from settings
+  useEffect(() => {
+    fetch("/api/settings")
+      .then((res) => res.json())
+      .then((data) => {
+        if (data?.batchPricingTiers) {
+          try {
+            const tiers = JSON.parse(data.batchPricingTiers);
+            if (Array.isArray(tiers) && tiers.length > 0) {
+              setBatchTiers(tiers);
+            }
+          } catch {
+            // Invalid JSON, ignore
+          }
+        }
+      })
+      .catch(() => {});
+  }, []);
+
   const fetchPresets = useCallback(() => {
     fetch("/api/calculator-presets")
       .then((res) => res.json())
@@ -311,7 +332,7 @@ export function CalculatorForm() {
     fetchPresets();
   }, [fetchPresets]);
 
-  const breakdown = useMemo(() => calculateTotalCost(input), [input]);
+  const breakdown = useMemo(() => calculateTotalCost(input, batchTiers), [input, batchTiers]);
 
   // -----------------------------------------------------------------------
   // File upload handler (STL or G-code)

@@ -10,6 +10,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { Badge } from "@/components/ui/badge";
 import { Dialog, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
 import { tagColour, BANNER } from "@/lib/status-colours";
+import { Download } from "lucide-react";
 
 // ---------- Types ----------
 
@@ -253,7 +254,18 @@ export function ClientsPage() {
             Manage your client contacts and view their quote history.
           </p>
         </div>
-        <Button onClick={openAdd}>Add Client</Button>
+        <div className="flex gap-2">
+          <Button
+            variant="secondary"
+            onClick={() => {
+              window.location.href = "/api/export/clients";
+            }}
+          >
+            <Download className="mr-2 h-4 w-4" />
+            Export CSV
+          </Button>
+          <Button onClick={openAdd}>Add Client</Button>
+        </div>
       </div>
 
       {/* Filters */}
