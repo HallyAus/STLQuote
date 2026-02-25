@@ -10,12 +10,7 @@ services:
     environment:
       - DATABASE_URL=postgresql://printforge:printforge@db:5432/printforge_quote?schema=public
       - AUTH_TRUST_HOST=true
-      # SMTP — configure in .env file
-      # - SMTP_HOST=smtp.example.com
-      # - SMTP_PORT=587
-      # - SMTP_USER=noreply@printforge.com.au
-      # - SMTP_PASS=your-smtp-password
-      # - SMTP_FROM=noreply@printforge.com.au
+      # Email — configure RESEND_API_KEY in .env file
     depends_on:
       db:
         condition: service_healthy

@@ -1,19 +1,10 @@
-import nodemailer from "nodemailer";
+import { Resend } from "resend";
 
-const transporter = nodemailer.createTransport({
-  host: process.env.SMTP_HOST,
-  port: parseInt(process.env.SMTP_PORT || "587"),
-  secure: process.env.SMTP_PORT === "465",
-  auth: {
-    user: process.env.SMTP_USER,
-    pass: process.env.SMTP_PASS,
-  },
-});
+const resend = new Resend(process.env.RESEND_API_KEY);
+const fromAddress = process.env.RESEND_FROM || "Printforge <noreply@printforge.com.au>";
 
-const fromAddress = process.env.SMTP_FROM || "noreply@printforge.com.au";
-
-function isSmtpConfigured(): boolean {
-  return !!(process.env.SMTP_HOST && process.env.SMTP_USER && process.env.SMTP_PASS);
+function isConfigured(): boolean {
+  return !!process.env.RESEND_API_KEY;
 }
 
 export async function sendEmail({
@@ -27,19 +18,28 @@ export async function sendEmail({
   html: string;
   attachments?: { filename: string; content: Buffer; contentType?: string }[];
 }): Promise<boolean> {
-  if (!isSmtpConfigured()) {
-    console.warn("SMTP not configured — skipping email to", to);
+  if (!isConfigured()) {
+    console.warn("RESEND_API_KEY not configured — skipping email to", to);
     return false;
   }
 
   try {
-    await transporter.sendMail({
-      from: `"Printforge" <${fromAddress}>`,
+    const { error } = await resend.emails.send({
+      from: fromAddress,
       to,
       subject,
       html,
-      attachments,
+      attachments: attachments?.map((a) => ({
+        filename: a.filename,
+        content: a.content,
+        contentType: a.contentType,
+      })),
     });
+
+    if (error) {
+      console.error("Resend error:", error);
+      return false;
+    }
     return true;
   } catch (error) {
     console.error("Failed to send email:", error);
