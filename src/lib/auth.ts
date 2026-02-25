@@ -16,12 +16,12 @@ declare module "next-auth" {
   }
 
   interface User {
-    role: string;
+    role?: string;
   }
 }
 
 export const { handlers, auth, signIn, signOut } = NextAuth({
-  adapter: PrismaAdapter(prisma),
+  adapter: PrismaAdapter(prisma) as any,
   session: { strategy: "jwt" },
   pages: {
     signIn: "/login",
@@ -71,13 +71,13 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
     async jwt({ token, user }) {
       if (user) {
         token.id = user.id as string;
-        token.role = user.role;
+        token.role = (user as any).role as string;
       }
       return token;
     },
     async session({ session, token }) {
-      session.user.id = token.id;
-      session.user.role = token.role;
+      session.user.id = token.id as string;
+      session.user.role = token.role as string;
       return session;
     },
   },
