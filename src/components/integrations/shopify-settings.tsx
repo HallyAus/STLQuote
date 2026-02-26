@@ -50,7 +50,8 @@ export function ShopifySettings() {
 
   // Connect form
   const [shopDomain, setShopDomain] = useState("");
-  const [accessToken, setAccessToken] = useState("");
+  const [clientId, setClientId] = useState("");
+  const [clientSecret, setClientSecret] = useState("");
 
   // Setup instructions toggle
   const [showInstructions, setShowInstructions] = useState(false);
@@ -86,7 +87,7 @@ export function ShopifySettings() {
   // ---- Connect ----
 
   async function handleConnect() {
-    if (!shopDomain.trim() || !accessToken.trim()) return;
+    if (!shopDomain.trim() || !clientId.trim() || !clientSecret.trim()) return;
     setConnecting(true);
     setError(null);
 
@@ -94,7 +95,11 @@ export function ShopifySettings() {
       const res = await fetch("/api/shopify/connect", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ shopDomain: shopDomain.trim(), accessToken: accessToken.trim() }),
+        body: JSON.stringify({
+          shopDomain: shopDomain.trim(),
+          clientId: clientId.trim(),
+          clientSecret: clientSecret.trim(),
+        }),
       });
 
       if (!res.ok) {
@@ -104,7 +109,8 @@ export function ShopifySettings() {
 
       setSuccess("Shopify connected successfully!");
       setShopDomain("");
-      setAccessToken("");
+      setClientId("");
+      setClientSecret("");
       fetchStatus();
     } catch (err) {
       setError(err instanceof Error ? err.message : "Connection failed");
@@ -368,26 +374,34 @@ export function ShopifySettings() {
                     scope. This is the only permission needed — Printforge will never modify your Shopify data
                   </li>
                   <li>
-                    Click <strong className="text-foreground">Save</strong>, then go to the{" "}
+                    Click <strong className="text-foreground">Save</strong>, then click{" "}
+                    <strong className="text-foreground">Install app</strong> and confirm the installation
+                  </li>
+                  <li>
+                    Go to the{" "}
                     <strong className="text-foreground">API credentials</strong> tab
                   </li>
                   <li>
-                    Click <strong className="text-foreground">Install app</strong> and confirm the installation
+                    Copy the{" "}
+                    <strong className="text-foreground">Client ID</strong> — it&apos;s shown under{" "}
+                    <em>Client credentials</em>
                   </li>
                   <li>
-                    Under <strong className="text-foreground">Admin API access token</strong>, click{" "}
-                    <strong className="text-foreground">Reveal token once</strong>.{" "}
+                    Click{" "}
+                    <strong className="text-foreground">Client secret → Reveal client secret once</strong>.{" "}
                     <span className="text-destructive-foreground font-medium">
-                      Copy this token immediately — it&apos;s only shown once!
+                      Copy this immediately — it&apos;s only shown once!
                     </span>
                   </li>
                   <li>
-                    Paste your store URL and the access token in the fields below
+                    Paste your store URL, client ID, and client secret in the fields below
                   </li>
                 </ol>
 
                 <p className="pt-2 text-xs text-muted-foreground/70">
-                  We&apos;re working on a simpler one-click OAuth connection — coming in 1–2 months.
+                  Shopify uses short-lived tokens (24 hrs) — Printforge automatically refreshes them
+                  using your client credentials. We&apos;re working on a simpler one-click OAuth
+                  connection — coming in 1–2 months.
                 </p>
               </div>
             )}
@@ -401,15 +415,21 @@ export function ShopifySettings() {
                 placeholder="your-store.myshopify.com"
               />
               <Input
-                label="Admin API access token"
+                label="Client ID"
+                value={clientId}
+                onChange={(e) => setClientId(e.target.value)}
+                placeholder="e.g. 1a2b3c4d5e6f..."
+              />
+              <Input
+                label="Client secret"
                 type="password"
-                value={accessToken}
-                onChange={(e) => setAccessToken(e.target.value)}
-                placeholder="shpat_..."
+                value={clientSecret}
+                onChange={(e) => setClientSecret(e.target.value)}
+                placeholder="e.g. shpss_..."
               />
               <Button
                 onClick={handleConnect}
-                disabled={connecting || !shopDomain.trim() || !accessToken.trim()}
+                disabled={connecting || !shopDomain.trim() || !clientId.trim() || !clientSecret.trim()}
               >
                 {connecting ? (
                   <>

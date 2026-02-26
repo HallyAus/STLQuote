@@ -1,13 +1,100 @@
 /**
  * Shopify Admin REST API helpers.
  *
- * Uses raw fetch — no SDK. Custom app approach (access token, not OAuth).
+ * Uses client credentials grant (client ID + client secret → short-lived access token).
+ * Tokens expire every 24 hours and are auto-refreshed.
  * API version: 2024-01
  */
 
 import crypto from "crypto";
+import { prisma } from "@/lib/prisma";
 
 const API_VERSION = "2024-01";
+
+// ---------------------------------------------------------------------------
+// Token exchange (client credentials grant)
+// ---------------------------------------------------------------------------
+
+interface TokenResponse {
+  access_token: string;
+  scope: string;
+  expires_in: number; // seconds (86399 = ~24hrs)
+}
+
+/** Exchange client ID + secret for a short-lived access token */
+export async function exchangeForAccessToken(
+  shopDomain: string,
+  clientId: string,
+  clientSecret: string
+): Promise<TokenResponse> {
+  const url = `https://${shopDomain}/admin/oauth/access_token`;
+  const res = await fetch(url, {
+    method: "POST",
+    headers: { "Content-Type": "application/x-www-form-urlencoded" },
+    body: new URLSearchParams({
+      grant_type: "client_credentials",
+      client_id: clientId,
+      client_secret: clientSecret,
+    }).toString(),
+  });
+
+  if (!res.ok) {
+    const text = await res.text().catch(() => "");
+    if (res.status === 401 || res.status === 403) {
+      throw new Error("Invalid client ID or secret. Please check your credentials and try again.");
+    }
+    throw new Error(`Shopify token exchange failed (${res.status}): ${text.slice(0, 200)}`);
+  }
+
+  return res.json();
+}
+
+/** Get a valid access token for a user, refreshing if expired */
+export async function getAccessToken(userId: string): Promise<{ token: string; shopDomain: string }> {
+  const user = await prisma.user.findUnique({
+    where: { id: userId },
+    select: {
+      shopifyShopDomain: true,
+      shopifyClientId: true,
+      shopifyClientSecret: true,
+      shopifyAccessToken: true,
+      shopifyTokenExpiresAt: true,
+    },
+  });
+
+  if (!user?.shopifyShopDomain || !user?.shopifyClientId || !user?.shopifyClientSecret) {
+    throw new Error("Shopify is not connected");
+  }
+
+  // Check if existing token is still valid (with 5-minute buffer)
+  const bufferMs = 5 * 60 * 1000;
+  if (
+    user.shopifyAccessToken &&
+    user.shopifyTokenExpiresAt &&
+    user.shopifyTokenExpiresAt.getTime() > Date.now() + bufferMs
+  ) {
+    return { token: user.shopifyAccessToken, shopDomain: user.shopifyShopDomain };
+  }
+
+  // Token expired or missing — exchange for a new one
+  const tokenData = await exchangeForAccessToken(
+    user.shopifyShopDomain,
+    user.shopifyClientId,
+    user.shopifyClientSecret
+  );
+
+  const expiresAt = new Date(Date.now() + tokenData.expires_in * 1000);
+
+  await prisma.user.update({
+    where: { id: userId },
+    data: {
+      shopifyAccessToken: tokenData.access_token,
+      shopifyTokenExpiresAt: expiresAt,
+    },
+  });
+
+  return { token: tokenData.access_token, shopDomain: user.shopifyShopDomain };
+}
 
 // ---------------------------------------------------------------------------
 // Core fetch
@@ -59,7 +146,7 @@ export async function fetchShop(
     const text = await res.text().catch(() => "");
     throw new Error(
       res.status === 401
-        ? "Invalid access token. Please check your token and try again."
+        ? "Invalid credentials. Please check your client ID and secret."
         : `Shopify API error (${res.status}): ${text.slice(0, 200)}`
     );
   }
@@ -161,7 +248,7 @@ export async function deleteWebhook(
 }
 
 // ---------------------------------------------------------------------------
-// HMAC verification
+// HMAC verification (uses client secret)
 // ---------------------------------------------------------------------------
 
 export function verifyWebhookHmac(
@@ -186,11 +273,8 @@ export function verifyWebhookHmac(
 /** Normalise shop domain to xxx.myshopify.com format */
 export function normaliseShopDomain(input: string): string {
   let domain = input.trim().toLowerCase();
-  // Strip protocol
   domain = domain.replace(/^https?:\/\//, "");
-  // Strip trailing slash/path
   domain = domain.split("/")[0];
-  // If they just typed the shop name, add .myshopify.com
   if (!domain.includes(".")) {
     domain = `${domain}.myshopify.com`;
   }

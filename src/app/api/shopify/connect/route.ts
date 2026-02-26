@@ -1,12 +1,18 @@
 import { NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { requireFeature } from "@/lib/auth-helpers";
-import { fetchShop, normaliseShopDomain, registerOrderWebhook } from "@/lib/shopify";
+import {
+  exchangeForAccessToken,
+  fetchShop,
+  normaliseShopDomain,
+  registerOrderWebhook,
+} from "@/lib/shopify";
 import { z } from "zod";
 
 const connectSchema = z.object({
   shopDomain: z.string().min(1, "Store URL is required"),
-  accessToken: z.string().min(1, "Access token is required"),
+  clientId: z.string().min(1, "Client ID is required"),
+  clientSecret: z.string().min(1, "Client secret is required"),
 });
 
 export async function POST(request: Request) {
@@ -23,10 +29,15 @@ export async function POST(request: Request) {
     }
 
     const shopDomain = normaliseShopDomain(parsed.data.shopDomain);
-    const accessToken = parsed.data.accessToken.trim();
+    const clientId = parsed.data.clientId.trim();
+    const clientSecret = parsed.data.clientSecret.trim();
 
-    // Validate credentials by fetching shop info
-    const shop = await fetchShop(shopDomain, accessToken);
+    // Exchange client credentials for access token
+    const tokenData = await exchangeForAccessToken(shopDomain, clientId, clientSecret);
+    const expiresAt = new Date(Date.now() + tokenData.expires_in * 1000);
+
+    // Validate by fetching shop info
+    const shop = await fetchShop(shopDomain, tokenData.access_token);
 
     // Optionally register webhook for automatic order sync
     const appUrl = process.env.NEXTAUTH_URL ?? process.env.AUTH_URL ?? "";
@@ -34,7 +45,7 @@ export async function POST(request: Request) {
     if (appUrl) {
       webhookId = await registerOrderWebhook(
         shopDomain,
-        accessToken,
+        tokenData.access_token,
         `${appUrl}/api/shopify/webhook`
       );
     }
@@ -44,7 +55,10 @@ export async function POST(request: Request) {
       where: { id: user.id },
       data: {
         shopifyShopDomain: shop.myshopify_domain || shopDomain,
-        shopifyAccessToken: accessToken,
+        shopifyClientId: clientId,
+        shopifyClientSecret: clientSecret,
+        shopifyAccessToken: tokenData.access_token,
+        shopifyTokenExpiresAt: expiresAt,
         shopifyConnectedAt: new Date(),
         shopifyWebhookId: webhookId,
       },

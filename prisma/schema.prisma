@@ -76,7 +76,10 @@ model User {
 
   // Shopify Custom App (per user)
   shopifyShopDomain      String?
+  shopifyClientId        String?
+  shopifyClientSecret    String?   @db.Text
   shopifyAccessToken     String?   @db.Text
+  shopifyTokenExpiresAt  DateTime?
   shopifyConnectedAt     DateTime?
   shopifyLastSyncAt      DateTime?
   shopifyAutoCreateJobs  Boolean   @default(true)

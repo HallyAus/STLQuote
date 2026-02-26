@@ -31,7 +31,10 @@ export async function POST() {
       where: { id: user.id },
       data: {
         shopifyShopDomain: null,
+        shopifyClientId: null,
+        shopifyClientSecret: null,
         shopifyAccessToken: null,
+        shopifyTokenExpiresAt: null,
         shopifyConnectedAt: null,
         shopifyLastSyncAt: null,
         shopifyWebhookId: null,

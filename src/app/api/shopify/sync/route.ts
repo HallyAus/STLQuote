@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { requireFeature } from "@/lib/auth-helpers";
-import { fetchOrders, orderToJobNotes } from "@/lib/shopify";
+import { getAccessToken, fetchOrders, orderToJobNotes } from "@/lib/shopify";
 import { fireWebhooks } from "@/lib/webhooks";
 import { log } from "@/lib/logger";
 
@@ -9,31 +9,22 @@ export async function POST() {
   try {
     const user = await requireFeature("shopify_sync");
 
-    // Get connection details
-    const userData = await prisma.user.findUnique({
+    // Get valid access token (auto-refreshes if expired)
+    const { token, shopDomain } = await getAccessToken(user.id);
+
+    const lastSync = await prisma.user.findUnique({
       where: { id: user.id },
-      select: {
-        shopifyShopDomain: true,
-        shopifyAccessToken: true,
-        shopifyLastSyncAt: true,
-      },
+      select: { shopifyLastSyncAt: true },
     });
 
-    if (!userData?.shopifyShopDomain || !userData?.shopifyAccessToken) {
-      return NextResponse.json(
-        { error: "Shopify is not connected" },
-        { status: 400 }
-      );
-    }
-
     // Fetch orders since last sync (or last 30 days)
-    const sinceDate = userData.shopifyLastSyncAt
-      ? userData.shopifyLastSyncAt.toISOString()
+    const sinceDate = lastSync?.shopifyLastSyncAt
+      ? lastSync.shopifyLastSyncAt.toISOString()
       : new Date(Date.now() - 30 * 24 * 60 * 60 * 1000).toISOString();
 
     const orders = await fetchOrders(
-      userData.shopifyShopDomain,
-      userData.shopifyAccessToken,
+      shopDomain,
+      token,
       { created_at_min: sinceDate, limit: 50 }
     );
 

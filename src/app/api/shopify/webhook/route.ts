@@ -11,15 +11,6 @@ export async function POST(request: NextRequest) {
     const hmac = request.headers.get("x-shopify-hmac-sha256");
     const shopDomain = request.headers.get("x-shopify-shop-domain");
 
-    // Verify HMAC if secret is configured
-    const webhookSecret = process.env.SHOPIFY_WEBHOOK_SECRET;
-    if (webhookSecret && hmac) {
-      if (!verifyWebhookHmac(rawBody, hmac, webhookSecret)) {
-        log({ type: "system", level: "warn", message: "Shopify webhook HMAC verification failed" });
-        return NextResponse.json({ error: "Invalid signature" }, { status: 401 });
-      }
-    }
-
     const order: ShopifyOrder = JSON.parse(rawBody);
 
     if (!shopDomain) {
@@ -32,12 +23,20 @@ export async function POST(request: NextRequest) {
       select: {
         id: true,
         shopifyAutoCreateJobs: true,
+        shopifyClientSecret: true,
       },
     });
 
     if (!user) {
-      // No user connected to this shop — ignore silently
       return NextResponse.json({ received: true });
+    }
+
+    // Verify HMAC using user's client secret
+    if (hmac && user.shopifyClientSecret) {
+      if (!verifyWebhookHmac(rawBody, hmac, user.shopifyClientSecret)) {
+        log({ type: "system", level: "warn", message: "Shopify webhook HMAC verification failed", userId: user.id });
+        return NextResponse.json({ error: "Invalid signature" }, { status: 401 });
+      }
     }
 
     if (!user.shopifyAutoCreateJobs) {
