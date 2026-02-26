@@ -197,6 +197,7 @@ export async function getXeroClient(userId: string): Promise<XeroClient> {
     return {
       Authorization: `Bearer ${accessToken}`,
       "xero-tenant-id": tenantId,
+      Accept: "application/json",
       "Content-Type": "application/json",
     };
   }
