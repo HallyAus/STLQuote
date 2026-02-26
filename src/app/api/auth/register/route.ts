@@ -148,6 +148,32 @@ export async function POST(request: NextRequest) {
       </div>`,
     }).catch(() => {});
 
+    // Notify admin (fire-and-forget)
+    const adminNotifyEmail = process.env.ADMIN_EMAIL;
+    if (adminNotifyEmail) {
+      const appUrl = process.env.NEXT_PUBLIC_APP_URL || "https://crm.printforge.com.au";
+      sendEmail({
+        to: adminNotifyEmail,
+        subject: `New waitlist signup: ${name}${businessName ? ` (${businessName})` : ""}`,
+        type: "admin_notification",
+        html: `<div style="font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; max-width: 600px; margin: 0 auto;">
+          <h2 style="color: #171717;">New Waitlist Signup</h2>
+          <table style="border-collapse: collapse; width: 100%; margin: 16px 0;">
+            <tr><td style="padding: 8px 0; color: #666; width: 120px;">Name</td><td style="padding: 8px 0; font-weight: 600;">${name}</td></tr>
+            <tr><td style="padding: 8px 0; color: #666;">Email</td><td style="padding: 8px 0;">${email}</td></tr>
+            ${businessName ? `<tr><td style="padding: 8px 0; color: #666;">Business</td><td style="padding: 8px 0;">${businessName}</td></tr>` : ""}
+          </table>
+          <p style="margin: 24px 0;">
+            <a href="${appUrl}/admin" style="background-color: #2563eb; color: white; padding: 12px 24px; border-radius: 6px; text-decoration: none; font-weight: 600;">
+              Review in Admin Portal
+            </a>
+          </p>
+          <hr style="border: none; border-top: 1px solid #e5e5e5; margin: 24px 0;" />
+          <p style="color: #999; font-size: 12px;">Printforge — Admin Notification</p>
+        </div>`,
+      }).catch(() => {});
+    }
+
     return NextResponse.json(
       {
         waitlist: true,
