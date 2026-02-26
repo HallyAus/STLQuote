@@ -43,6 +43,12 @@ export async function exchangeForAccessToken(
     if (res.status === 401 || res.status === 403) {
       throw new Error("Invalid client ID or secret. Please check your credentials and try again.");
     }
+    if (text.includes("app_not_installed")) {
+      throw new Error(
+        "App not installed. Go to your Shopify admin → Settings → Apps → Develop apps → " +
+        "select your app → click \"Install app\" and confirm, then try connecting again."
+      );
+    }
     throw new Error(`Shopify token exchange failed (${res.status}): ${text.slice(0, 200)}`);
   }
 
