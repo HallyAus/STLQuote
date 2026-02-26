@@ -21,6 +21,7 @@ import {
   Lock,
   Plug,
   BookTemplate,
+  UserCircle,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { getEffectiveTier } from "@/lib/tier";
@@ -67,6 +68,12 @@ const navGroups: NavGroup[] = [
     ],
   },
 ];
+
+const accountItem: NavItem = {
+  href: "/account",
+  label: "Account",
+  icon: UserCircle,
+};
 
 const settingsItem: NavItem = {
   href: "/settings",
@@ -226,8 +233,14 @@ export function Sidebar({ open, onClose }: SidebarProps) {
           )}
         </nav>
 
-        {/* Settings — separated */}
+        {/* Account & Settings — separated */}
         <div className="border-t border-sidebar-border px-2 py-2">
+          <NavLink
+            item={accountItem}
+            isActive={isRouteActive(accountItem.href, pathname)}
+            onClose={onClose}
+            compact
+          />
           <NavLink
             item={settingsItem}
             isActive={isRouteActive(settingsItem.href, pathname)}

@@ -82,6 +82,7 @@ export const authConfig = {
       session.user.subscriptionTier = (token.subscriptionTier as string) ?? "free";
       session.user.subscriptionStatus = (token.subscriptionStatus as string) ?? "trialing";
       (session.user as any).trialEndsAt = (token.trialEndsAt as string) ?? null;
+      (session.user as any).mustChangePassword = token.mustChangePassword ?? false;
       return session;
     },
   },
