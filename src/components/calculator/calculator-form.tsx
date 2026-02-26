@@ -305,6 +305,12 @@ export function CalculatorForm() {
     fetch("/api/settings")
       .then((res) => res.json())
       .then((data) => {
+        if (data?.defaultElectricityRate != null) {
+          setInput((prev) => ({
+            ...prev,
+            machine: { ...prev.machine, electricityRate: data.defaultElectricityRate },
+          }));
+        }
         if (data?.batchPricingTiers) {
           try {
             const tiers = JSON.parse(data.batchPricingTiers);

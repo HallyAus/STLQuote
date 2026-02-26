@@ -43,7 +43,7 @@ interface PrinterFormData {
   notes: string;
 }
 
-const DEFAULT_ELECTRICITY_RATE = 0.3; // $/kWh
+const FALLBACK_ELECTRICITY_RATE = 0.3; // $/kWh
 
 const emptyForm: PrinterFormData = {
   name: "",
@@ -61,9 +61,9 @@ const emptyForm: PrinterFormData = {
 
 // ---------- Helpers ----------
 
-function calcHourlyRate(printer: Printer): number {
+function calcHourlyRate(printer: Printer, electricityRate: number): number {
   const depreciation = printer.purchasePrice / printer.lifetimeHours;
-  const electricity = (printer.powerWatts / 1000) * DEFAULT_ELECTRICITY_RATE;
+  const electricity = (printer.powerWatts / 1000) * electricityRate;
   return roundCurrency(depreciation + electricity + printer.maintenanceCostPerHour);
 }
 
@@ -103,6 +103,7 @@ function formDataToPayload(form: PrinterFormData) {
 
 export function PrintersPage() {
   const [printers, setPrinters] = useState<Printer[]>([]);
+  const [electricityRate, setElectricityRate] = useState(FALLBACK_ELECTRICITY_RATE);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -148,6 +149,14 @@ export function PrintersPage() {
 
   useEffect(() => {
     fetchPrinters();
+    fetch("/api/settings")
+      .then((res) => (res.ok ? res.json() : null))
+      .then((data) => {
+        if (data?.defaultElectricityRate != null) {
+          setElectricityRate(data.defaultElectricityRate);
+        }
+      })
+      .catch(() => {});
   }, [fetchPrinters]);
 
   // --- Handlers ---
@@ -318,6 +327,7 @@ export function PrintersPage() {
             <PrinterCard
               key={printer.id}
               printer={printer}
+              electricityRate={electricityRate}
               onEdit={() => openEdit(printer)}
               onDelete={() => handleDelete(printer)}
             />
@@ -331,6 +341,7 @@ export function PrintersPage() {
           title={editingId ? "Edit Printer" : "Add Printer"}
           form={form}
           saving={saving}
+          electricityRate={electricityRate}
           onFieldChange={updateField}
           onSave={handleSave}
           onClose={closeModal}
@@ -344,14 +355,16 @@ export function PrintersPage() {
 
 function PrinterCard({
   printer,
+  electricityRate,
   onEdit,
   onDelete,
 }: {
   printer: Printer;
+  electricityRate: number;
   onEdit: () => void;
   onDelete: () => void;
 }) {
-  const hourlyRate = calcHourlyRate(printer);
+  const hourlyRate = calcHourlyRate(printer, electricityRate);
   const hoursPercent =
     printer.lifetimeHours > 0
       ? Math.min((printer.currentHours / printer.lifetimeHours) * 100, 100)
@@ -443,6 +456,7 @@ function PrinterModal({
   title,
   form,
   saving,
+  electricityRate,
   onFieldChange,
   onSave,
   onClose,
@@ -450,6 +464,7 @@ function PrinterModal({
   title: string;
   form: PrinterFormData;
   saving: boolean;
+  electricityRate: number;
   onFieldChange: (field: keyof PrinterFormData, value: string) => void;
   onSave: () => void;
   onClose: () => void;
@@ -457,7 +472,7 @@ function PrinterModal({
   // Preview hourly rate in the form
   const previewRate = roundCurrency(
     (parseFloat(form.purchasePrice) || 0) / (parseFloat(form.lifetimeHours) || 5000) +
-      ((parseFloat(form.powerWatts) || 0) / 1000) * DEFAULT_ELECTRICITY_RATE +
+      ((parseFloat(form.powerWatts) || 0) / 1000) * electricityRate +
       (parseFloat(form.maintenanceCostPerHour) || 0)
   );
 
