@@ -10,6 +10,7 @@ const updateUserSchema = z.object({
   role: z.enum(["USER", "ADMIN"]).optional(),
   disabled: z.boolean().optional(),
   password: z.string().min(8, "Password must be at least 8 characters").optional(),
+  grantPro: z.boolean().optional(),
 });
 
 export async function PUT(
@@ -70,10 +71,24 @@ export async function PUT(
       );
     }
 
-    const { password, ...rest } = parsed.data;
+    const { password, grantPro, ...rest } = parsed.data;
     const data: Record<string, unknown> = { ...rest };
     if (password) {
       data.passwordHash = await bcrypt.hash(password, 12);
+    }
+
+    // Admin can grant or revoke Pro without Stripe
+    if (grantPro === true) {
+      data.subscriptionTier = "pro";
+      data.subscriptionStatus = "active";
+      data.trialEndsAt = null;
+      data.subscriptionEndsAt = null;
+    } else if (grantPro === false) {
+      // Only revoke if not on a Stripe subscription
+      if (!existing.stripeSubscriptionId) {
+        data.subscriptionTier = "free";
+        data.subscriptionStatus = "inactive";
+      }
     }
 
     const user = await prisma.user.update({
@@ -85,10 +100,24 @@ export async function PUT(
         email: true,
         role: true,
         disabled: true,
+        subscriptionTier: true,
+        subscriptionStatus: true,
+        trialEndsAt: true,
         createdAt: true,
         updatedAt: true,
       },
     });
+
+    // Log tier change
+    if (grantPro !== undefined) {
+      await prisma.subscriptionEvent.create({
+        data: {
+          userId: id,
+          action: grantPro ? "admin_grant_pro" : "admin_revoke_pro",
+          detail: `Admin ${admin.email} ${grantPro ? "granted" : "revoked"} Pro access`,
+        },
+      }).catch(() => {});
+    }
 
     return NextResponse.json(user);
   } catch (error) {

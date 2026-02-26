@@ -1,12 +1,11 @@
 import { NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
-import { getSessionUser } from "@/lib/auth-helpers";
+import { requireFeature } from "@/lib/auth-helpers";
 import { generateCsv } from "@/lib/csv";
 
 export async function GET() {
   try {
-    const user = await getSessionUser();
-    if (!user) return NextResponse.json({ error: "Unauthorised" }, { status: 401 });
+    const user = await requireFeature("csv_export");
 
     const clients = await prisma.client.findMany({
       where: { userId: user.id },

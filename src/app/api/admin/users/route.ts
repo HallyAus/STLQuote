@@ -98,6 +98,9 @@ export async function GET() {
         lastLogin: true,
         createdAt: true,
         updatedAt: true,
+        subscriptionTier: true,
+        subscriptionStatus: true,
+        trialEndsAt: true,
         _count: {
           select: {
             quotes: true,

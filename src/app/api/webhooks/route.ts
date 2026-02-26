@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { z } from "zod";
 import crypto from "crypto";
 import { prisma } from "@/lib/prisma";
-import { getSessionUser } from "@/lib/auth-helpers";
+import { requireFeature } from "@/lib/auth-helpers";
 
 const createWebhookSchema = z.object({
   url: z.string().url("Invalid URL"),
@@ -12,8 +12,7 @@ const createWebhookSchema = z.object({
 
 export async function GET() {
   try {
-    const user = await getSessionUser();
-    if (!user) return NextResponse.json({ error: "Unauthorised" }, { status: 401 });
+    const user = await requireFeature("webhooks");
 
     const webhooks = await prisma.webhook.findMany({
       where: { userId: user.id },
@@ -29,8 +28,7 @@ export async function GET() {
 
 export async function POST(request: NextRequest) {
   try {
-    const user = await getSessionUser();
-    if (!user) return NextResponse.json({ error: "Unauthorised" }, { status: 401 });
+    const user = await requireFeature("webhooks");
 
     const body = await request.json();
     const parsed = createWebhookSchema.safeParse(body);

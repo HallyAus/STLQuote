@@ -58,19 +58,35 @@ model User {
   createdAt     DateTime  @default(now())
   updatedAt     DateTime  @updatedAt
 
-  accounts          Account[]
-  sessions          Session[]
-  settings          Settings?
-  printers          Printer[]
-  materials         Material[]
-  clients           Client[]
-  quotes            Quote[]
-  jobs              Job[]
-  invoices          Invoice[]
-  calculatorPresets CalculatorPreset[]
-  webhooks          Webhook[]
-  suppliers         Supplier[]
-  consumables       Consumable[]
+  // Subscription
+  subscriptionTier     String    @default("free") // free | pro
+  subscriptionStatus   String    @default("trialing") // trialing | active | past_due | cancelled | inactive
+  stripeCustomerId     String?   @unique
+  stripeSubscriptionId String?   @unique
+  trialEndsAt          DateTime?
+  subscriptionEndsAt   DateTime?
+
+  // Xero OAuth (per user)
+  xeroTenantId       String?
+  xeroAccessToken    String?
+  xeroRefreshToken   String?
+  xeroTokenExpiresAt DateTime?
+  xeroConnectedAt    DateTime?
+
+  accounts           Account[]
+  sessions           Session[]
+  settings           Settings?
+  printers           Printer[]
+  materials          Material[]
+  clients            Client[]
+  quotes             Quote[]
+  jobs               Job[]
+  invoices           Invoice[]
+  calculatorPresets  CalculatorPreset[]
+  webhooks           Webhook[]
+  suppliers          Supplier[]
+  consumables        Consumable[]
+  subscriptionEvents SubscriptionEvent[]
 }
 
 model Settings {
@@ -92,6 +108,11 @@ model Settings {
   businessLogoUrl       String?
   quoteTermsText        String? @db.Text
   batchPricingTiers     String? @db.Text // JSON string of batch pricing tiers
+  bankName              String?
+  bankBsb               String?
+  bankAccountNumber     String?
+  bankAccountName       String?
+  stripeConnectAccountId String?
   createdAt             DateTime @default(now())
   updatedAt             DateTime @updatedAt
 }
@@ -490,6 +511,31 @@ model InvoiceLineItem {
   notes       String? @db.Text
 
   @@index([invoiceId])
+}
+
+// --- Subscription Events ---
+
+model SubscriptionEvent {
+  id        String   @id @default(cuid())
+  userId    String
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  action    String   // trial_started | upgraded | downgraded | cancelled | payment_failed | renewed | trial_expired
+  detail    String?
+  createdAt DateTime @default(now())
+
+  @@index([userId])
+}
+
+// --- Waitlist ---
+
+model Waitlist {
+  id         String    @id @default(cuid())
+  name       String
+  email      String    @unique
+  status     String    @default("pending") // pending | approved | rejected
+  createdAt  DateTime  @default(now())
+  approvedAt DateTime?
+  approvedBy String?
 }
 
 // --- Webhooks ---

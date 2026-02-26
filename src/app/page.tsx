@@ -10,20 +10,44 @@ import {
   Printer,
   ArrowRight,
   Shield,
-  Server,
   ChevronRight,
+  Check,
+  Sparkles,
 } from "lucide-react";
 
 export const metadata: Metadata = {
   title: "Printforge Quote — Stop Guessing Your 3D Print Costs",
   description:
-    "The complete business tool for 3D print shops. Calculate costs, send professional quotes, manage materials, and track jobs — all self-hosted on your own server.",
+    "The complete business tool for 3D print shops. Calculate costs, send professional quotes, manage materials, and track jobs.",
   openGraph: {
     title: "Printforge Quote — Stop Guessing Your 3D Print Costs",
     description:
-      "Calculate costs, send professional quotes, manage materials, and track jobs — all self-hosted.",
+      "Calculate costs, send professional quotes, manage materials, and track jobs.",
   },
 };
+
+const FREE_FEATURES = [
+  "Cost calculator + presets",
+  "Unlimited quotes + PDF download",
+  "Printers & materials library",
+  "Client management",
+  "Job tracking (kanban)",
+  "STL/G-code upload",
+];
+
+const PRO_FEATURES = [
+  "Everything in Free",
+  "Client portal (shareable quote links)",
+  "Send quotes via email",
+  "Invoicing with PDF & email",
+  "Suppliers & consumables tracking",
+  "Webhooks",
+  "CSV export",
+  "Job photos",
+  "Business logo on PDFs",
+  "Dashboard analytics",
+  "Xero accounting sync",
+];
 
 const features = [
   {
@@ -120,8 +144,8 @@ export default function LandingPage() {
       <section className="mx-auto max-w-6xl px-6 py-24 text-center lg:py-32">
         <div className="mx-auto max-w-3xl space-y-6">
           <div className="inline-flex items-center gap-2 rounded-full border border-border bg-card px-4 py-1.5 text-sm text-muted-foreground">
-            <Shield className="h-3.5 w-3.5" />
-            Self-hosted &middot; Your data stays yours
+            <Sparkles className="h-3.5 w-3.5" />
+            14-day free Pro trial &middot; No credit card required
           </div>
           <h1 className="text-4xl font-bold tracking-tight sm:text-5xl lg:text-6xl">
             Stop guessing your{" "}
@@ -129,8 +153,8 @@ export default function LandingPage() {
           </h1>
           <p className="mx-auto max-w-2xl text-lg text-muted-foreground sm:text-xl">
             The complete business tool for 3D print shops. Calculate costs,
-            send professional quotes, manage materials, and track jobs —
-            all in one place.
+            send professional quotes, manage materials, and track jobs.
+            Start free, upgrade when you&apos;re ready.
           </p>
           <div className="flex flex-col items-center justify-center gap-3 sm:flex-row">
             <Link
@@ -212,21 +236,77 @@ export default function LandingPage() {
         </div>
       </section>
 
-      {/* Self-hosted section */}
+      {/* Pricing */}
       <section className="border-t border-border/50 bg-card/50">
         <div className="mx-auto max-w-6xl px-6 py-24">
-          <div className="mx-auto max-w-2xl text-center space-y-6">
-            <div className="mx-auto flex h-14 w-14 items-center justify-center rounded-full bg-primary/10">
-              <Server className="h-7 w-7 text-primary" />
-            </div>
+          <div className="mx-auto max-w-2xl text-center">
             <h2 className="text-3xl font-bold tracking-tight">
-              Your server. Your data.
+              Simple, transparent pricing
             </h2>
-            <p className="text-muted-foreground">
-              Printforge Quote runs on your own infrastructure. No subscriptions,
-              no vendor lock-in, no data leaving your network. Deploy with Docker
-              in minutes.
+            <p className="mt-4 text-muted-foreground">
+              Start with a 14-day Pro trial. No credit card required.
             </p>
+          </div>
+
+          <div className="mt-16 grid gap-8 md:grid-cols-2 mx-auto max-w-4xl">
+            {/* Free */}
+            <div className="rounded-xl border border-border bg-card p-8">
+              <h3 className="text-lg font-semibold">Free</h3>
+              <div className="mt-4">
+                <span className="text-4xl font-bold tracking-tight">$0</span>
+                <span className="text-muted-foreground">/forever</span>
+              </div>
+              <p className="mt-2 text-sm text-muted-foreground">
+                Everything you need to calculate costs and create quotes.
+              </p>
+              <Link
+                href="/register"
+                className="mt-6 flex w-full items-center justify-center gap-2 rounded-lg border border-border bg-card px-4 py-2.5 text-sm font-medium text-foreground transition-colors hover:bg-accent"
+              >
+                Get started
+              </Link>
+              <ul className="mt-8 space-y-3">
+                {FREE_FEATURES.map((f) => (
+                  <li key={f} className="flex items-start gap-3 text-sm">
+                    <Check className="mt-0.5 h-4 w-4 shrink-0 text-muted-foreground" />
+                    <span>{f}</span>
+                  </li>
+                ))}
+              </ul>
+            </div>
+
+            {/* Pro */}
+            <div className="relative rounded-xl border-2 border-primary bg-card p-8">
+              <div className="absolute -top-3 left-6 rounded-full bg-primary px-3 py-0.5 text-xs font-bold text-primary-foreground">
+                Most Popular
+              </div>
+              <h3 className="text-lg font-semibold">Pro</h3>
+              <div className="mt-4">
+                <span className="text-4xl font-bold tracking-tight">$29</span>
+                <span className="text-muted-foreground">/month</span>
+              </div>
+              <p className="mt-1 text-xs text-muted-foreground">
+                or $290/year (save 17%)
+              </p>
+              <p className="mt-2 text-sm text-muted-foreground">
+                Full business management with invoicing, analytics, and integrations.
+              </p>
+              <Link
+                href="/register"
+                className="mt-6 flex w-full items-center justify-center gap-2 rounded-lg bg-primary px-4 py-2.5 text-sm font-medium text-primary-foreground shadow-sm transition-colors hover:bg-primary/90"
+              >
+                <Sparkles className="h-4 w-4" />
+                Start 14-day free trial
+              </Link>
+              <ul className="mt-8 space-y-3">
+                {PRO_FEATURES.map((f) => (
+                  <li key={f} className="flex items-start gap-3 text-sm">
+                    <Check className="mt-0.5 h-4 w-4 shrink-0 text-primary" />
+                    <span>{f}</span>
+                  </li>
+                ))}
+              </ul>
+            </div>
           </div>
         </div>
       </section>
@@ -238,13 +318,13 @@ export default function LandingPage() {
             Ready to know your real costs?
           </h2>
           <p className="mt-4 text-muted-foreground">
-            Set up in minutes. Start quoting with confidence.
+            Start your 14-day Pro trial. No credit card required.
           </p>
           <Link
             href="/register"
             className="mt-8 inline-flex items-center gap-2 rounded-lg bg-primary px-8 py-3 text-sm font-medium text-primary-foreground shadow-md transition-colors hover:bg-primary/90"
           >
-            Create your account
+            Start free trial
             <ArrowRight className="h-4 w-4" />
           </Link>
         </div>

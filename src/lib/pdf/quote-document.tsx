@@ -464,16 +464,6 @@ export function QuoteDocument({ data }: { data: QuotePDFData }) {
                 <Text style={s.totalsLabel}>Subtotal</Text>
                 <Text style={s.totalsValue}>{fmt(data.subtotal, cur)}</Text>
               </View>
-              {data.markupPct > 0 && (
-                <View style={s.totalsRow}>
-                  <Text style={s.totalsLabel}>
-                    Markup ({data.markupPct}%)
-                  </Text>
-                  <Text style={s.totalsValue}>
-                    {fmt(data.subtotal * (data.markupPct / 100), cur)}
-                  </Text>
-                </View>
-              )}
               <View style={s.totalFinalRow}>
                 <Text style={s.totalFinalLabel}>Total Due</Text>
                 <Text style={s.totalFinalValue}>

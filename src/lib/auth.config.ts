@@ -10,11 +10,17 @@ declare module "next-auth" {
       email?: string | null;
       image?: string | null;
       role: string;
+      subscriptionTier: string;
+      subscriptionStatus: string;
+      trialEndsAt: string | null;
     };
   }
 
   interface User {
     role?: string;
+    subscriptionTier?: string;
+    subscriptionStatus?: string;
+    trialEndsAt?: Date | null;
   }
 }
 
@@ -35,11 +41,14 @@ export const authConfig = {
         token.id = user.id as string;
         token.role = (user as any).role as string;
         token.disabled = false;
+        token.subscriptionTier = (user as any).subscriptionTier ?? "free";
+        token.subscriptionStatus = (user as any).subscriptionStatus ?? "trialing";
+        token.trialEndsAt = (user as any).trialEndsAt?.toISOString() ?? null;
         token.lastTouched = Date.now();
       }
 
       // Throttled refresh — once per 30 minutes while session is active.
-      // Updates lastLogin and syncs disabled/role state from DB.
+      // Updates lastLogin and syncs disabled/role/tier state from DB.
       // Dynamic import: fails silently in Edge Runtime (middleware), works in Node.js.
       const now = Date.now();
       const lastTouched = (token.lastTouched as number) || 0;
@@ -49,10 +58,13 @@ export const authConfig = {
           const fresh = await db.user.update({
             where: { id: token.id as string },
             data: { lastLogin: new Date() },
-            select: { disabled: true, role: true },
+            select: { disabled: true, role: true, subscriptionTier: true, subscriptionStatus: true, trialEndsAt: true },
           });
           token.disabled = fresh.disabled;
           token.role = fresh.role;
+          token.subscriptionTier = fresh.subscriptionTier;
+          token.subscriptionStatus = fresh.subscriptionStatus;
+          token.trialEndsAt = fresh.trialEndsAt?.toISOString() ?? null;
           token.lastTouched = now;
         } catch {
           // Edge Runtime or DB error — skip, Node.js will catch it next
@@ -64,6 +76,9 @@ export const authConfig = {
     async session({ session, token }) {
       session.user.id = token.id as string;
       session.user.role = token.role as string;
+      session.user.subscriptionTier = (token.subscriptionTier as string) ?? "free";
+      session.user.subscriptionStatus = (token.subscriptionStatus as string) ?? "trialing";
+      (session.user as any).trialEndsAt = (token.trialEndsAt as string) ?? null;
       return session;
     },
   },

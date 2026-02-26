@@ -29,6 +29,9 @@ import {
   XCircle,
   SkipForward,
   Settings,
+  ClipboardList,
+  Check,
+  Ban,
 } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import { Select } from "@/components/ui/select";
@@ -52,12 +55,25 @@ interface AdminUser {
   lastLogin: string | null;
   createdAt: string;
   updatedAt: string;
+  subscriptionTier: string;
+  subscriptionStatus: string;
+  trialEndsAt: string | null;
   _count: {
     quotes: number;
     jobs: number;
     printers: number;
     materials: number;
   };
+}
+
+interface WaitlistEntry {
+  id: string;
+  name: string;
+  email: string;
+  status: string;
+  createdAt: string;
+  approvedAt: string | null;
+  approvedBy: string | null;
 }
 
 export default function AdminPage() {
@@ -69,7 +85,7 @@ export default function AdminPage() {
   const [users, setUsers] = useState<AdminUser[]>([]);
   const [loading, setLoading] = useState(true);
   const [actionLoading, setActionLoading] = useState<string | null>(null);
-  const [activeTab, setActiveTab] = useState<"users" | "deploys" | "email" | "newsletter" | "config">("users");
+  const [activeTab, setActiveTab] = useState<"users" | "waitlist" | "deploys" | "email" | "newsletter" | "config">("users");
 
   // Create user modal
   const [showCreateModal, setShowCreateModal] = useState(false);
@@ -90,6 +106,7 @@ export default function AdminPage() {
     email: "",
     role: "USER",
     password: "",
+    grantPro: false,
   });
   const [editLoading, setEditLoading] = useState(false);
   const [editError, setEditError] = useState("");
@@ -124,6 +141,11 @@ export default function AdminPage() {
   const [configLoading, setConfigLoading] = useState(false);
   const [configSaving, setConfigSaving] = useState<string | null>(null);
 
+  // Waitlist
+  const [waitlistEntries, setWaitlistEntries] = useState<WaitlistEntry[]>([]);
+  const [waitlistLoading, setWaitlistLoading] = useState(false);
+  const [waitlistActionLoading, setWaitlistActionLoading] = useState<string | null>(null);
+
   // Newsletter
   const [nlSubject, setNlSubject] = useState("");
   const [nlBody, setNlBody] = useState("");
@@ -146,9 +168,67 @@ export default function AdminPage() {
     }
   }, []);
 
+  // Fetch waitlist entries
+  const fetchWaitlist = useCallback(async () => {
+    setWaitlistLoading(true);
+    try {
+      const res = await fetch("/api/waitlist");
+      if (res.ok) {
+        const data = await res.json();
+        setWaitlistEntries(data);
+      }
+    } catch {
+      /* ignore */
+    } finally {
+      setWaitlistLoading(false);
+    }
+  }, []);
+
   useEffect(() => {
     fetchUsers();
-  }, [fetchUsers]);
+    fetchWaitlist(); // Preload for badge count
+  }, [fetchUsers, fetchWaitlist]);
+
+  // Refresh waitlist when tab is switched to it
+  useEffect(() => {
+    if (activeTab === "waitlist") {
+      fetchWaitlist();
+    }
+  }, [activeTab, fetchWaitlist]);
+
+  async function handleWaitlistApprove(id: string) {
+    setWaitlistActionLoading(id + "-approve");
+    try {
+      const res = await fetch(`/api/waitlist/${id}/approve`, { method: "POST" });
+      if (res.ok) {
+        fetchWaitlist();
+      } else {
+        const data = await res.json();
+        alert(data.error || "Failed to approve");
+      }
+    } catch {
+      alert("Something went wrong");
+    } finally {
+      setWaitlistActionLoading(null);
+    }
+  }
+
+  async function handleWaitlistReject(id: string) {
+    setWaitlistActionLoading(id + "-reject");
+    try {
+      const res = await fetch(`/api/waitlist/${id}/reject`, { method: "POST" });
+      if (res.ok) {
+        fetchWaitlist();
+      } else {
+        const data = await res.json();
+        alert(data.error || "Failed to reject");
+      }
+    } catch {
+      alert("Something went wrong");
+    } finally {
+      setWaitlistActionLoading(null);
+    }
+  }
 
   // --- Actions ---
 
@@ -265,6 +345,7 @@ export default function AdminPage() {
       email: user.email || "",
       role: user.role,
       password: "",
+      grantPro: user.subscriptionTier === "pro" && user.subscriptionStatus === "active",
     });
     setEditError("");
     setEditSuccess("");
@@ -278,10 +359,11 @@ export default function AdminPage() {
     setEditLoading(true);
 
     try {
-      const payload: Record<string, string> = {
+      const payload: Record<string, unknown> = {
         name: editForm.name,
         email: editForm.email,
         role: editForm.role,
+        grantPro: editForm.grantPro,
       };
       if (editForm.password) {
         payload.password = editForm.password;
@@ -302,7 +384,14 @@ export default function AdminPage() {
       setUsers((prev) =>
         prev.map((u) =>
           u.id === editUser.id
-            ? { ...u, name: editForm.name, email: editForm.email, role: editForm.role }
+            ? {
+                ...u,
+                name: editForm.name,
+                email: editForm.email,
+                role: editForm.role,
+                subscriptionTier: editForm.grantPro ? "pro" : u.subscriptionTier === "pro" && !editForm.grantPro ? "free" : u.subscriptionTier,
+                subscriptionStatus: editForm.grantPro ? "active" : u.subscriptionStatus,
+              }
             : u
         )
       );
@@ -468,26 +557,210 @@ export default function AdminPage() {
       <div className="flex gap-1 border-b border-border">
         {([
           { key: "users", icon: Users, label: "Users" },
+          { key: "waitlist", icon: ClipboardList, label: "Waitlist" },
           { key: "deploys", icon: Rocket, label: "Deploys" },
           { key: "email", icon: Mail, label: "Email" },
           { key: "newsletter", icon: Megaphone, label: "Newsletter" },
           { key: "config", icon: Settings, label: "Config" },
-        ] as const).map((tab) => (
-          <button
-            key={tab.key}
-            onClick={() => setActiveTab(tab.key)}
-            className={cn(
-              "flex items-center gap-1.5 px-4 py-2 text-sm font-medium border-b-2 -mb-px transition-colors",
-              activeTab === tab.key
-                ? "border-primary text-primary"
-                : "border-transparent text-muted-foreground hover:text-foreground"
-            )}
-          >
-            <tab.icon className="h-4 w-4" />
-            {tab.label}
-          </button>
-        ))}
+        ] as const).map((tab) => {
+          const pendingCount = tab.key === "waitlist"
+            ? waitlistEntries.filter((e) => e.status === "pending").length
+            : 0;
+          return (
+            <button
+              key={tab.key}
+              onClick={() => setActiveTab(tab.key)}
+              className={cn(
+                "flex items-center gap-1.5 px-4 py-2 text-sm font-medium border-b-2 -mb-px transition-colors",
+                activeTab === tab.key
+                  ? "border-primary text-primary"
+                  : "border-transparent text-muted-foreground hover:text-foreground"
+              )}
+            >
+              <tab.icon className="h-4 w-4" />
+              {tab.label}
+              {tab.key === "waitlist" && pendingCount > 0 && (
+                <span className="ml-1 inline-flex h-5 min-w-5 items-center justify-center rounded-full bg-primary px-1.5 text-[10px] font-bold text-primary-foreground">
+                  {pendingCount}
+                </span>
+              )}
+            </button>
+          );
+        })}
       </div>
+
+      {/* Waitlist tab */}
+      {activeTab === "waitlist" && (
+        <Card>
+          <CardHeader>
+            <div className="flex items-center justify-between">
+              <CardTitle className="flex items-center gap-2">
+                <ClipboardList className="h-5 w-5" />
+                Waitlist
+              </CardTitle>
+              <Button
+                variant="ghost"
+                size="sm"
+                onClick={() => fetchWaitlist()}
+                disabled={waitlistLoading}
+              >
+                {waitlistLoading ? <Loader2 className="h-4 w-4 animate-spin" /> : "Refresh"}
+              </Button>
+            </div>
+          </CardHeader>
+          <CardContent>
+            {waitlistLoading && waitlistEntries.length === 0 ? (
+              <div className="flex items-center justify-center py-8">
+                <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
+              </div>
+            ) : waitlistEntries.length === 0 ? (
+              <div className="py-8 text-center text-muted-foreground">
+                No waitlist entries yet.
+              </div>
+            ) : (
+              <>
+                {/* Desktop table */}
+                <div className="hidden md:block overflow-x-auto">
+                  <table className="w-full text-sm">
+                    <thead>
+                      <tr className="border-b border-border text-left text-muted-foreground">
+                        <th className="pb-3 pr-4 font-medium">Name</th>
+                        <th className="pb-3 pr-4 font-medium">Email</th>
+                        <th className="pb-3 pr-4 font-medium">Date</th>
+                        <th className="pb-3 pr-4 font-medium">Status</th>
+                        <th className="pb-3 font-medium">Actions</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {waitlistEntries.map((entry) => (
+                        <tr key={entry.id} className="border-b border-border/50 last:border-0">
+                          <td className="py-3 pr-4 font-medium">{entry.name}</td>
+                          <td className="py-3 pr-4 text-muted-foreground">{entry.email}</td>
+                          <td className="py-3 pr-4 text-muted-foreground whitespace-nowrap">
+                            {formatRelativeTime(entry.createdAt)}
+                          </td>
+                          <td className="py-3 pr-4">
+                            <span
+                              className={cn(
+                                "inline-flex items-center rounded-full px-2 py-0.5 text-xs font-medium",
+                                entry.status === "pending"
+                                  ? "bg-amber-500/15 text-amber-600 dark:text-amber-400"
+                                  : entry.status === "approved"
+                                    ? "bg-success/15 text-success-foreground"
+                                    : "bg-destructive/10 text-destructive-foreground"
+                              )}
+                            >
+                              {entry.status}
+                            </span>
+                          </td>
+                          <td className="py-3">
+                            {entry.status === "pending" ? (
+                              <div className="flex items-center gap-1">
+                                <Button
+                                  variant="ghost"
+                                  size="sm"
+                                  onClick={() => handleWaitlistApprove(entry.id)}
+                                  disabled={waitlistActionLoading === entry.id + "-approve"}
+                                  title="Approve"
+                                  className="text-success-foreground hover:text-success-foreground"
+                                >
+                                  {waitlistActionLoading === entry.id + "-approve" ? (
+                                    <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                                  ) : (
+                                    <Check className="h-3.5 w-3.5" />
+                                  )}
+                                </Button>
+                                <Button
+                                  variant="ghost"
+                                  size="sm"
+                                  onClick={() => handleWaitlistReject(entry.id)}
+                                  disabled={waitlistActionLoading === entry.id + "-reject"}
+                                  title="Reject"
+                                  className="text-destructive-foreground hover:text-destructive-foreground"
+                                >
+                                  {waitlistActionLoading === entry.id + "-reject" ? (
+                                    <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                                  ) : (
+                                    <Ban className="h-3.5 w-3.5" />
+                                  )}
+                                </Button>
+                              </div>
+                            ) : (
+                              <span className="text-xs text-muted-foreground px-2">
+                                {entry.status === "approved" ? "Approved" : "Rejected"}
+                              </span>
+                            )}
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+
+                {/* Mobile cards */}
+                <div className="space-y-3 md:hidden">
+                  {waitlistEntries.map((entry) => (
+                    <div key={entry.id} className="rounded-lg border border-border p-3 space-y-2">
+                      <div className="flex items-start justify-between gap-2">
+                        <div className="min-w-0 flex-1">
+                          <p className="font-medium text-sm">{entry.name}</p>
+                          <p className="text-xs text-muted-foreground truncate">{entry.email}</p>
+                        </div>
+                        <span
+                          className={cn(
+                            "inline-flex items-center rounded-full px-2 py-0.5 text-xs font-medium shrink-0",
+                            entry.status === "pending"
+                              ? "bg-amber-500/15 text-amber-600 dark:text-amber-400"
+                              : entry.status === "approved"
+                                ? "bg-success/15 text-success-foreground"
+                                : "bg-destructive/10 text-destructive-foreground"
+                          )}
+                        >
+                          {entry.status}
+                        </span>
+                      </div>
+                      <div className="text-xs text-muted-foreground">
+                        {formatRelativeTime(entry.createdAt)}
+                      </div>
+                      {entry.status === "pending" && (
+                        <div className="flex items-center gap-2 pt-1">
+                          <Button
+                            variant="secondary"
+                            size="sm"
+                            onClick={() => handleWaitlistApprove(entry.id)}
+                            disabled={waitlistActionLoading === entry.id + "-approve"}
+                          >
+                            {waitlistActionLoading === entry.id + "-approve" ? (
+                              <Loader2 className="mr-1 h-3 w-3 animate-spin" />
+                            ) : (
+                              <Check className="mr-1 h-3 w-3" />
+                            )}
+                            Approve
+                          </Button>
+                          <Button
+                            variant="secondary"
+                            size="sm"
+                            onClick={() => handleWaitlistReject(entry.id)}
+                            disabled={waitlistActionLoading === entry.id + "-reject"}
+                            className="text-destructive-foreground"
+                          >
+                            {waitlistActionLoading === entry.id + "-reject" ? (
+                              <Loader2 className="mr-1 h-3 w-3 animate-spin" />
+                            ) : (
+                              <Ban className="mr-1 h-3 w-3" />
+                            )}
+                            Reject
+                          </Button>
+                        </div>
+                      )}
+                    </div>
+                  ))}
+                </div>
+              </>
+            )}
+          </CardContent>
+        </Card>
+      )}
 
       {/* Deploys tab */}
       {activeTab === "deploys" && <DeployLogs />}
@@ -904,6 +1177,7 @@ export default function AdminPage() {
                     <tr className="border-b border-border text-left text-muted-foreground">
                       <th className="pb-3 pr-4 font-medium">User</th>
                       <th className="pb-3 pr-4 font-medium">Role</th>
+                      <th className="pb-3 pr-4 font-medium">Plan</th>
                       <th className="pb-3 pr-4 font-medium">Status</th>
                       <th className="pb-3 pr-4 font-medium">Joined</th>
                       <th className="pb-3 pr-4 font-medium">Last Login</th>
@@ -935,6 +1209,25 @@ export default function AdminPage() {
                             {(user.role === "ADMIN" || user.role === "SUPER_ADMIN") && <Shield className="h-3 w-3" />}
                             {user.role === "SUPER_ADMIN" ? "Super Admin" : user.role === "ADMIN" ? "Admin" : "User"}
                           </span>
+                        </td>
+                        <td className="py-3 pr-4">
+                          <div className="flex flex-col gap-1">
+                            <span
+                              className={cn(
+                                "inline-flex rounded-full px-2 py-0.5 text-xs font-medium w-fit",
+                                user.subscriptionTier === "pro" || user.subscriptionStatus === "trialing"
+                                  ? "bg-primary/10 text-primary"
+                                  : "bg-muted text-muted-foreground"
+                              )}
+                            >
+                              {user.subscriptionStatus === "trialing" ? "Trial" : user.subscriptionTier === "pro" ? "Pro" : "Free"}
+                            </span>
+                            {user.subscriptionStatus === "trialing" && user.trialEndsAt && (
+                              <span className="text-[10px] text-muted-foreground">
+                                ends {new Date(user.trialEndsAt).toLocaleDateString("en-AU")}
+                              </span>
+                            )}
+                          </div>
                         </td>
                         <td className="py-3 pr-4">
                           <span
@@ -1272,6 +1565,18 @@ export default function AdminPage() {
                   disabled={!isSuperAdmin}
                 />
                 <Input label="New Password (optional)" type="password" value={editForm.password} onChange={(e) => setEditForm((f) => ({ ...f, password: e.target.value }))} placeholder="Leave blank to keep current" minLength={8} />
+                <label className="flex items-center gap-3 rounded-md border border-border p-3 cursor-pointer hover:bg-muted/50 transition-colors">
+                  <input
+                    type="checkbox"
+                    checked={editForm.grantPro}
+                    onChange={(e) => setEditForm((f) => ({ ...f, grantPro: e.target.checked }))}
+                    className="h-4 w-4 rounded border-border"
+                  />
+                  <div>
+                    <span className="text-sm font-medium">Grant Pro access</span>
+                    <p className="text-xs text-muted-foreground">Give this user Pro features without requiring payment</p>
+                  </div>
+                </label>
                 <div className="flex gap-2 pt-2">
                   <Button type="button" variant="secondary" className="flex-1" onClick={() => setEditUser(null)}>
                     {editSuccess ? "Done" : "Cancel"}

@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { z } from "zod";
 import { prisma } from "@/lib/prisma";
-import { getSessionUser } from "@/lib/auth-helpers";
+import { requireFeature } from "@/lib/auth-helpers";
 
 const updateConsumableSchema = z.object({
   name: z.string().min(1, "Name is required").optional(),
@@ -28,9 +28,7 @@ type RouteContext = { params: Promise<{ id: string }> };
 
 export async function GET(_request: NextRequest, context: RouteContext) {
   try {
-    const user = await getSessionUser();
-    if (!user)
-      return NextResponse.json({ error: "Unauthorised" }, { status: 401 });
+    const user = await requireFeature("consumables");
 
     const { id } = await context.params;
 
@@ -61,9 +59,7 @@ export async function GET(_request: NextRequest, context: RouteContext) {
 
 export async function PUT(request: NextRequest, context: RouteContext) {
   try {
-    const user = await getSessionUser();
-    if (!user)
-      return NextResponse.json({ error: "Unauthorised" }, { status: 401 });
+    const user = await requireFeature("consumables");
 
     const { id } = await context.params;
 
@@ -110,9 +106,7 @@ export async function PUT(request: NextRequest, context: RouteContext) {
 
 export async function DELETE(_request: NextRequest, context: RouteContext) {
   try {
-    const user = await getSessionUser();
-    if (!user)
-      return NextResponse.json({ error: "Unauthorised" }, { status: 401 });
+    const user = await requireFeature("consumables");
 
     const { id } = await context.params;
 

@@ -27,13 +27,14 @@ const createQuoteSchema = z.object({
   lineItems: z.array(lineItemSchema).default([]),
 });
 
-async function generateQuoteNumber(): Promise<string> {
+async function generateQuoteNumber(userId: string): Promise<string> {
   const year = new Date().getFullYear();
   const startOfYear = new Date(`${year}-01-01T00:00:00.000Z`);
   const startOfNextYear = new Date(`${year + 1}-01-01T00:00:00.000Z`);
 
   const count = await prisma.quote.count({
     where: {
+      userId,
       createdAt: {
         gte: startOfYear,
         lt: startOfNextYear,
@@ -95,7 +96,7 @@ export async function POST(request: NextRequest) {
       subtotal * (1 + quoteData.markupPct / 100) * 100
     ) / 100;
 
-    const quoteNumber = await generateQuoteNumber();
+    const quoteNumber = await generateQuoteNumber(user.id);
 
     const quote = await prisma.$transaction(async (tx) => {
       const created = await tx.quote.create({

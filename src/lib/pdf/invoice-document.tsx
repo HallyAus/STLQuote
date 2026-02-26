@@ -341,6 +341,12 @@ export interface InvoicePDFData {
     email: string | null;
     logoUrl: string | null;
   };
+  bank: {
+    name: string | null;
+    bsb: string | null;
+    accountNumber: string | null;
+    accountName: string | null;
+  } | null;
 }
 
 export function InvoiceDocument({ data }: { data: InvoicePDFData }) {
@@ -495,6 +501,25 @@ export function InvoiceDocument({ data }: { data: InvoicePDFData }) {
             <View style={s.notesBox}>
               <Text style={s.notesLabel}>Notes</Text>
               <Text style={s.notesText}>{data.notes}</Text>
+            </View>
+          )}
+
+          {/* Payment / Bank Details */}
+          {data.bank && (data.bank.name || data.bank.bsb || data.bank.accountNumber || data.bank.accountName) && (
+            <View style={s.notesBox}>
+              <Text style={s.notesLabel}>Payment Details</Text>
+              {data.bank.name && (
+                <Text style={s.notesText}>Bank Name: {data.bank.name}</Text>
+              )}
+              {data.bank.accountName && (
+                <Text style={s.notesText}>Account Name: {data.bank.accountName}</Text>
+              )}
+              {data.bank.bsb && (
+                <Text style={s.notesText}>BSB: {data.bank.bsb}</Text>
+              )}
+              {data.bank.accountNumber && (
+                <Text style={s.notesText}>Account Number: {data.bank.accountNumber}</Text>
+              )}
             </View>
           )}
 

@@ -1,6 +1,7 @@
 import { cookies } from "next/headers";
 import { auth } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
+import { getEffectiveTier, hasFeature, type Feature, type Tier } from "@/lib/tier";
 
 export interface SessionUser {
   id: string;
@@ -9,6 +10,10 @@ export interface SessionUser {
   role: string;
   isImpersonating: boolean;
   realUserId?: string;
+  subscriptionTier: string;
+  subscriptionStatus: string;
+  trialEndsAt: string | null;
+  effectiveTier: Tier;
 }
 
 /**
@@ -22,6 +27,9 @@ export async function getSessionUser(): Promise<SessionUser | null> {
 
   const realUserId = session.user.id;
   const role = session.user.role;
+  const subscriptionTier = session.user.subscriptionTier ?? "free";
+  const subscriptionStatus = session.user.subscriptionStatus ?? "trialing";
+  const trialEndsAt = session.user.trialEndsAt ?? null;
 
   // Check for impersonation (admin or super admin only)
   if (isAdminRole(role)) {
@@ -31,10 +39,11 @@ export async function getSessionUser(): Promise<SessionUser | null> {
     if (impersonateId && impersonateId !== realUserId) {
       const impersonatedUser = await prisma.user.findUnique({
         where: { id: impersonateId },
-        select: { id: true, email: true, name: true, role: true },
+        select: { id: true, email: true, name: true, role: true, subscriptionTier: true, subscriptionStatus: true, trialEndsAt: true },
       });
 
       if (impersonatedUser) {
+        const impTrialEndsAt = impersonatedUser.trialEndsAt?.toISOString() ?? null;
         return {
           id: impersonatedUser.id,
           email: impersonatedUser.email,
@@ -42,6 +51,10 @@ export async function getSessionUser(): Promise<SessionUser | null> {
           role: impersonatedUser.role,
           isImpersonating: true,
           realUserId,
+          subscriptionTier: impersonatedUser.subscriptionTier,
+          subscriptionStatus: impersonatedUser.subscriptionStatus,
+          trialEndsAt: impTrialEndsAt,
+          effectiveTier: getEffectiveTier({ subscriptionTier: impersonatedUser.subscriptionTier, subscriptionStatus: impersonatedUser.subscriptionStatus, trialEndsAt: impTrialEndsAt }),
         };
       }
     }
@@ -53,6 +66,10 @@ export async function getSessionUser(): Promise<SessionUser | null> {
     name: session.user.name ?? null,
     role,
     isImpersonating: false,
+    subscriptionTier,
+    subscriptionStatus,
+    trialEndsAt,
+    effectiveTier: getEffectiveTier({ subscriptionTier, subscriptionStatus, trialEndsAt }),
   };
 }
 
@@ -81,6 +98,26 @@ export function isSuperAdminRole(role: string): boolean {
 }
 
 /**
+ * Require a Pro feature — returns user or throws 403 with upgrade message.
+ */
+export async function requireFeature(feature: Feature): Promise<SessionUser> {
+  const user = await getSessionUser();
+  if (!user) {
+    throw new Response(JSON.stringify({ error: "Unauthorised" }), {
+      status: 401,
+      headers: { "Content-Type": "application/json" },
+    });
+  }
+  if (!hasFeature(user.effectiveTier, feature)) {
+    throw new Response(
+      JSON.stringify({ error: "This feature requires a Pro subscription", code: "PRO_REQUIRED", feature }),
+      { status: 403, headers: { "Content-Type": "application/json" } }
+    );
+  }
+  return user;
+}
+
+/**
  * Require admin role (ADMIN or SUPER_ADMIN) — returns user or throws 403.
  */
 export async function requireAdmin(): Promise<SessionUser> {
@@ -97,12 +134,19 @@ export async function requireAdmin(): Promise<SessionUser> {
       headers: { "Content-Type": "application/json" },
     });
   }
+  const tier = session.user.subscriptionTier ?? "free";
+  const status = session.user.subscriptionStatus ?? "trialing";
+  const trial = session.user.trialEndsAt ?? null;
   return {
     id: session.user.id,
     email: session.user.email ?? null,
     name: session.user.name ?? null,
     role: session.user.role,
     isImpersonating: false,
+    subscriptionTier: tier,
+    subscriptionStatus: status,
+    trialEndsAt: trial,
+    effectiveTier: getEffectiveTier({ subscriptionTier: tier, subscriptionStatus: status, trialEndsAt: trial }),
   };
 }
 
@@ -123,11 +167,18 @@ export async function requireSuperAdmin(): Promise<SessionUser> {
       headers: { "Content-Type": "application/json" },
     });
   }
+  const tier = session.user.subscriptionTier ?? "free";
+  const status = session.user.subscriptionStatus ?? "trialing";
+  const trial = session.user.trialEndsAt ?? null;
   return {
     id: session.user.id,
     email: session.user.email ?? null,
     name: session.user.name ?? null,
     role: session.user.role,
     isImpersonating: false,
+    subscriptionTier: tier,
+    subscriptionStatus: status,
+    trialEndsAt: trial,
+    effectiveTier: getEffectiveTier({ subscriptionTier: tier, subscriptionStatus: status, trialEndsAt: trial }),
   };
 }

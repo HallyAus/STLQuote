@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from "react";
 import Link from "next/link";
+import { useSession } from "next-auth/react";
 import {
   FileText,
   DollarSign,
@@ -14,6 +15,7 @@ import {
   Users,
   CalendarDays,
   Mail,
+  Sparkles,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card";
@@ -22,6 +24,7 @@ import { cn } from "@/lib/utils";
 import { QUOTE_STATUS, JOB_STATUS, JOB_STATUS_ORDER, BANNER, STATUS_TEXT, type QuoteStatus as QStatus } from "@/lib/status-colours";
 import { RevenueCharts } from "@/components/dashboard/revenue-charts";
 import { AnalyticsCards } from "@/components/dashboard/analytics-cards";
+import { getEffectiveTier, trialDaysRemaining } from "@/lib/tier";
 
 // ---------------------------------------------------------------------------
 // Types
@@ -520,6 +523,56 @@ function LoadingSkeleton() {
 // Main component
 // ---------------------------------------------------------------------------
 
+function TrialBanner() {
+  const { data: session } = useSession();
+  if (!session?.user) return null;
+
+  const tier = getEffectiveTier({
+    subscriptionTier: session.user.subscriptionTier ?? "free",
+    subscriptionStatus: session.user.subscriptionStatus ?? "trialing",
+    trialEndsAt: session.user.trialEndsAt ?? null,
+  });
+  const isTrialing = session.user.subscriptionStatus === "trialing";
+  const daysLeft = trialDaysRemaining(session.user.trialEndsAt ?? null);
+  const isFree = tier === "free";
+
+  if (isTrialing && daysLeft > 0) {
+    return (
+      <div className="flex items-center justify-between rounded-lg border border-amber-500/30 bg-amber-500/10 px-4 py-3">
+        <div className="flex items-center gap-2">
+          <Sparkles className="h-4 w-4 text-amber-500" />
+          <p className="text-sm font-medium text-amber-200">
+            Pro trial — {daysLeft} day{daysLeft !== 1 ? "s" : ""} remaining
+          </p>
+        </div>
+        <Link href="/settings">
+          <Button size="sm" variant="secondary" className="gap-1.5 text-xs">
+            Upgrade to Pro
+          </Button>
+        </Link>
+      </div>
+    );
+  }
+
+  if (isFree && !isTrialing) {
+    return (
+      <div className="flex items-center justify-between rounded-lg border border-muted bg-muted/50 px-4 py-3">
+        <p className="text-sm text-muted-foreground">
+          You&apos;re on the <span className="font-medium text-foreground">Free</span> plan. Upgrade to unlock invoicing, suppliers, analytics, and more.
+        </p>
+        <Link href="/settings">
+          <Button size="sm" className="gap-1.5 text-xs">
+            <Sparkles className="h-3 w-3" />
+            Upgrade
+          </Button>
+        </Link>
+      </div>
+    );
+  }
+
+  return null;
+}
+
 export function DashboardPage() {
   const [data, setData] = useState<DashboardData | null>(null);
   const [loading, setLoading] = useState(true);
@@ -601,6 +654,9 @@ export function DashboardPage() {
           </Link>
         </div>
       </div>
+
+      {/* Trial / Free banner */}
+      <TrialBanner />
 
       {/* Top row: 6 stat cards */}
       <div className="grid grid-cols-2 gap-4 md:grid-cols-3 lg:grid-cols-6">

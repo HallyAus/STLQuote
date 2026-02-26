@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
-import { getSessionUser } from "@/lib/auth-helpers";
+import { requireFeature } from "@/lib/auth-helpers";
 import { unlink } from "fs/promises";
 import path from "path";
 
@@ -11,8 +11,7 @@ export async function DELETE(
   context: RouteContext
 ) {
   try {
-    const user = await getSessionUser();
-    if (!user) return NextResponse.json({ error: "Unauthorised" }, { status: 401 });
+    const user = await requireFeature("job_photos");
 
     const { id, photoId } = await context.params;
 

@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
-import { getSessionUser } from "@/lib/auth-helpers";
+import { getSessionUser, requireFeature } from "@/lib/auth-helpers";
 import { sendQuoteEmail } from "@/lib/email";
 import { generateToken } from "@/lib/tokens";
 import { rateLimit } from "@/lib/rate-limit";
@@ -15,8 +15,7 @@ export async function POST(
   context: RouteContext
 ) {
   try {
-    const user = await getSessionUser();
-    if (!user) return NextResponse.json({ error: "Unauthorised" }, { status: 401 });
+    const user = await requireFeature("quote_email");
 
     const { id } = await context.params;
 

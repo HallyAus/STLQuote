@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { z } from "zod";
 import { prisma } from "@/lib/prisma";
-import { getSessionUser } from "@/lib/auth-helpers";
+import { requireFeature } from "@/lib/auth-helpers";
 import { roundCurrency } from "@/lib/utils";
 
 const createLineItemSchema = z.object({
@@ -19,8 +19,7 @@ export async function POST(
   context: RouteContext
 ) {
   try {
-    const user = await getSessionUser();
-    if (!user) return NextResponse.json({ error: "Unauthorised" }, { status: 401 });
+    const user = await requireFeature("invoicing");
 
     const { id: invoiceId } = await context.params;
 

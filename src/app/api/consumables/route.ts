@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { z } from "zod";
 import { prisma } from "@/lib/prisma";
-import { getSessionUser } from "@/lib/auth-helpers";
+import { requireFeature } from "@/lib/auth-helpers";
 
 const createConsumableSchema = z.object({
   name: z.string().min(1, "Name is required"),
@@ -26,9 +26,7 @@ const createConsumableSchema = z.object({
 
 export async function GET() {
   try {
-    const user = await getSessionUser();
-    if (!user)
-      return NextResponse.json({ error: "Unauthorised" }, { status: 401 });
+    const user = await requireFeature("consumables");
 
     const consumables = await prisma.consumable.findMany({
       where: { userId: user.id },
@@ -52,9 +50,7 @@ export async function GET() {
 
 export async function POST(request: NextRequest) {
   try {
-    const user = await getSessionUser();
-    if (!user)
-      return NextResponse.json({ error: "Unauthorised" }, { status: 401 });
+    const user = await requireFeature("consumables");
 
     const body = await request.json();
     const parsed = createConsumableSchema.safeParse(body);

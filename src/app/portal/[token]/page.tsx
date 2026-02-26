@@ -215,14 +215,6 @@ export default function PortalPage() {
                   <span className="text-gray-500">Subtotal</span>
                   <span className="text-gray-900">{formatCurrency(quote.subtotal)}</span>
                 </div>
-                {quote.markupPct > 0 && (
-                  <div className="flex justify-between text-sm">
-                    <span className="text-gray-500">Markup ({quote.markupPct}%)</span>
-                    <span className="text-gray-900">
-                      {formatCurrency(quote.subtotal * (quote.markupPct / 100))}
-                    </span>
-                  </div>
-                )}
                 <div className="flex justify-between border-t-2 border-blue-600 pt-3">
                   <span className="text-lg font-bold text-gray-900">Total</span>
                   <span className="text-lg font-bold text-blue-600">

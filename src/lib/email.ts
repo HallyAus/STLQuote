@@ -10,7 +10,7 @@ function getResend(): Resend | null {
   return resend;
 }
 
-const fromAddress = process.env.RESEND_FROM || "Printforge <noreply@printforge.com.au>";
+const fromAddress = process.env.RESEND_FROM || "Printforge <hello@printforge.com.au>";
 const replyToAddress = process.env.RESEND_REPLY_TO || undefined;
 
 // Strip HTML to plain text for multipart emails (reduces spam score)

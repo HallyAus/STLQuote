@@ -22,9 +22,11 @@ import {
   Copy,
   History,
   Receipt,
+  Eye,
 } from "lucide-react";
 import { QUOTE_STATUS, BANNER, type QuoteStatus } from "@/lib/status-colours";
 import { QuoteTimeline } from "@/components/quotes/quote-timeline";
+import { QuotePreview } from "@/components/quotes/quote-preview";
 
 interface LineItem {
   id: string;
@@ -288,6 +290,9 @@ export function QuoteDetail() {
 
   // Duplicate state
   const [duplicating, setDuplicating] = useState(false);
+
+  // Preview modal
+  const [previewOpen, setPreviewOpen] = useState(false);
 
   // Convert to job modal
   const [convertModalOpen, setConvertModalOpen] = useState(false);
@@ -995,6 +1000,10 @@ export function QuoteDetail() {
       {/* Actions */}
       <Card>
         <CardContent className="flex flex-wrap gap-3 pt-6">
+          <Button variant="secondary" onClick={() => setPreviewOpen(true)}>
+            <Eye className="mr-2 h-4 w-4" />
+            Preview Quote
+          </Button>
           <Button onClick={handleSendQuote} disabled={sending}>
             {sending ? (
               <Loader2 className="mr-2 h-4 w-4 animate-spin" />
@@ -1072,6 +1081,18 @@ export function QuoteDetail() {
           saving={lineItemSaving}
         />
       )}
+
+      {/* Quote preview modal */}
+      <QuotePreview
+        quote={quote}
+        open={previewOpen}
+        onClose={() => setPreviewOpen(false)}
+        onSend={() => {
+          setPreviewOpen(false);
+          handleSendQuote();
+        }}
+        sending={sending}
+      />
 
       {/* Convert to Job modal */}
       {convertModalOpen && (

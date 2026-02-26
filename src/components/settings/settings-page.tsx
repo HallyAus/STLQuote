@@ -8,7 +8,9 @@ import { Select } from "@/components/ui/select";
 import { Textarea } from "@/components/ui/textarea";
 import { Loader2, Save, Check } from "lucide-react";
 import { BatchPricingSettings } from "@/components/settings/batch-pricing-settings";
+import { BillingSettings } from "@/components/settings/billing-settings";
 import { WebhookSettings } from "@/components/settings/webhook-settings";
+import { XeroSettings } from "@/components/settings/xero-settings";
 import { LogoUpload } from "@/components/settings/logo-upload";
 import type { BatchTier } from "@/lib/batch-pricing";
 
@@ -32,6 +34,10 @@ interface Settings {
   businessPhone: string | null;
   businessEmail: string | null;
   businessLogoUrl: string | null;
+  bankName: string | null;
+  bankBsb: string | null;
+  bankAccountNumber: string | null;
+  bankAccountName: string | null;
   quoteTermsText: string | null;
 }
 
@@ -48,6 +54,10 @@ interface SettingsFormData {
   businessAbn: string;
   businessPhone: string;
   businessEmail: string;
+  bankName: string;
+  bankBsb: string;
+  bankAccountNumber: string;
+  bankAccountName: string;
   quoteTermsText: string;
 }
 
@@ -76,6 +86,10 @@ function settingsToFormData(settings: Settings): SettingsFormData {
     businessAbn: settings.businessAbn ?? "",
     businessPhone: settings.businessPhone ?? "",
     businessEmail: settings.businessEmail ?? "",
+    bankName: settings.bankName ?? "",
+    bankBsb: settings.bankBsb ?? "",
+    bankAccountNumber: settings.bankAccountNumber ?? "",
+    bankAccountName: settings.bankAccountName ?? "",
     quoteTermsText: settings.quoteTermsText ?? "",
   };
 }
@@ -94,6 +108,10 @@ function formDataToPayload(form: SettingsFormData) {
     businessAbn: form.businessAbn.trim() || null,
     businessPhone: form.businessPhone.trim() || null,
     businessEmail: form.businessEmail.trim() || null,
+    bankName: form.bankName.trim() || null,
+    bankBsb: form.bankBsb.trim() || null,
+    bankAccountNumber: form.bankAccountNumber.trim() || null,
+    bankAccountName: form.bankAccountName.trim() || null,
     quoteTermsText: form.quoteTermsText.trim() || null,
   };
 }
@@ -120,6 +138,10 @@ export function SettingsPage() {
     businessAbn: "",
     businessPhone: "",
     businessEmail: "",
+    bankName: "",
+    bankBsb: "",
+    bankAccountNumber: "",
+    bankAccountName: "",
     quoteTermsText: "",
   });
   const [batchTiers, setBatchTiers] = useState<BatchTier[]>([]);
@@ -250,6 +272,9 @@ export function SettingsPage() {
         </div>
       )}
 
+      {/* Subscription & Billing */}
+      <BillingSettings />
+
       {/* Calculator Defaults */}
       <Card>
         <CardHeader>
@@ -370,6 +395,44 @@ export function SettingsPage() {
         </CardContent>
       </Card>
 
+      {/* Payment Details */}
+      <Card>
+        <CardHeader>
+          <CardTitle>Payment Details</CardTitle>
+        </CardHeader>
+        <CardContent>
+          <p className="text-sm text-muted-foreground mb-4">
+            Bank details shown on invoices for bank transfer payments.
+          </p>
+          <div className="grid gap-4 sm:grid-cols-2">
+            <Input
+              label="Bank name"
+              value={form.bankName}
+              onChange={(e) => updateField("bankName", e.target.value)}
+              placeholder="e.g. Commonwealth Bank"
+            />
+            <Input
+              label="Account name"
+              value={form.bankAccountName}
+              onChange={(e) => updateField("bankAccountName", e.target.value)}
+              placeholder="e.g. Printforge Pty Ltd"
+            />
+            <Input
+              label="BSB"
+              value={form.bankBsb}
+              onChange={(e) => updateField("bankBsb", e.target.value)}
+              placeholder="e.g. 062-000"
+            />
+            <Input
+              label="Account number"
+              value={form.bankAccountNumber}
+              onChange={(e) => updateField("bankAccountNumber", e.target.value)}
+              placeholder="e.g. 1234 5678"
+            />
+          </div>
+        </CardContent>
+      </Card>
+
       {/* Quote Defaults */}
       <Card>
         <CardHeader>
@@ -411,6 +474,9 @@ export function SettingsPage() {
 
       {/* Webhooks (independent save) */}
       <WebhookSettings />
+
+      {/* Xero Integration (independent save) */}
+      <XeroSettings />
     </div>
   );
 }

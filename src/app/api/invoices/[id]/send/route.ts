@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
-import { getSessionUser } from "@/lib/auth-helpers";
+import { requireFeature } from "@/lib/auth-helpers";
 import { sendEmail } from "@/lib/email";
 import { generateToken } from "@/lib/tokens";
 import { rateLimit } from "@/lib/rate-limit";
@@ -15,8 +15,7 @@ export async function POST(
   context: RouteContext
 ) {
   try {
-    const user = await getSessionUser();
-    if (!user) return NextResponse.json({ error: "Unauthorised" }, { status: 401 });
+    const user = await requireFeature("invoicing");
 
     const { id } = await context.params;
 
@@ -70,6 +69,10 @@ export async function POST(
         businessPhone: true,
         businessEmail: true,
         businessLogoUrl: true,
+        bankName: true,
+        bankBsb: true,
+        bankAccountNumber: true,
+        bankAccountName: true,
       },
     });
 
@@ -113,6 +116,14 @@ export async function POST(
           email: settings?.businessEmail || null,
           logoUrl: settings?.businessLogoUrl || null,
         },
+        bank: settings?.bankName || settings?.bankBsb || settings?.bankAccountNumber || settings?.bankAccountName
+          ? {
+              name: settings.bankName ?? null,
+              bsb: settings.bankBsb ?? null,
+              accountNumber: settings.bankAccountNumber ?? null,
+              accountName: settings.bankAccountName ?? null,
+            }
+          : null,
       };
 
       // eslint-disable-next-line @typescript-eslint/no-explicit-any

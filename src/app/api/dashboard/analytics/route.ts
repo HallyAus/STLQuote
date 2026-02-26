@@ -1,13 +1,10 @@
 import { NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
-import { getSessionUser } from "@/lib/auth-helpers";
+import { requireFeature } from "@/lib/auth-helpers";
 
 export async function GET() {
   try {
-    const user = await getSessionUser();
-    if (!user) {
-      return NextResponse.json({ error: "Unauthorised" }, { status: 401 });
-    }
+    const user = await requireFeature("dashboard_analytics");
 
     const [printers, topMaterials, avgMarkup] = await Promise.all([
       // Printer utilisation

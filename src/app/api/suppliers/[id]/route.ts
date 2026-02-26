@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { z } from "zod";
 import { prisma } from "@/lib/prisma";
-import { getSessionUser } from "@/lib/auth-helpers";
+import { requireFeature } from "@/lib/auth-helpers";
 
 type RouteContext = { params: Promise<{ id: string }> };
 
@@ -18,8 +18,7 @@ export async function GET(
   { params }: RouteContext
 ) {
   try {
-    const user = await getSessionUser();
-    if (!user) return NextResponse.json({ error: "Unauthorised" }, { status: 401 });
+    const user = await requireFeature("suppliers");
 
     const { id } = await params;
     const supplier = await prisma.supplier.findFirst({
@@ -58,8 +57,7 @@ export async function PUT(
   { params }: RouteContext
 ) {
   try {
-    const user = await getSessionUser();
-    if (!user) return NextResponse.json({ error: "Unauthorised" }, { status: 401 });
+    const user = await requireFeature("suppliers");
 
     const { id } = await params;
 
@@ -122,8 +120,7 @@ export async function DELETE(
   { params }: RouteContext
 ) {
   try {
-    const user = await getSessionUser();
-    if (!user) return NextResponse.json({ error: "Unauthorised" }, { status: 401 });
+    const user = await requireFeature("suppliers");
 
     const { id } = await params;
 

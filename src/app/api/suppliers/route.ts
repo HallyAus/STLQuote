@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { z } from "zod";
 import { prisma } from "@/lib/prisma";
-import { getSessionUser } from "@/lib/auth-helpers";
+import { getSessionUser, requireFeature } from "@/lib/auth-helpers";
 
 const createSupplierSchema = z.object({
   name: z.string().min(1, "Name is required"),
@@ -13,8 +13,7 @@ const createSupplierSchema = z.object({
 
 export async function GET() {
   try {
-    const user = await getSessionUser();
-    if (!user) return NextResponse.json({ error: "Unauthorised" }, { status: 401 });
+    const user = await requireFeature("suppliers");
 
     const suppliers = await prisma.supplier.findMany({
       where: { userId: user.id },
@@ -37,8 +36,7 @@ export async function GET() {
 
 export async function POST(request: NextRequest) {
   try {
-    const user = await getSessionUser();
-    if (!user) return NextResponse.json({ error: "Unauthorised" }, { status: 401 });
+    const user = await requireFeature("suppliers");
 
     const body = await request.json();
     const parsed = createSupplierSchema.safeParse(body);

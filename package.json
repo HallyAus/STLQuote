@@ -1,6 +1,6 @@
 {
   "name": "printforge-quote",
-  "version": "3.0.0",
+  "version": "4.0.0",
   "private": true,
   "scripts": {
     "dev": "next dev",
@@ -35,9 +35,20 @@
     "tailwind-merge": "^2.5.0",
     "@react-pdf/renderer": "^4.0.0",
     "resend": "^4.0.0",
+    "stripe": "^17.0.0",
     "recharts": "^2.12.0",
     "three": "^0.170.0",
     "zod": "^3.23.0"
+  },
+  "pnpm": {
+    "onlyBuiltDependencies": [
+      "@prisma/client",
+      "@prisma/engines",
+      "esbuild",
+      "prisma",
+      "sharp",
+      "unrs-resolver"
+    ]
   },
   "devDependencies": {
     "@playwright/test": "^1.48.0",

@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { z } from "zod";
 import { prisma } from "@/lib/prisma";
-import { getSessionUser } from "@/lib/auth-helpers";
+import { getSessionUser, requireFeature } from "@/lib/auth-helpers";
 import { roundCurrency } from "@/lib/utils";
 
 const invoiceLineItemSchema = z.object({
@@ -24,13 +24,14 @@ const createInvoiceSchema = z.object({
   lineItems: z.array(invoiceLineItemSchema).default([]),
 });
 
-async function generateInvoiceNumber(): Promise<string> {
+async function generateInvoiceNumber(userId: string): Promise<string> {
   const year = new Date().getFullYear();
   const startOfYear = new Date(`${year}-01-01T00:00:00.000Z`);
   const startOfNextYear = new Date(`${year + 1}-01-01T00:00:00.000Z`);
 
   const count = await prisma.invoice.count({
     where: {
+      userId,
       createdAt: {
         gte: startOfYear,
         lt: startOfNextYear,
@@ -44,8 +45,7 @@ async function generateInvoiceNumber(): Promise<string> {
 
 export async function GET() {
   try {
-    const user = await getSessionUser();
-    if (!user) return NextResponse.json({ error: "Unauthorised" }, { status: 401 });
+    const user = await requireFeature("invoicing");
 
     const invoices = await prisma.invoice.findMany({
       where: { userId: user.id },
@@ -69,8 +69,7 @@ export async function GET() {
 
 export async function POST(request: NextRequest) {
   try {
-    const user = await getSessionUser();
-    if (!user) return NextResponse.json({ error: "Unauthorised" }, { status: 401 });
+    const user = await requireFeature("invoicing");
 
     const body = await request.json();
     const parsed = createInvoiceSchema.safeParse(body);
@@ -121,7 +120,7 @@ export async function POST(request: NextRequest) {
     const tax = roundCurrency(subtotal * invoiceData.taxPct / 100);
     const total = roundCurrency(subtotal + tax);
 
-    const invoiceNumber = await generateInvoiceNumber();
+    const invoiceNumber = await generateInvoiceNumber(user.id);
 
     const invoice = await prisma.$transaction(async (tx) => {
       const created = await tx.invoice.create({

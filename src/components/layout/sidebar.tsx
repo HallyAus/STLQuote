@@ -18,14 +18,17 @@ import {
   Package,
   Receipt,
   Wrench,
+  Lock,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { getEffectiveTier } from "@/lib/tier";
 import type { LucideIcon } from "lucide-react";
 
 interface NavItem {
   href: string;
   label: string;
   icon: LucideIcon;
+  proOnly?: boolean;
 }
 
 interface NavGroup {
@@ -45,7 +48,7 @@ const navGroups: NavGroup[] = [
     label: "Business",
     items: [
       { href: "/quotes", label: "Quotes", icon: FileText },
-      { href: "/invoices", label: "Invoices", icon: Receipt },
+      { href: "/invoices", label: "Invoices", icon: Receipt, proOnly: true },
       { href: "/clients", label: "Clients", icon: Users },
       { href: "/jobs", label: "Jobs", icon: Briefcase },
     ],
@@ -55,8 +58,8 @@ const navGroups: NavGroup[] = [
     items: [
       { href: "/printers", label: "Printers", icon: Printer },
       { href: "/materials", label: "Materials", icon: Palette },
-      { href: "/suppliers", label: "Suppliers", icon: Package },
-      { href: "/consumables", label: "Consumables", icon: Wrench },
+      { href: "/suppliers", label: "Suppliers", icon: Package, proOnly: true },
+      { href: "/consumables", label: "Consumables", icon: Wrench, proOnly: true },
     ],
   },
 ];
@@ -77,32 +80,49 @@ function NavLink({
   isActive,
   onClose,
   compact,
+  locked,
 }: {
   item: NavItem;
   isActive: boolean;
   onClose: () => void;
   compact?: boolean;
+  locked?: boolean;
 }) {
   return (
     <Link
-      href={item.href}
+      href={locked ? "/settings" : item.href}
       onClick={onClose}
       className={cn(
         "flex items-center gap-3 border-l-2 px-3 py-2 text-sm font-medium transition-colors",
         compact && "text-[13px]",
-        isActive
+        locked && "opacity-60",
+        isActive && !locked
           ? "border-sidebar-primary bg-sidebar-accent/50 text-sidebar-primary"
           : "border-transparent text-sidebar-foreground/80 hover:border-sidebar-accent hover:bg-sidebar-accent/30 hover:text-sidebar-foreground"
       )}
     >
-      <item.icon
-        className={cn(
-          "h-4 w-4 shrink-0 transition-colors",
-          compact && "h-[14px] w-[14px]",
-          isActive ? "text-sidebar-primary" : "text-sidebar-foreground/50"
-        )}
-      />
+      {locked ? (
+        <Lock
+          className={cn(
+            "h-4 w-4 shrink-0 text-sidebar-foreground/40",
+            compact && "h-[14px] w-[14px]"
+          )}
+        />
+      ) : (
+        <item.icon
+          className={cn(
+            "h-4 w-4 shrink-0 transition-colors",
+            compact && "h-[14px] w-[14px]",
+            isActive ? "text-sidebar-primary" : "text-sidebar-foreground/50"
+          )}
+        />
+      )}
       {item.label}
+      {locked && (
+        <span className="ml-auto rounded bg-primary/15 px-1.5 py-0.5 text-[9px] font-bold uppercase text-primary">
+          Pro
+        </span>
+      )}
     </Link>
   );
 }
@@ -116,6 +136,12 @@ export function Sidebar({ open, onClose }: SidebarProps) {
   const { data: session } = useSession();
   const role = session?.user?.role;
   const isAdmin = role === "ADMIN" || role === "SUPER_ADMIN";
+  const effectiveTier = session?.user ? getEffectiveTier({
+    subscriptionTier: session.user.subscriptionTier ?? "free",
+    subscriptionStatus: session.user.subscriptionStatus ?? "trialing",
+    trialEndsAt: session.user.trialEndsAt ?? null,
+  }) : "free";
+  const isFree = effectiveTier === "free";
 
   return (
     <>
@@ -171,6 +197,7 @@ export function Sidebar({ open, onClose }: SidebarProps) {
                     item={item}
                     isActive={isRouteActive(item.href, pathname)}
                     onClose={onClose}
+                    locked={item.proOnly && isFree}
                   />
                 ))}
               </div>
