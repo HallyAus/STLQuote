@@ -8,6 +8,7 @@ import { Loader2, Printer, CheckCircle2 } from "lucide-react";
 
 export default function WaitlistPage() {
   const [name, setName] = useState("");
+  const [businessName, setBusinessName] = useState("");
   const [email, setEmail] = useState("");
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
@@ -22,7 +23,7 @@ export default function WaitlistPage() {
       const res = await fetch("/api/waitlist", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ name, email }),
+        body: JSON.stringify({ name, email, businessName: businessName || undefined }),
       });
 
       const data = await res.json();
@@ -92,6 +93,15 @@ export default function WaitlistPage() {
                   required
                   autoComplete="name"
                   autoFocus
+                />
+
+                <Input
+                  label="Business name"
+                  type="text"
+                  value={businessName}
+                  onChange={(e) => setBusinessName(e.target.value)}
+                  placeholder="Optional"
+                  autoComplete="organization"
                 />
 
                 <Input

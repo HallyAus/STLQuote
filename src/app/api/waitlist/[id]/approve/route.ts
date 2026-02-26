@@ -68,6 +68,17 @@ export async function POST(
       }),
     ]);
 
+    // Auto-populate settings with business name from waitlist
+    if (entry.businessName) {
+      prisma.settings
+        .upsert({
+          where: { userId: user.id },
+          create: { userId: user.id, businessName: entry.businessName },
+          update: { businessName: entry.businessName },
+        })
+        .catch(() => {});
+    }
+
     // Log trial started event (non-blocking)
     prisma.subscriptionEvent
       .create({
@@ -87,7 +98,7 @@ export async function POST(
       type: "waitlist_approved",
       userId: user.id,
       html: `<div style="font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; max-width: 600px; margin: 0 auto;">
-        <h2 style="color: #171717;">Welcome, ${entry.name}!</h2>
+        <h2 style="color: #171717;">Welcome, ${entry.name}!</h2>${entry.businessName ? `\n        <p style="color: #666; font-size: 14px;">Business: ${entry.businessName}</p>` : ""}
         <p>Great news — your Printforge account has been approved!</p>
         <p>You can now sign in and start calculating your 3D print costs. Use the "Forgot password" option on the login page to set your password.</p>
         <p style="margin: 24px 0;">

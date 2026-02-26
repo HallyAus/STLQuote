@@ -7,6 +7,7 @@ import { sendEmail } from "@/lib/email";
 const waitlistSchema = z.object({
   name: z.string().min(1, "Name is required"),
   email: z.string().email("Invalid email address"),
+  businessName: z.string().optional(),
 });
 
 // GET — list all waitlist entries (admin only)
@@ -42,7 +43,7 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    const { name, email } = parsed.data;
+    const { name, email, businessName } = parsed.data;
 
     // Check if email already on waitlist
     const existingWaitlist = await prisma.waitlist.findUnique({
@@ -73,6 +74,7 @@ export async function POST(request: NextRequest) {
       data: {
         name,
         email,
+        businessName: businessName || null,
         status: "pending",
       },
     });

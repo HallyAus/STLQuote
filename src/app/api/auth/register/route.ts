@@ -10,6 +10,7 @@ const registerSchema = z.object({
   name: z.string().min(1, "Name is required"),
   email: z.string().email("Invalid email address"),
   password: z.string().min(8, "Password must be at least 8 characters"),
+  businessName: z.string().optional(),
 });
 
 export async function POST(request: NextRequest) {
@@ -49,7 +50,7 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    const { name, email, password } = parsed.data;
+    const { name, email, password, businessName } = parsed.data;
 
     // Check if user already exists
     const existing = await prisma.user.findUnique({
@@ -128,6 +129,7 @@ export async function POST(request: NextRequest) {
       data: {
         name,
         email,
+        businessName: businessName || null,
         status: "pending",
       },
     });

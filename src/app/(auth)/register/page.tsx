@@ -12,6 +12,7 @@ import { Loader2, CheckCircle2 } from "lucide-react";
 export default function RegisterPage() {
   const router = useRouter();
   const [name, setName] = useState("");
+  const [businessName, setBusinessName] = useState("");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [confirmPassword, setConfirmPassword] = useState("");
@@ -39,7 +40,7 @@ export default function RegisterPage() {
       const res = await fetch("/api/auth/register", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ name, email, password }),
+        body: JSON.stringify({ name, email, password, businessName: businessName || undefined }),
       });
 
       const data = await res.json();
@@ -123,6 +124,15 @@ export default function RegisterPage() {
                 required
                 autoComplete="name"
                 autoFocus
+              />
+
+              <Input
+                label="Business name"
+                type="text"
+                value={businessName}
+                onChange={(e) => setBusinessName(e.target.value)}
+                placeholder="Optional"
+                autoComplete="organization"
               />
 
               <Input
