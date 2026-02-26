@@ -1,14 +1,13 @@
 "use client";
 
 import { useState } from "react";
-import { useRouter } from "next/navigation";
+import { signOut } from "next-auth/react";
 import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Loader2 } from "lucide-react";
 
 export default function ChangePasswordPage() {
-  const router = useRouter();
   const [password, setPassword] = useState("");
   const [confirm, setConfirm] = useState("");
   const [loading, setLoading] = useState(false);
@@ -44,8 +43,8 @@ export default function ChangePasswordPage() {
         return;
       }
 
-      router.push("/dashboard");
-      router.refresh();
+      // Sign out to refresh the JWT (mustChangePassword flag is stale in token)
+      await signOut({ callbackUrl: "/login?reset=true" });
     } catch {
       setError("Something went wrong. Please try again.");
     } finally {
