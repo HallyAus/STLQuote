@@ -26,21 +26,26 @@ const createInvoiceSchema = z.object({
 
 async function generateInvoiceNumber(userId: string): Promise<string> {
   const year = new Date().getFullYear();
-  const startOfYear = new Date(`${year}-01-01T00:00:00.000Z`);
-  const startOfNextYear = new Date(`${year + 1}-01-01T00:00:00.000Z`);
+  const prefix = `INV-${year}-`;
 
-  const count = await prisma.invoice.count({
+  // Find the highest existing invoice number for this user this year
+  const latest = await prisma.invoice.findFirst({
     where: {
       userId,
-      createdAt: {
-        gte: startOfYear,
-        lt: startOfNextYear,
-      },
+      invoiceNumber: { startsWith: prefix },
     },
+    orderBy: { invoiceNumber: "desc" },
+    select: { invoiceNumber: true },
   });
 
-  const seq = String(count + 1).padStart(3, "0");
-  return `INV-${year}-${seq}`;
+  let nextSeq = 1;
+  if (latest?.invoiceNumber) {
+    const seqStr = latest.invoiceNumber.replace(prefix, "");
+    const lastSeq = parseInt(seqStr, 10);
+    if (!isNaN(lastSeq)) nextSeq = lastSeq + 1;
+  }
+
+  return `${prefix}${String(nextSeq).padStart(3, "0")}`;
 }
 
 export async function GET() {

@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { z } from "zod";
 import { prisma } from "@/lib/prisma";
 import { getSessionUser } from "@/lib/auth-helpers";
+import { logSystem } from "@/lib/logger";
 
 const lineItemSchema = z.object({
   description: z.string().min(1, "Description is required"),
@@ -29,21 +30,26 @@ const createQuoteSchema = z.object({
 
 async function generateQuoteNumber(userId: string): Promise<string> {
   const year = new Date().getFullYear();
-  const startOfYear = new Date(`${year}-01-01T00:00:00.000Z`);
-  const startOfNextYear = new Date(`${year + 1}-01-01T00:00:00.000Z`);
+  const prefix = `PF-${year}-`;
 
-  const count = await prisma.quote.count({
+  // Find the highest existing quote number for this user this year
+  const latest = await prisma.quote.findFirst({
     where: {
       userId,
-      createdAt: {
-        gte: startOfYear,
-        lt: startOfNextYear,
-      },
+      quoteNumber: { startsWith: prefix },
     },
+    orderBy: { quoteNumber: "desc" },
+    select: { quoteNumber: true },
   });
 
-  const seq = String(count + 1).padStart(3, "0");
-  return `PF-${year}-${seq}`;
+  let nextSeq = 1;
+  if (latest?.quoteNumber) {
+    const seqStr = latest.quoteNumber.replace(prefix, "");
+    const lastSeq = parseInt(seqStr, 10);
+    if (!isNaN(lastSeq)) nextSeq = lastSeq + 1;
+  }
+
+  return `${prefix}${String(nextSeq).padStart(3, "0")}`;
 }
 
 export async function GET() {
@@ -134,6 +140,13 @@ export async function POST(request: NextRequest) {
     return NextResponse.json(quote, { status: 201 });
   } catch (error) {
     console.error("Failed to create quote:", error);
+    logSystem({
+      userId: (await getSessionUser().catch(() => null))?.id,
+      type: "error",
+      level: "error",
+      message: "Failed to create quote",
+      detail: error instanceof Error ? error.message : String(error),
+    });
     return NextResponse.json(
       { error: "Failed to create quote" },
       { status: 500 }
