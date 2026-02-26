@@ -3,6 +3,7 @@
 import { Suspense } from "react";
 import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card";
 import { XeroSettings } from "@/components/settings/xero-settings";
+import { WebhookSettings } from "@/components/settings/webhook-settings";
 import { CreditCard, ShoppingBag, MessageSquare } from "lucide-react";
 
 const comingSoon = [
@@ -38,6 +39,9 @@ export function IntegrationsPage() {
       <Suspense fallback={null}>
         <XeroSettings />
       </Suspense>
+
+      {/* Webhooks */}
+      <WebhookSettings />
 
       {/* Coming soon */}
       <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">

@@ -1,5 +1,6 @@
 "use client";
 
+import { useState, useEffect } from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useSession, signOut } from "next-auth/react";
@@ -92,12 +93,14 @@ function NavLink({
   onClose,
   compact,
   locked,
+  badge,
 }: {
   item: NavItem;
   isActive: boolean;
   onClose: () => void;
   compact?: boolean;
   locked?: boolean;
+  badge?: number;
 }) {
   return (
     <Link
@@ -134,6 +137,11 @@ function NavLink({
           Pro
         </span>
       )}
+      {!locked && badge != null && badge > 0 && (
+        <span className="ml-auto inline-flex h-5 min-w-5 items-center justify-center rounded-full bg-primary px-1.5 text-[10px] font-bold text-primary-foreground">
+          {badge}
+        </span>
+      )}
     </Link>
   );
 }
@@ -154,6 +162,22 @@ export function Sidebar({ open, onClose }: SidebarProps) {
     role: session.user.role,
   }) : "free";
   const isFree = effectiveTier === "free";
+
+  // Fetch pending waitlist count for admins
+  const [waitlistCount, setWaitlistCount] = useState(0);
+  useEffect(() => {
+    if (!isAdmin) return;
+    let cancelled = false;
+    fetch("/api/waitlist")
+      .then((res) => (res.ok ? res.json() : []))
+      .then((data: { status?: string }[]) => {
+        if (!cancelled && Array.isArray(data)) {
+          setWaitlistCount(data.filter((e) => e.status === "pending").length);
+        }
+      })
+      .catch(() => {});
+    return () => { cancelled = true; };
+  }, [isAdmin]);
 
   return (
     <>
@@ -227,6 +251,7 @@ export function Sidebar({ open, onClose }: SidebarProps) {
                   item={{ href: "/admin", label: "Admin", icon: Shield }}
                   isActive={isRouteActive("/admin", pathname)}
                   onClose={onClose}
+                  badge={waitlistCount}
                 />
               </div>
             </div>

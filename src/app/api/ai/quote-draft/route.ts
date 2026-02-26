@@ -177,10 +177,21 @@ Return ONLY valid JSON (no markdown, no code fences) with this exact structure:
       );
     }
 
-    // Parse the JSON response
+    // Parse the JSON response — extract JSON object even if wrapped in markdown/text
     let result: { lineItems: unknown[]; explanation: string };
     try {
-      result = JSON.parse(textBlock.text);
+      let jsonText = textBlock.text.trim();
+      // Strip markdown code fences
+      if (jsonText.startsWith("```")) {
+        jsonText = jsonText.replace(/^```(?:json)?\s*\n?/, "").replace(/\n?```\s*$/, "");
+      }
+      // If still not starting with {, find the first { and last }
+      const firstBrace = jsonText.indexOf("{");
+      const lastBrace = jsonText.lastIndexOf("}");
+      if (firstBrace !== -1 && lastBrace > firstBrace) {
+        jsonText = jsonText.slice(firstBrace, lastBrace + 1);
+      }
+      result = JSON.parse(jsonText);
     } catch {
       log({ type: "system", level: "warn", message: "AI quote draft returned invalid JSON", detail: textBlock.text.slice(0, 500), userId: user.id });
       return NextResponse.json(
@@ -228,7 +239,13 @@ Return ONLY valid JSON (no markdown, no code fences) with this exact structure:
       const body = await err.json();
       return NextResponse.json(body, { status: err.status });
     }
-    log({ type: "system", level: "error", message: "AI quote draft failed", detail: err instanceof Error ? err.message : String(err) });
-    return NextResponse.json({ error: "Failed to generate quote draft." }, { status: 500 });
+    const errMsg = err instanceof Error ? err.message : String(err);
+    log({ type: "system", level: "error", message: "AI quote draft failed", detail: errMsg });
+    console.error("[AI Quote Draft]", err);
+    return NextResponse.json({
+      error: process.env.NODE_ENV === "development"
+        ? `AI draft failed: ${errMsg}`
+        : "Failed to generate quote draft.",
+    }, { status: 500 });
   }
 }
