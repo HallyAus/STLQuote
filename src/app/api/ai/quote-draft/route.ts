@@ -129,31 +129,32 @@ SETTINGS:
 RULES:
 1. Use realistic print weights and times for FDM/resin 3D printing
 2. All prices in AUD
-3. Each line item should represent one distinct part or batch of identical parts
+3. CRITICAL: All costs are PER SINGLE UNIT, not for the whole batch. The quantity field handles multiplication. Example: if someone wants 50 dinosaurs at 100g each, printWeightG=100, and costs reflect ONE dinosaur, with quantity=50
 4. If the user specifies a quantity, use it. Otherwise default to 1
 5. Pick the most appropriate material and printer from the lists. If none match, omit the IDs
-6. Calculate costs:
-   - materialCost = weight_in_grams × price_per_gram
-   - machineCost = print_time_hours × printer_hourly_rate
-   - labourCost = estimated_labour_hours × labour_rate (include setup, post-processing)
-   - overheadCost = overhead_per_job (split across line items)
-   - lineTotal = materialCost + machineCost + labourCost + overheadCost
+6. Calculate costs PER SINGLE UNIT:
+   - materialCost = weight_per_unit_grams × price_per_gram
+   - machineCost = print_time_per_unit_hours × printer_hourly_rate
+   - labourCost = estimated_labour_per_unit_hours × labour_rate (setup, post-processing amortised per unit)
+   - overheadCost = overhead_per_job / quantity (spread across units)
+   - lineTotal = materialCost + machineCost + labourCost + overheadCost (per unit!)
 7. lineTotal must be >= minimum charge per item
 8. Be conservative with estimates — slightly over is better than under
+9. Typical small FDM prints (30-100g): 1-3 hours each. Labour per unit for batch jobs is low (a few minutes setup amortised)
 
 Return ONLY valid JSON (no markdown, no code fences) with this exact structure:
 {
   "lineItems": [
     {
       "description": "Part name / description",
-      "printWeightG": 50,
+      "printWeightG": 100,
       "printTimeMinutes": 120,
-      "materialCost": 1.50,
-      "machineCost": 2.00,
-      "labourCost": 5.00,
-      "overheadCost": 1.00,
+      "materialCost": 3.00,
+      "machineCost": 4.00,
+      "labourCost": 2.00,
+      "overheadCost": 0.50,
       "lineTotal": 9.50,
-      "quantity": 1,
+      "quantity": 50,
       "materialId": "material_cuid_or_null",
       "printerId": "printer_cuid_or_null"
     }

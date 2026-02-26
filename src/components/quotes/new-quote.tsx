@@ -281,7 +281,7 @@ export function NewQuote() {
         notes: notes.trim() || null,
         terms: terms.trim() || null,
         expiryDate: expiryDate ? new Date(expiryDate).toISOString() : null,
-        markupPct: parseFloat(markupPct) || 50,
+        markupPct: markupPct !== "" ? parseFloat(markupPct) : 50,
         lineItems,
       };
 
