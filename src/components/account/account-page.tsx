@@ -1,10 +1,25 @@
 "use client";
 
 import { useState, useEffect, useCallback } from "react";
+import { useSession, signOut } from "next-auth/react";
 import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
-import { Loader2, Save } from "lucide-react";
+import { Badge } from "@/components/ui/badge";
+import { BANNER } from "@/lib/status-colours";
+import { getEffectiveTier, trialDaysRemaining } from "@/lib/tier";
+import {
+  Loader2,
+  Save,
+  UserCircle,
+  Mail,
+  Shield,
+  Calendar,
+  Crown,
+  Lock,
+  Check,
+  KeyRound,
+} from "lucide-react";
 
 interface Profile {
   id: string;
@@ -18,7 +33,49 @@ interface Profile {
   trialEndsAt: string | null;
 }
 
+function formatDate(dateStr: string): string {
+  return new Date(dateStr).toLocaleDateString("en-AU", {
+    day: "numeric",
+    month: "long",
+    year: "numeric",
+  });
+}
+
+function roleLabel(role: string): string {
+  switch (role) {
+    case "SUPER_ADMIN": return "Super Admin";
+    case "ADMIN": return "Admin";
+    default: return "User";
+  }
+}
+
+function roleBadgeVariant(role: string): "info" | "warning" | "default" {
+  if (role === "SUPER_ADMIN" || role === "ADMIN") return "warning";
+  return "default";
+}
+
+function tierLabel(tier: string, status: string): string {
+  if (tier === "pro" && status === "active") return "Pro";
+  if (status === "trialing") return "Pro Trial";
+  return "Free";
+}
+
+function tierBadgeVariant(tier: string): "success" | "default" {
+  return tier === "pro" ? "success" : "default";
+}
+
+function getInitials(name: string | null, email: string | null): string {
+  if (name) {
+    const parts = name.trim().split(/\s+/);
+    if (parts.length >= 2) return (parts[0][0] + parts[parts.length - 1][0]).toUpperCase();
+    return name.slice(0, 2).toUpperCase();
+  }
+  if (email) return email.slice(0, 2).toUpperCase();
+  return "??";
+}
+
 export function AccountPage() {
+  const { update: updateSession } = useSession();
   const [profile, setProfile] = useState<Profile | null>(null);
   const [loading, setLoading] = useState(true);
 
@@ -55,6 +112,19 @@ export function AccountPage() {
     fetchProfile();
   }, [fetchProfile]);
 
+  // Auto-clear messages
+  useEffect(() => {
+    if (!profileMsg || profileMsg.type !== "success") return;
+    const t = setTimeout(() => setProfileMsg(null), 4000);
+    return () => clearTimeout(t);
+  }, [profileMsg]);
+
+  useEffect(() => {
+    if (!passwordMsg || passwordMsg.type !== "success") return;
+    const t = setTimeout(() => setPasswordMsg(null), 4000);
+    return () => clearTimeout(t);
+  }, [passwordMsg]);
+
   async function handleProfileSave(e: React.FormEvent) {
     e.preventDefault();
     setProfileMsg(null);
@@ -72,7 +142,8 @@ export function AccountPage() {
         setProfileMsg({ type: "error", text: data.error || "Failed to update profile" });
       } else {
         setProfile((prev) => (prev ? { ...prev, ...data } : prev));
-        setProfileMsg({ type: "success", text: "Profile updated" });
+        setProfileMsg({ type: "success", text: "Profile updated successfully" });
+        updateSession();
       }
     } catch {
       setProfileMsg({ type: "error", text: "Something went wrong" });
@@ -111,7 +182,9 @@ export function AccountPage() {
         setCurrentPassword("");
         setNewPassword("");
         setConfirmPassword("");
-        setPasswordMsg({ type: "success", text: "Password changed" });
+        setPasswordMsg({ type: "success", text: "Password changed successfully" });
+        // Sign out after password change to refresh JWT
+        setTimeout(() => signOut({ callbackUrl: "/login" }), 1500);
       }
     } catch {
       setPasswordMsg({ type: "error", text: "Something went wrong" });
@@ -122,101 +195,174 @@ export function AccountPage() {
 
   if (loading) {
     return (
-      <div className="flex items-center justify-center py-12">
+      <div className="flex items-center justify-center py-20">
         <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
       </div>
     );
   }
 
+  if (!profile) {
+    return (
+      <div className="flex flex-col items-center gap-3 py-20 text-center">
+        <UserCircle className="h-8 w-8 text-muted-foreground/50" />
+        <p className="text-sm text-muted-foreground">Failed to load account</p>
+      </div>
+    );
+  }
+
+  const effectiveTier = getEffectiveTier({
+    subscriptionTier: profile.subscriptionTier,
+    subscriptionStatus: profile.subscriptionStatus,
+    trialEndsAt: profile.trialEndsAt,
+    role: profile.role,
+  });
+
+  const trialDays = trialDaysRemaining(profile.trialEndsAt);
+  const isTrialing = profile.subscriptionStatus === "trialing" && trialDays > 0;
+  const isAdmin = profile.role === "ADMIN" || profile.role === "SUPER_ADMIN";
+
   return (
     <div className="space-y-6">
-      {/* Profile */}
-      <Card>
-        <CardHeader>
-          <CardTitle>Profile</CardTitle>
-        </CardHeader>
-        <CardContent>
-          <form onSubmit={handleProfileSave} className="space-y-4">
-            {profileMsg && (
-              <div
-                className={`rounded-md px-3 py-2 text-sm ${
-                  profileMsg.type === "success"
-                    ? "border border-success/30 bg-success/10 text-success-foreground"
-                    : "bg-destructive/10 text-destructive-foreground"
-                }`}
-              >
-                {profileMsg.text}
-              </div>
-            )}
+      {/* Page header */}
+      <div>
+        <h2 className="text-lg font-semibold text-foreground">Account</h2>
+        <p className="text-sm text-muted-foreground">
+          Manage your profile and security settings
+        </p>
+      </div>
 
-            <div className="grid gap-4 sm:grid-cols-2">
+      {/* Profile hero card */}
+      <Card>
+        <CardContent className="p-6">
+          <div className="flex items-start gap-5">
+            {/* Avatar */}
+            <div className="flex h-16 w-16 shrink-0 items-center justify-center rounded-full bg-primary/10">
+              <span className="text-xl font-bold text-primary">
+                {getInitials(profile.name, profile.email)}
+              </span>
+            </div>
+
+            {/* Info */}
+            <div className="min-w-0 flex-1">
+              <div className="flex flex-wrap items-center gap-2">
+                <h3 className="text-lg font-semibold text-foreground">
+                  {profile.name || "Unnamed"}
+                </h3>
+                <Badge variant={roleBadgeVariant(profile.role)}>
+                  {roleLabel(profile.role)}
+                </Badge>
+                <Badge variant={tierBadgeVariant(effectiveTier)}>
+                  {effectiveTier === "pro" ? (
+                    <Crown className="mr-1 h-3 w-3" />
+                  ) : null}
+                  {tierLabel(effectiveTier, profile.subscriptionStatus)}
+                </Badge>
+              </div>
+
+              <div className="mt-2 flex flex-wrap gap-x-5 gap-y-1.5 text-sm text-muted-foreground">
+                <span className="flex items-center gap-1.5">
+                  <Mail className="h-3.5 w-3.5" />
+                  {profile.email}
+                </span>
+                <span className="flex items-center gap-1.5">
+                  <Calendar className="h-3.5 w-3.5" />
+                  Joined {formatDate(profile.createdAt)}
+                </span>
+                {isAdmin && (
+                  <span className="flex items-center gap-1.5">
+                    <Shield className="h-3.5 w-3.5" />
+                    Admin access
+                  </span>
+                )}
+              </div>
+
+              {/* Trial banner */}
+              {isTrialing && !isAdmin && (
+                <div className="mt-3 flex items-center gap-2 rounded-md bg-warning/10 px-3 py-2 text-sm text-warning-foreground">
+                  <Crown className="h-4 w-4 shrink-0" />
+                  <span>
+                    <strong>{trialDays} day{trialDays !== 1 ? "s" : ""}</strong> remaining on your Pro trial
+                  </span>
+                </div>
+              )}
+            </div>
+          </div>
+        </CardContent>
+      </Card>
+
+      {/* Two-column layout for forms */}
+      <div className="grid gap-6 lg:grid-cols-2">
+        {/* Profile form */}
+        <Card>
+          <CardHeader>
+            <div className="flex items-center gap-2">
+              <UserCircle className="h-4 w-4 text-muted-foreground" />
+              <CardTitle>Profile</CardTitle>
+            </div>
+          </CardHeader>
+          <CardContent>
+            <form onSubmit={handleProfileSave} className="space-y-4">
+              {profileMsg && (
+                <div className={profileMsg.type === "success" ? BANNER.success : BANNER.error}>
+                  {profileMsg.type === "success" && <Check className="mr-1.5 inline h-4 w-4" />}
+                  {profileMsg.text}
+                </div>
+              )}
+
               <Input
-                label="Name"
+                label="Full name"
                 value={name}
                 onChange={(e) => setName(e.target.value)}
                 placeholder="Your name"
               />
               <Input
-                label="Email"
+                label="Email address"
                 type="email"
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
                 placeholder="you@example.com"
               />
-            </div>
 
-            {profile && (
-              <div className="flex flex-wrap gap-x-6 gap-y-1 text-xs text-muted-foreground">
-                <span>Role: {profile.role}</span>
-                <span>Tier: {profile.subscriptionTier}</span>
-                <span>Joined: {new Date(profile.createdAt).toLocaleDateString()}</span>
+              <div className="flex justify-end pt-2">
+                <Button type="submit" disabled={profileSaving}>
+                  {profileSaving ? (
+                    <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                  ) : (
+                    <Save className="mr-2 h-4 w-4" />
+                  )}
+                  Save changes
+                </Button>
               </div>
-            )}
+            </form>
+          </CardContent>
+        </Card>
 
-            <div className="flex justify-end">
-              <Button type="submit" disabled={profileSaving}>
-                {profileSaving ? (
-                  <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                ) : (
-                  <Save className="mr-2 h-4 w-4" />
-                )}
-                Save profile
-              </Button>
+        {/* Password form */}
+        <Card>
+          <CardHeader>
+            <div className="flex items-center gap-2">
+              <KeyRound className="h-4 w-4 text-muted-foreground" />
+              <CardTitle>Password</CardTitle>
             </div>
-          </form>
-        </CardContent>
-      </Card>
+          </CardHeader>
+          <CardContent>
+            <form onSubmit={handlePasswordSave} className="space-y-4">
+              {passwordMsg && (
+                <div className={passwordMsg.type === "success" ? BANNER.success : BANNER.error}>
+                  {passwordMsg.type === "success" && <Lock className="mr-1.5 inline h-4 w-4" />}
+                  {passwordMsg.text}
+                </div>
+              )}
 
-      {/* Change Password */}
-      <Card>
-        <CardHeader>
-          <CardTitle>Change Password</CardTitle>
-        </CardHeader>
-        <CardContent>
-          <form onSubmit={handlePasswordSave} className="space-y-4">
-            {passwordMsg && (
-              <div
-                className={`rounded-md px-3 py-2 text-sm ${
-                  passwordMsg.type === "success"
-                    ? "border border-success/30 bg-success/10 text-success-foreground"
-                    : "bg-destructive/10 text-destructive-foreground"
-                }`}
-              >
-                {passwordMsg.text}
-              </div>
-            )}
-
-            <Input
-              label="Current password"
-              type="password"
-              value={currentPassword}
-              onChange={(e) => setCurrentPassword(e.target.value)}
-              placeholder="Enter current password"
-              required
-              autoComplete="current-password"
-            />
-
-            <div className="grid gap-4 sm:grid-cols-2">
+              <Input
+                label="Current password"
+                type="password"
+                value={currentPassword}
+                onChange={(e) => setCurrentPassword(e.target.value)}
+                placeholder="Enter current password"
+                required
+                autoComplete="current-password"
+              />
               <Input
                 label="New password"
                 type="password"
@@ -231,23 +377,76 @@ export function AccountPage() {
                 type="password"
                 value={confirmPassword}
                 onChange={(e) => setConfirmPassword(e.target.value)}
-                placeholder="Confirm new password"
+                placeholder="Re-enter new password"
                 required
                 autoComplete="new-password"
               />
+
+              <div className="flex justify-end pt-2">
+                <Button type="submit" disabled={passwordSaving}>
+                  {passwordSaving ? (
+                    <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                  ) : (
+                    <Lock className="mr-2 h-4 w-4" />
+                  )}
+                  Change password
+                </Button>
+              </div>
+            </form>
+          </CardContent>
+        </Card>
+      </div>
+
+      {/* Subscription info */}
+      <Card>
+        <CardHeader>
+          <div className="flex items-center gap-2">
+            <Crown className="h-4 w-4 text-muted-foreground" />
+            <CardTitle>Subscription</CardTitle>
+          </div>
+        </CardHeader>
+        <CardContent>
+          <div className="grid gap-4 sm:grid-cols-3">
+            <div className="rounded-lg border border-border p-4">
+              <p className="text-xs font-medium uppercase tracking-wider text-muted-foreground">
+                Plan
+              </p>
+              <p className="mt-1 text-lg font-semibold text-foreground">
+                {effectiveTier === "pro" ? "Pro" : "Free"}
+              </p>
+              {isAdmin && (
+                <p className="mt-0.5 text-xs text-muted-foreground">
+                  Included with admin role
+                </p>
+              )}
             </div>
 
-            <div className="flex justify-end">
-              <Button type="submit" disabled={passwordSaving}>
-                {passwordSaving ? (
-                  <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                ) : (
-                  <Save className="mr-2 h-4 w-4" />
-                )}
-                Change password
-              </Button>
+            <div className="rounded-lg border border-border p-4">
+              <p className="text-xs font-medium uppercase tracking-wider text-muted-foreground">
+                Status
+              </p>
+              <p className="mt-1 text-lg font-semibold text-foreground">
+                {isTrialing ? "Trial" : profile.subscriptionStatus === "active" ? "Active" : "—"}
+              </p>
+              {isTrialing && (
+                <p className="mt-0.5 text-xs text-muted-foreground">
+                  Expires {formatDate(profile.trialEndsAt!)}
+                </p>
+              )}
             </div>
-          </form>
+
+            <div className="rounded-lg border border-border p-4">
+              <p className="text-xs font-medium uppercase tracking-wider text-muted-foreground">
+                Member since
+              </p>
+              <p className="mt-1 text-lg font-semibold text-foreground">
+                {new Date(profile.createdAt).toLocaleDateString("en-AU", {
+                  month: "short",
+                  year: "numeric",
+                })}
+              </p>
+            </div>
+          </div>
         </CardContent>
       </Card>
     </div>
