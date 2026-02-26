@@ -28,8 +28,6 @@ import {
   Upload,
   CalendarDays,
   Crown,
-  Server,
-  Lock,
   Globe,
   X,
   Minus,
@@ -38,7 +36,7 @@ import {
 export const metadata: Metadata = {
   title: "Printforge — Stop Guessing Your 3D Print Costs",
   description:
-    "The complete business platform for 3D print shops. Calculate costs, send professional quotes, manage inventory, track jobs, and invoice clients. Self-hosted. Free to start.",
+    "The complete business platform for 3D print shops. Calculate costs, send professional quotes, manage inventory, track jobs, and invoice clients. Free to start.",
   openGraph: {
     title: "Printforge — Stop Guessing Your 3D Print Costs",
     description:
@@ -60,7 +58,7 @@ const HERO_BADGES = [
 
 const STATS = [
   { value: "< 1 min", label: "to calculate a quote" },
-  { value: "100%", label: "your data, your server" },
+  { value: "100%", label: "secure & private" },
   { value: "14 days", label: "free Pro trial" },
   { value: "$0", label: "to get started" },
 ];
@@ -283,10 +281,6 @@ const PRICING_COMPARE: PricingFeature[] = [
 
 const FAQ = [
   {
-    q: "Is Printforge really self-hosted?",
-    a: "Yes. You run Printforge on your own server via Docker. Your data never leaves your infrastructure. We provide the software — you own everything.",
-  },
-  {
     q: "What happens after the 14-day trial?",
     a: "You keep all your data and the Free tier features forever. Pro features simply lock until you subscribe. No data is deleted.",
   },
@@ -410,7 +404,7 @@ export default function LandingPage() {
             <p className="mx-auto max-w-2xl text-lg leading-relaxed text-muted-foreground sm:text-xl">
               The complete business platform for 3D print shops. Calculate costs in seconds,
               send professional quotes, manage inventory, track jobs, and invoice clients
-              — all from one self-hosted dashboard.
+              — all from one dashboard.
             </p>
 
             {/* CTAs */}
@@ -763,95 +757,6 @@ export default function LandingPage() {
                   </span>
                 </div>
               ))}
-            </div>
-          </div>
-        </div>
-      </section>
-
-      {/* ----------------------------------------------------------------- */}
-      {/* Self-hosted / Privacy */}
-      {/* ----------------------------------------------------------------- */}
-      <section className="border-t border-border/50 bg-card/30">
-        <div className="mx-auto max-w-6xl px-6 py-24">
-          <div className="grid items-center gap-12 md:grid-cols-2">
-            <div>
-              <p className="text-sm font-semibold uppercase tracking-wider text-primary">
-                Self-hosted
-              </p>
-              <h2 className="mt-3 text-3xl font-bold tracking-tight sm:text-4xl">
-                Your data, your server
-              </h2>
-              <p className="mt-4 text-lg leading-relaxed text-muted-foreground">
-                Printforge runs on your own infrastructure via Docker.
-                No third-party cloud, no vendor lock-in, no surprise bills.
-                Your client data, quotes, and financials never leave your network.
-              </p>
-              <div className="mt-8 space-y-4">
-                <div className="flex items-start gap-3">
-                  <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-primary/10">
-                    <Server className="h-4 w-4 text-primary" />
-                  </div>
-                  <div>
-                    <p className="text-sm font-semibold">Docker deployment</p>
-                    <p className="text-sm text-muted-foreground">
-                      One command to deploy. Runs on any Docker host — Proxmox, Synology, Raspberry Pi, or cloud VPS.
-                    </p>
-                  </div>
-                </div>
-                <div className="flex items-start gap-3">
-                  <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-primary/10">
-                    <Lock className="h-4 w-4 text-primary" />
-                  </div>
-                  <div>
-                    <p className="text-sm font-semibold">Full data ownership</p>
-                    <p className="text-sm text-muted-foreground">
-                      PostgreSQL database you control. Export, back up, or migrate at any time. No data hostage.
-                    </p>
-                  </div>
-                </div>
-                <div className="flex items-start gap-3">
-                  <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-primary/10">
-                    <Shield className="h-4 w-4 text-primary" />
-                  </div>
-                  <div>
-                    <p className="text-sm font-semibold">Privacy by design</p>
-                    <p className="text-sm text-muted-foreground">
-                      No telemetry, no analytics tracking, no third-party cookies. Your business data stays private.
-                    </p>
-                  </div>
-                </div>
-              </div>
-            </div>
-            <div className="flex items-center justify-center">
-              <div className="w-full max-w-sm rounded-2xl border border-border bg-card p-6 font-mono text-sm shadow-xl">
-                <div className="flex items-center gap-2 text-muted-foreground">
-                  <span className="h-3 w-3 rounded-full bg-destructive/50" />
-                  <span className="h-3 w-3 rounded-full bg-warning/50" />
-                  <span className="h-3 w-3 rounded-full bg-success/50" />
-                  <span className="ml-2 text-xs">terminal</span>
-                </div>
-                <div className="mt-4 space-y-2 text-xs">
-                  <p>
-                    <span className="text-success-foreground">$</span>{" "}
-                    <span className="text-muted-foreground">docker compose up -d</span>
-                  </p>
-                  <p className="text-muted-foreground/60">
-                    Creating printforge-db-1 ... done
-                  </p>
-                  <p className="text-muted-foreground/60">
-                    Creating printforge-app-1 ... done
-                  </p>
-                  <p className="mt-2">
-                    <span className="text-success-foreground">$</span>{" "}
-                    <span className="text-muted-foreground">
-                      curl https://crm.printforge.com.au
-                    </span>
-                  </p>
-                  <p className="text-success-foreground">
-                    200 OK
-                  </p>
-                </div>
-              </div>
             </div>
           </div>
         </div>
