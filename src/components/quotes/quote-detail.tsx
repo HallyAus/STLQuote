@@ -24,6 +24,7 @@ import {
   Receipt,
   Eye,
   Bookmark,
+  UserPlus,
 } from "lucide-react";
 import { QUOTE_STATUS, BANNER, type QuoteStatus } from "@/lib/status-colours";
 import { QuoteTimeline } from "@/components/quotes/quote-timeline";
@@ -284,6 +285,10 @@ export function QuoteDetail() {
   // Client assignment
   const [clients, setClients] = useState<{ id: string; name: string; company: string | null }[]>([]);
   const [selectedClientId, setSelectedClientId] = useState("");
+  const [showNewClient, setShowNewClient] = useState(false);
+  const [newClientName, setNewClientName] = useState("");
+  const [newClientEmail, setNewClientEmail] = useState("");
+  const [creatingClient, setCreatingClient] = useState(false);
 
   // Send quote state
   const [sending, setSending] = useState(false);
@@ -396,6 +401,35 @@ export function QuoteDetail() {
       await fetchQuote();
     } catch (err) {
       setError(err instanceof Error ? err.message : "Unknown error");
+    }
+  }
+
+  async function handleQuickCreateClient() {
+    if (!newClientName.trim()) return;
+    setCreatingClient(true);
+    try {
+      const res = await fetch("/api/clients", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          name: newClientName.trim(),
+          email: newClientEmail.trim() || null,
+        }),
+      });
+      const created = await res.json();
+      if (!res.ok) throw new Error(created?.error || "Failed to create client");
+      setClients((prev) => [
+        ...prev,
+        { id: created.id, name: created.name, company: created.company ?? null },
+      ]);
+      setShowNewClient(false);
+      setNewClientName("");
+      setNewClientEmail("");
+      await handleClientChange(created.id);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Failed to create client");
+    } finally {
+      setCreatingClient(false);
     }
   }
 
@@ -709,12 +743,55 @@ export function QuoteDetail() {
           </CardHeader>
           <CardContent className="space-y-3">
             <div className="grid grid-cols-2 gap-3">
-              <Select
-                label="Client"
-                options={clientOptions}
-                value={selectedClientId}
-                onChange={(e) => handleClientChange(e.target.value)}
-              />
+              <div>
+                <Select
+                  label="Client"
+                  options={clientOptions}
+                  value={selectedClientId}
+                  onChange={(e) => handleClientChange(e.target.value)}
+                />
+                {!showNewClient ? (
+                  <button
+                    type="button"
+                    onClick={() => setShowNewClient(true)}
+                    className="mt-1 flex items-center gap-1 text-xs text-primary hover:underline"
+                  >
+                    <UserPlus className="h-3 w-3" />
+                    Create new client
+                  </button>
+                ) : (
+                  <div className="mt-2 space-y-2 rounded-md border border-border bg-muted/30 p-3">
+                    <div className="flex items-center justify-between">
+                      <p className="text-xs font-medium">New Client</p>
+                      <button
+                        type="button"
+                        onClick={() => { setShowNewClient(false); setNewClientName(""); setNewClientEmail(""); }}
+                        className="text-xs text-muted-foreground hover:text-foreground"
+                      >
+                        Cancel
+                      </button>
+                    </div>
+                    <Input
+                      value={newClientName}
+                      onChange={(e) => setNewClientName(e.target.value)}
+                      placeholder="Client name *"
+                    />
+                    <Input
+                      value={newClientEmail}
+                      onChange={(e) => setNewClientEmail(e.target.value)}
+                      placeholder="Email (optional)"
+                      type="email"
+                    />
+                    <Button
+                      size="sm"
+                      onClick={handleQuickCreateClient}
+                      disabled={creatingClient || !newClientName.trim()}
+                    >
+                      {creatingClient ? "Creating..." : "Create Client"}
+                    </Button>
+                  </div>
+                )}
+              </div>
               <Select
                 label="Status"
                 value={quote.status}
