@@ -23,6 +23,7 @@ import {
   Plug,
   BookTemplate,
   UserCircle,
+  Map,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { getEffectiveTier } from "@/lib/tier";
@@ -75,6 +76,12 @@ const navGroups: NavGroup[] = [
     ],
   },
 ];
+
+const roadmapItem: NavItem = {
+  href: "/roadmap",
+  label: "Roadmap",
+  icon: Map,
+};
 
 const accountItem: NavItem = {
   href: "/account",
@@ -283,8 +290,14 @@ export function Sidebar({ open, onClose }: SidebarProps) {
           )}
         </nav>
 
-        {/* Account & Settings — separated */}
+        {/* Account, Settings & Roadmap — separated */}
         <div className="border-t border-sidebar-border px-2 py-2">
+          <NavLink
+            item={roadmapItem}
+            isActive={isRouteActive(roadmapItem.href, pathname)}
+            onClose={onClose}
+            compact
+          />
           <NavLink
             item={accountItem}
             isActive={isRouteActive(accountItem.href, pathname)}
