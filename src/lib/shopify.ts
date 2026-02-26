@@ -198,7 +198,7 @@ export async function fetchOrders(
   params?: { since_id?: string; created_at_min?: string; limit?: number; status?: string; fulfillment_status?: string }
 ): Promise<ShopifyOrder[]> {
   const query = new URLSearchParams();
-  query.set("status", params?.status ?? "any");
+  query.set("status", params?.status ?? "open");
   query.set("fulfillment_status", params?.fulfillment_status ?? "unfulfilled");
   query.set("limit", String(params?.limit ?? 50));
   if (params?.since_id) query.set("since_id", params.since_id);
