@@ -7,7 +7,9 @@ import { Input } from "@/components/ui/input";
 import { Select } from "@/components/ui/select";
 import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card";
 import { Textarea } from "@/components/ui/textarea";
-import { ArrowLeft, Loader2, Calculator, UserPlus, X } from "lucide-react";
+import { ArrowLeft, Loader2, Calculator, UserPlus, X, Sparkles } from "lucide-react";
+import { useSession } from "next-auth/react";
+import { getEffectiveTier, hasFeature } from "@/lib/tier";
 import { BANNER } from "@/lib/status-colours";
 
 // ---------------------------------------------------------------------------
@@ -91,6 +93,30 @@ function readCalculatorData(): CalculatorLineItem[] {
 export function NewQuote() {
   const router = useRouter();
   const searchParams = useSearchParams();
+  const { data: session } = useSession();
+
+  // AI assistant (Pro only)
+  const user = session?.user as {
+    role?: string;
+    subscriptionTier?: string;
+    subscriptionStatus?: string;
+    trialEndsAt?: string | null;
+  } | undefined;
+  const isPro = user
+    ? hasFeature(
+        getEffectiveTier({
+          subscriptionTier: user.subscriptionTier ?? "free",
+          subscriptionStatus: user.subscriptionStatus ?? "",
+          trialEndsAt: user.trialEndsAt ?? null,
+          role: user.role,
+        }),
+        "ai_assistant"
+      )
+    : false;
+  const [showAiDraft, setShowAiDraft] = useState(false);
+  const [aiPrompt, setAiPrompt] = useState("");
+  const [aiLoading, setAiLoading] = useState(false);
+  const [aiExplanation, setAiExplanation] = useState<string | null>(null);
 
   // Client state
   const [clients, setClients] = useState<ClientOption[]>([]);
@@ -193,6 +219,41 @@ export function NewQuote() {
     }
   }
 
+  async function handleAiDraft() {
+    if (!aiPrompt.trim()) return;
+    setAiLoading(true);
+    setError(null);
+    setAiExplanation(null);
+    try {
+      const res = await fetch("/api/ai/quote-draft", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ prompt: aiPrompt.trim() }),
+      });
+      if (!res.ok) {
+        const body = await res.json().catch(() => null);
+        if (res.status === 403 && body?.code === "PRO_REQUIRED") {
+          throw new Error("AI Quote Assistant requires a Pro subscription.");
+        }
+        throw new Error(body?.error || "Failed to generate quote draft");
+      }
+      const data = await res.json();
+      if (data.lineItems?.length > 0) {
+        setCalcLineItems(data.lineItems);
+        setMarkupPct("0"); // AI already calculated full costs
+      }
+      if (data.explanation) {
+        setAiExplanation(data.explanation);
+      }
+      setShowAiDraft(false);
+      setAiPrompt("");
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "AI draft failed");
+    } finally {
+      setAiLoading(false);
+    }
+  }
+
   async function handleCreate() {
     if (!selectedClientId) {
       setError("Please select a client before creating a quote.");
@@ -277,32 +338,121 @@ export function NewQuote() {
               </div>
             )}
 
-            {/* ---- Template selector ---- */}
-            {templates.length > 0 && calcLineItems.length === 0 && (
-              <Select
-                label="Start from Template"
-                value=""
-                onChange={(e) => {
-                  const t = templates.find((tpl) => tpl.id === e.target.value);
-                  if (!t) return;
-                  // Apply template data
-                  setMarkupPct(String(t.markupPct));
-                  if (t.notes) setNotes(t.notes);
-                  if (t.terms) setTerms(t.terms);
-                  if (t.lineItems) {
-                    try {
-                      const items = JSON.parse(t.lineItems) as CalculatorLineItem[];
-                      setCalcLineItems(items);
-                    } catch {
-                      // ignore parse errors
-                    }
-                  }
-                }}
-                options={[
-                  { value: "", label: "-- None (blank quote) --" },
-                  ...templates.map((t) => ({ value: t.id, label: t.name })),
-                ]}
-              />
+            {/* ---- Template selector + AI Draft ---- */}
+            {calcLineItems.length === 0 && (
+              <div className="flex items-end gap-3">
+                {templates.length > 0 && (
+                  <div className="flex-1">
+                    <Select
+                      label="Start from Template"
+                      value=""
+                      onChange={(e) => {
+                        const t = templates.find((tpl) => tpl.id === e.target.value);
+                        if (!t) return;
+                        setMarkupPct(String(t.markupPct));
+                        if (t.notes) setNotes(t.notes);
+                        if (t.terms) setTerms(t.terms);
+                        if (t.lineItems) {
+                          try {
+                            const items = JSON.parse(t.lineItems) as CalculatorLineItem[];
+                            setCalcLineItems(items);
+                          } catch {
+                            // ignore parse errors
+                          }
+                        }
+                      }}
+                      options={[
+                        { value: "", label: "-- None (blank quote) --" },
+                        ...templates.map((t) => ({ value: t.id, label: t.name })),
+                      ]}
+                    />
+                  </div>
+                )}
+                {isPro && (
+                  <Button
+                    type="button"
+                    variant="secondary"
+                    size="sm"
+                    onClick={() => setShowAiDraft(true)}
+                    className="mb-0.5 shrink-0"
+                  >
+                    <Sparkles className="mr-1.5 h-3.5 w-3.5" />
+                    AI Draft
+                  </Button>
+                )}
+              </div>
+            )}
+
+            {/* ---- AI Draft dialog ---- */}
+            {showAiDraft && (
+              <div className="rounded-md border border-primary/30 bg-primary/5 p-4 space-y-3">
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center gap-2 text-sm font-semibold text-primary">
+                    <Sparkles className="h-4 w-4" />
+                    AI Quote Assistant
+                  </div>
+                  <button
+                    type="button"
+                    onClick={() => { setShowAiDraft(false); setAiPrompt(""); }}
+                    className="rounded p-1 text-muted-foreground hover:text-foreground"
+                  >
+                    <X className="h-3.5 w-3.5" />
+                  </button>
+                </div>
+                <p className="text-xs text-muted-foreground">
+                  Describe the print job in plain English and AI will generate line items with estimated costs.
+                </p>
+                <Textarea
+                  placeholder="e.g. 50x phone stands in black PETG, each about 30g, plus 10x cable clips in TPU..."
+                  value={aiPrompt}
+                  onChange={(e) => setAiPrompt(e.target.value)}
+                  rows={3}
+                />
+                <div className="flex justify-end gap-2">
+                  <Button
+                    type="button"
+                    variant="ghost"
+                    size="sm"
+                    onClick={() => { setShowAiDraft(false); setAiPrompt(""); }}
+                    disabled={aiLoading}
+                  >
+                    Cancel
+                  </Button>
+                  <Button
+                    type="button"
+                    size="sm"
+                    onClick={handleAiDraft}
+                    disabled={aiLoading || !aiPrompt.trim()}
+                  >
+                    {aiLoading ? (
+                      <>
+                        <Loader2 className="mr-1.5 h-3.5 w-3.5 animate-spin" />
+                        Generating...
+                      </>
+                    ) : (
+                      <>
+                        <Sparkles className="mr-1.5 h-3.5 w-3.5" />
+                        Generate Draft
+                      </>
+                    )}
+                  </Button>
+                </div>
+              </div>
+            )}
+
+            {/* AI explanation note */}
+            {aiExplanation && (
+              <div className="flex items-start gap-2 rounded-md border border-primary/20 bg-primary/5 p-3 text-xs text-muted-foreground">
+                <Sparkles className="mt-0.5 h-3 w-3 shrink-0 text-primary" />
+                <div className="flex-1">{aiExplanation}</div>
+                <button
+                  type="button"
+                  onClick={() => setAiExplanation(null)}
+                  className="shrink-0 rounded p-0.5 hover:text-foreground"
+                >
+                  <X className="h-3 w-3" />
+                </button>
+              </div>
             )}
 
             {/* ---- Client selector (required, first thing) ---- */}

@@ -5,56 +5,50 @@
 
 ## Last Updated
 
-- **Date:** 2026-02-26 14:00
+- **Date:** 2026-02-26 22:10
 - **Branch:** main
-- **Focus:** SaaS conversion v4.0.0 — deployed and live at crm.printforge.com.au
+- **Focus:** v4.2.0 — AI Quote Assistant
 
 ## Accomplished
 
-- **This session — SaaS conversion (v4.0.0)**:
-  - **Markup hiding**: Removed markup % from quote PDF and client portal
-  - **Database**: Migrations 0012–0014 (subscriptions, payment terms, waitlist business name)
-  - **Tier system**: `src/lib/tier.ts` — Free/Pro, `getEffectiveTier()`, `hasFeature()`, `requireFeature()`
-  - **Admin Pro bypass**: ADMIN/SUPER_ADMIN always get Pro access regardless of subscription
-  - **Stripe billing**: checkout/portal/webhook routes at `/api/billing/*`
-  - **Auth extension**: JWT + session include tier fields; `requireFeature()` gating
-  - **Feature gating**: 20+ pro-only API routes gated
-  - **Registration**: 14-day Pro trial on signup, non-admin → waitlist
-  - **UI**: BillingSettings, sidebar Pro badges, dashboard trial banner, landing pricing section
-  - **Settings page fix**: Added ToastProvider to root layout + Suspense around BillingSettings
-  - **Xero**: Per-user OAuth2, auto-sync contacts/invoices/payments (needs env vars configured)
-  - **Quote preview**: Modal showing client view before sending
-  - **Waitlist**: Public signup at `/waitlist`, admin approval tab, business name collection, auto-populate settings on approval, admin email notifications on signup
-  - **Bank details**: Settings form, invoice PDF rendering, send route
-  - **Client payment terms**: paymentTermsDays on Client, auto-fill invoice due dates, editable due date on invoice detail
-  - **Per-user numbering**: Quote (PF-YYYY-NNN) and invoice (INV-YYYY-NNN) numbers sequential per user
-  - **Admin Grant Pro**: Checkbox in edit user modal to grant/revoke Pro without Stripe
-  - **Admin notifications**: Email to ADMIN_EMAIL when someone joins waitlist
-  - **Email**: from address → hello@printforge.com.au
-  - **Landing page**: `/?preview=true` bypass for logged-in users
-  - **Marketing**: Facebook beta testers post, screenshots folder
-  - **URL**: All references use crm.printforge.com.au
-- **Prior**: v3.0.0 features, auth, admin, calculator, quotes, jobs, PDF, portal, webhooks, CSV, etc.
+- **This session — v4.2.0 (AI Quote Assistant)**:
+  - **AI Quote Assistant**: Pro-only feature — describe a print job in plain English, Claude Haiku 4.5 generates structured line items with material/printer selection, cost estimates. Lazy-init Anthropic SDK (`src/lib/anthropic.ts`), API route (`/api/ai/quote-draft`) with user-keyed rate limiting (10/15min), system prompt includes user's materials/printers/settings as context. "AI Draft" button + inline dialog on new quote page, populates line items, shows AI explanation. Feature-gated via `ai_assistant` in `PRO_FEATURES`.
+  - **Version bump**: 4.1.0 → 4.2.0
+- **Prior session — v4.1.0 (5 features + fixes)**:
+  - **Print farm calendar**: Weekly Gantt grid view on Jobs page — printer rows, hour columns (8am–8pm), native HTML5 drag-to-reschedule, unscheduled jobs sidebar, week nav, mobile fallback
+  - **Bulk actions**: Checkbox selection on quotes + invoices pages, floating action bar (change status, export CSV, delete; invoices also has mark paid), `useBulkSelection` hook, bulk API endpoints
+  - **Quote templates**: Full CRUD (`/api/quote-templates`), save-as-template from quote detail, template dropdown on new quote form, Templates page + sidebar nav
+  - **Global search + invoices**: Added invoices to search API (4th parallel query), invoices section in search dropdown with Receipt icon
+  - **Material auto-deduct**: Already existed in `jobs/[id]/route.ts`, confirmed complete
+  - **Fix: logger import**: `logSystem` → `log` in `quotes/route.ts`
+  - **Fix: actions position**: Moved Actions card above Line Items on both quote-detail and invoice-detail
+  - **Fix: dark mode charts**: Revenue charts use `var(--color-chart-*)` CSS vars instead of broken `hsl(var(--*))` refs (Tailwind v4 uses oklch)
+  - **Migration 0017**: Job `scheduledStart`/`scheduledEnd` + `QuoteTemplate` model
+  - **Version bump**: 4.0.4 → 4.1.0
+- **Prior**: v4.0.0 SaaS (tiers, Stripe, Xero, waitlist), v3.0.0 features, auth, admin, calculator, quotes, jobs, PDF, portal, etc.
 
 ## In Progress
 
-- Nothing — all planned features complete
+- Nothing — all planned features complete and pushed
 
 ## Next Steps
 
-1. Configure Xero env vars on server (XERO_CLIENT_ID, XERO_CLIENT_SECRET, XERO_REDIRECT_URI)
-2. Configure Stripe env vars on server if not already done
-3. Invoice Stripe Connect (customer card payments) — future feature
-4. Product screenshots for marketing (requires running instance)
-5. End-to-end testing on production
+1. Run migration 0017 on production (`prisma migrate deploy`)
+2. Configure Xero env vars on server (XERO_CLIENT_ID, XERO_CLIENT_SECRET, XERO_REDIRECT_URI)
+3. Configure Stripe env vars on server if not already done
+4. End-to-end testing on production
+5. Product screenshots for marketing
 
 ## Context
 
-- Version: 4.0.0
+- Version: 4.2.0
 - App URL: crm.printforge.com.au
 - Tiers: Free / Pro ($29/mo, $290/yr), 14-day trial; admins always Pro
 - Stripe: SaaS billing, webhook at `/api/billing/webhook`
 - Xero: Per-user OAuth2 at `/api/xero/*` (needs env vars)
 - Waitlist: `/waitlist` public signup, `/register` also feeds waitlist, admin approval + email notification
 - Email: Resend SDK, from hello@printforge.com.au
-- Env vars needed: STRIPE_SECRET_KEY, STRIPE_WEBHOOK_SECRET, STRIPE_PRO_MONTHLY_PRICE_ID, STRIPE_PRO_ANNUAL_PRICE_ID, NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY, XERO_CLIENT_ID, XERO_CLIENT_SECRET, XERO_REDIRECT_URI
+- New models: QuoteTemplate (templates CRUD), Job scheduling fields (calendar)
+- New pages: `/quote-templates` (template management)
+- New API routes: `/api/quote-templates`, `/api/quotes/bulk`, `/api/invoices/bulk`, `/api/ai/quote-draft`
+- Env var needed: `ANTHROPIC_API_KEY` (for AI Quote Assistant)

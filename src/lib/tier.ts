@@ -19,7 +19,8 @@ export type Feature =
   | "job_photos"
   | "business_logo"
   | "dashboard_analytics"
-  | "xero_sync";
+  | "xero_sync"
+  | "ai_assistant";
 
 const PRO_FEATURES: Set<Feature> = new Set([
   "client_portal",
@@ -33,6 +34,7 @@ const PRO_FEATURES: Set<Feature> = new Set([
   "business_logo",
   "dashboard_analytics",
   "xero_sync",
+  "ai_assistant",
 ]);
 
 /** Check if a feature requires Pro */
@@ -100,4 +102,5 @@ export const PRO_FEATURE_LIST: { feature: Feature; label: string; description: s
   { feature: "business_logo", label: "Business Logo on PDF", description: "Your logo on quote and invoice PDFs" },
   { feature: "dashboard_analytics", label: "Dashboard Analytics", description: "Printer utilisation, top materials, and markup insights" },
   { feature: "xero_sync", label: "Xero Accounting Sync", description: "Sync invoices, contacts, and payments with Xero" },
+  { feature: "ai_assistant", label: "AI Quote Assistant", description: "Describe a job in plain English and get a draft quote with line items" },
 ];
