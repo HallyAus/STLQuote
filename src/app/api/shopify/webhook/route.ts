@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
-import { verifyWebhookHmac, orderToJobNotes } from "@/lib/shopify";
+import { verifyWebhookHmac, orderToJobNotes, findOrCreateShopifyClient } from "@/lib/shopify";
 import type { ShopifyOrder } from "@/lib/shopify";
 import { fireWebhooks } from "@/lib/webhooks";
 import { log } from "@/lib/logger";
@@ -47,7 +47,7 @@ export async function POST(request: NextRequest) {
     const existing = await prisma.job.findFirst({
       where: {
         userId: user.id,
-        notes: { startsWith: `Shopify ${order.name} ` },
+        notes: { startsWith: `Shopify ${order.name}` },
       },
     });
 
@@ -55,11 +55,15 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ received: true, skipped: "duplicate" });
     }
 
+    const clientId = await findOrCreateShopifyClient(user.id, order);
+
     // Create job
     const job = await prisma.$transaction(async (tx) => {
       const newJob = await tx.job.create({
         data: {
           userId: user.id,
+          clientId,
+          price: parseFloat(order.total_price) || null,
           notes: orderToJobNotes(order),
           status: "QUEUED",
         },

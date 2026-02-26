@@ -5,8 +5,10 @@ import { getSessionUser } from "@/lib/auth-helpers";
 
 const createJobSchema = z.object({
   quoteId: z.string().optional().nullable(),
+  clientId: z.string().optional().nullable(),
   printerId: z.string().optional().nullable(),
   materialId: z.string().optional().nullable(),
+  price: z.number().optional().nullable(),
   notes: z.string().optional().nullable(),
   scheduledStart: z.string().datetime().optional().nullable(),
   scheduledEnd: z.string().datetime().optional().nullable(),
@@ -21,6 +23,7 @@ export async function GET() {
       where: { userId: user.id },
       include: {
         quote: { select: { quoteNumber: true, total: true } },
+        client: { select: { id: true, name: true, email: true } },
         printer: { select: { name: true } },
       },
       orderBy: { createdAt: "desc" },
@@ -64,6 +67,7 @@ export async function POST(request: NextRequest) {
         },
         include: {
           quote: { select: { quoteNumber: true, total: true } },
+          client: { select: { id: true, name: true, email: true } },
           printer: { select: { name: true } },
         },
       });

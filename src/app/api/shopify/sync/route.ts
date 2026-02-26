@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { requireFeature } from "@/lib/auth-helpers";
-import { getAccessToken, fetchOrders, orderToJobNotes } from "@/lib/shopify";
+import { getAccessToken, fetchOrders, orderToJobNotes, findOrCreateShopifyClient } from "@/lib/shopify";
 import { fireWebhooks } from "@/lib/webhooks";
 import { log } from "@/lib/logger";
 
@@ -55,10 +55,14 @@ export async function POST() {
         continue;
       }
 
+      const clientId = await findOrCreateShopifyClient(user.id, order);
+
       const job = await prisma.$transaction(async (tx) => {
         const newJob = await tx.job.create({
           data: {
             userId: user.id,
+            clientId,
+            price: parseFloat(order.total_price) || null,
             notes: orderToJobNotes(order),
             status: "QUEUED",
           },

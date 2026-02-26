@@ -48,6 +48,9 @@ export async function GET() {
 
       // Consumables
       consumableAlerts,
+
+      // Job revenue (Shopify etc)
+      jobRevenue,
     ] = await Promise.all([
       // Quote counts
       prisma.quote.count({ where: { userId: user.id } }),
@@ -122,6 +125,12 @@ export async function GET() {
         },
         orderBy: { stockQty: "asc" },
       }),
+
+      // Job revenue (jobs with price but no quote — e.g. Shopify imports)
+      prisma.job.aggregate({
+        where: { userId: user.id, price: { not: null }, quoteId: null },
+        _sum: { price: true },
+      }),
     ]);
 
     // Derive job status map
@@ -164,7 +173,7 @@ export async function GET() {
         acceptedQuotes,
         rejectedQuotes,
         expiredQuotes,
-        totalRevenue: acceptedRevenue._sum.total ?? 0,
+        totalRevenue: (acceptedRevenue._sum.total ?? 0) + (jobRevenue._sum.price ?? 0),
         quotesThisMonth,
         totalJobs,
         jobStatusMap,

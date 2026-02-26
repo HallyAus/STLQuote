@@ -57,8 +57,10 @@ type JobStatus =
 interface Job {
   id: string;
   quoteId: string | null;
+  clientId: string | null;
   printerId: string | null;
   status: JobStatus;
+  price: number | null;
   actualTimeMinutes: number | null;
   actualWeightG: number | null;
   notes: string | null;
@@ -69,6 +71,7 @@ interface Job {
   createdAt: string;
   updatedAt: string;
   quote: { quoteNumber: string; total: number } | null;
+  client: { id: string; name: string; email: string | null } | null;
   printer: { name: string } | null;
 }
 
@@ -168,15 +171,18 @@ function JobCardContent({
           <div className="min-w-0 flex-1">
             <div className="flex items-start justify-between gap-2">
               <div className="min-w-0 flex-1">
+                {job.client && (
+                  <p className="text-sm font-semibold truncate">{job.client.name}</p>
+                )}
                 {job.quote && (
-                  <p className="text-sm font-semibold">{job.quote.quoteNumber}</p>
+                  <p className="text-xs text-muted-foreground">{job.quote.quoteNumber}</p>
                 )}
                 {job.printer && (
                   <p className="text-xs text-muted-foreground">
                     {job.printer.name}
                   </p>
                 )}
-                {!job.quote && !job.printer && (
+                {!job.client && !job.quote && !job.printer && (
                   <p className="text-sm font-medium text-muted-foreground">
                     Unlinked job
                   </p>
@@ -194,6 +200,14 @@ function JobCardContent({
             )}
 
             <div className="mt-2 flex items-center justify-between">
+              {job.price != null && (
+                <span className="text-xs font-semibold text-foreground">
+                  ${job.price.toFixed(2)}
+                </span>
+              )}
+            </div>
+
+            <div className="mt-1 flex items-center justify-between">
               <span className="text-xs text-muted-foreground">
                 {formatDate(job.createdAt)}
               </span>
@@ -338,12 +352,53 @@ function ListView({
   onCardClick,
   onMoveNext,
   movingId,
+  onRefresh,
 }: {
   jobs: Job[];
   onCardClick: (job: Job) => void;
   onMoveNext: (job: Job) => void;
   movingId: string | null;
+  onRefresh: () => void;
 }) {
+  const [selected, setSelected] = useState<Set<string>>(new Set());
+  const [bulkLoading, setBulkLoading] = useState(false);
+
+  const allSelected = jobs.length > 0 && selected.size === jobs.length;
+
+  function toggleAll() {
+    setSelected(allSelected ? new Set() : new Set(jobs.map((j) => j.id)));
+  }
+
+  function toggleOne(id: string) {
+    setSelected((prev) => {
+      const next = new Set(prev);
+      if (next.has(id)) next.delete(id);
+      else next.add(id);
+      return next;
+    });
+  }
+
+  async function handleBulkDelete() {
+    if (selected.size === 0) return;
+    if (!confirm(`Delete ${selected.size} job${selected.size !== 1 ? "s" : ""}? This cannot be undone.`)) return;
+    setBulkLoading(true);
+    try {
+      const res = await fetch("/api/jobs/bulk", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ ids: Array.from(selected), action: "delete" }),
+      });
+      if (res.ok) {
+        setSelected(new Set());
+        onRefresh();
+      }
+    } catch {
+      // Best-effort
+    } finally {
+      setBulkLoading(false);
+    }
+  }
+
   if (jobs.length === 0) {
     return (
       <Card>
@@ -356,90 +411,146 @@ function ListView({
   }
 
   return (
-    <Card>
-      <div className="overflow-x-auto">
-        <table className="w-full text-sm">
-          <thead>
-            <tr className="border-b border-border text-left">
-              <th className="px-4 py-3 font-medium text-muted-foreground">
-                Quote
-              </th>
-              <th className="px-4 py-3 font-medium text-muted-foreground">
-                Printer
-              </th>
-              <th className="px-4 py-3 font-medium text-muted-foreground">
-                Status
-              </th>
-              <th className="px-4 py-3 font-medium text-muted-foreground">
-                Notes
-              </th>
-              <th className="px-4 py-3 font-medium text-muted-foreground">
-                Created
-              </th>
-              <th className="px-4 py-3 font-medium text-muted-foreground text-right">
-                Action
-              </th>
-            </tr>
-          </thead>
-          <tbody>
-            {jobs.map((job) => {
-              const config = JOB_STATUS[job.status];
-              const nextStatus = getNextStatus(job.status);
-              const isMoving = movingId === job.id;
+    <>
+      {/* Bulk action bar */}
+      {selected.size > 0 && (
+        <div className="sticky top-0 z-10 flex items-center gap-3 rounded-lg border border-border bg-card p-3 shadow-sm mb-3">
+          <span className="text-sm font-medium">
+            {selected.size} selected
+          </span>
+          <Button
+            variant="destructive"
+            size="sm"
+            onClick={handleBulkDelete}
+            disabled={bulkLoading}
+          >
+            {bulkLoading ? (
+              <Loader2 className="mr-2 h-3 w-3 animate-spin" />
+            ) : (
+              <Trash2 className="mr-2 h-3 w-3" />
+            )}
+            Delete
+          </Button>
+          <Button
+            variant="ghost"
+            size="sm"
+            onClick={() => setSelected(new Set())}
+          >
+            Clear
+          </Button>
+        </div>
+      )}
 
-              return (
-                <tr
-                  key={job.id}
-                  className="cursor-pointer border-b border-border last:border-0 transition-colors hover:bg-muted/50"
-                  onClick={() => onCardClick(job)}
-                >
-                  <td className="px-4 py-3 font-medium">
-                    {job.quote?.quoteNumber ?? "\u2014"}
-                  </td>
-                  <td className="px-4 py-3 text-muted-foreground">
-                    {job.printer?.name ?? "\u2014"}
-                  </td>
-                  <td className="px-4 py-3">
-                    <Badge variant={JOB_STATUS[job.status].variant}>
-                      {config.label}
-                    </Badge>
-                  </td>
-                  <td className="max-w-xs px-4 py-3 text-muted-foreground truncate">
-                    {job.notes ? truncate(job.notes, 40) : "\u2014"}
-                  </td>
-                  <td className="px-4 py-3 text-muted-foreground">
-                    {formatDate(job.createdAt)}
-                  </td>
-                  <td className="px-4 py-3 text-right">
-                    {nextStatus && (
-                      <Button
-                        variant="ghost"
-                        size="sm"
-                        className="h-7 px-2 text-xs"
-                        disabled={isMoving}
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          onMoveNext(job);
-                        }}
-                      >
-                        {isMoving ? (
-                          <Loader2 className="h-3 w-3 animate-spin" />
-                        ) : (
-                          <>
-                            <ChevronRight className="mr-1 h-3 w-3" />
-                            {JOB_STATUS[nextStatus].label}
-                          </>
-                        )}
-                      </Button>
+      <Card>
+        <div className="overflow-x-auto">
+          <table className="w-full text-sm">
+            <thead>
+              <tr className="border-b border-border text-left">
+                <th className="px-3 py-3 w-10">
+                  <input
+                    type="checkbox"
+                    checked={allSelected}
+                    onChange={toggleAll}
+                    className="h-4 w-4 rounded border-border accent-primary"
+                  />
+                </th>
+                <th className="px-4 py-3 font-medium text-muted-foreground">
+                  Client
+                </th>
+                <th className="px-4 py-3 font-medium text-muted-foreground">
+                  Quote
+                </th>
+                <th className="px-4 py-3 font-medium text-muted-foreground">
+                  Printer
+                </th>
+                <th className="px-4 py-3 font-medium text-muted-foreground">
+                  Status
+                </th>
+                <th className="px-4 py-3 font-medium text-muted-foreground text-right">
+                  Price
+                </th>
+                <th className="px-4 py-3 font-medium text-muted-foreground">
+                  Created
+                </th>
+                <th className="px-4 py-3 font-medium text-muted-foreground text-right">
+                  Action
+                </th>
+              </tr>
+            </thead>
+            <tbody>
+              {jobs.map((job) => {
+                const config = JOB_STATUS[job.status];
+                const nextStatus = getNextStatus(job.status);
+                const isMoving = movingId === job.id;
+
+                return (
+                  <tr
+                    key={job.id}
+                    className={cn(
+                      "cursor-pointer border-b border-border last:border-0 transition-colors hover:bg-muted/50",
+                      selected.has(job.id) && "bg-primary/5"
                     )}
-                  </td>
-                </tr>
-              );
-            })}
-          </tbody>
-        </table>
-      </div>
-    </Card>
+                    onClick={() => onCardClick(job)}
+                  >
+                    <td className="px-3 py-3" onClick={(e) => e.stopPropagation()}>
+                      <input
+                        type="checkbox"
+                        checked={selected.has(job.id)}
+                        onChange={() => toggleOne(job.id)}
+                        className="h-4 w-4 rounded border-border accent-primary"
+                      />
+                    </td>
+                    <td className="px-4 py-3 font-medium">
+                      {job.client?.name ?? "\u2014"}
+                    </td>
+                    <td className="px-4 py-3 text-muted-foreground">
+                      {job.quote?.quoteNumber ?? "\u2014"}
+                    </td>
+                    <td className="px-4 py-3 text-muted-foreground">
+                      {job.printer?.name ?? "\u2014"}
+                    </td>
+                    <td className="px-4 py-3">
+                      <Badge variant={JOB_STATUS[job.status].variant}>
+                        {config.label}
+                      </Badge>
+                    </td>
+                    <td className="px-4 py-3 text-right font-medium">
+                      {job.price != null ? `$${job.price.toFixed(2)}` : "\u2014"}
+                    </td>
+                    <td className="px-4 py-3 text-muted-foreground">
+                      {formatDate(job.createdAt)}
+                    </td>
+                    <td className="px-4 py-3 text-right">
+                      {nextStatus && (
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          className="h-7 px-2 text-xs"
+                          disabled={isMoving}
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            onMoveNext(job);
+                          }}
+                        >
+                          {isMoving ? (
+                            <Loader2 className="h-3 w-3 animate-spin" />
+                          ) : (
+                            <>
+                              <ChevronRight className="mr-1 h-3 w-3" />
+                              {JOB_STATUS[nextStatus].label}
+                            </>
+                          )}
+                        </Button>
+                      )}
+                    </td>
+                  </tr>
+                );
+              })}
+            </tbody>
+          </table>
+        </div>
+      </Card>
+    </>
   );
 }
 
@@ -606,6 +717,7 @@ function JobDetailModal({
 }) {
   const [status, setStatus] = useState<JobStatus>("QUEUED");
   const [printerId, setPrinterId] = useState("");
+  const [price, setPrice] = useState("");
   const [scheduledStart, setScheduledStart] = useState("");
   const [scheduledEnd, setScheduledEnd] = useState("");
   const [actualTime, setActualTime] = useState("");
@@ -620,6 +732,7 @@ function JobDetailModal({
     if (job) {
       setStatus(job.status);
       setPrinterId(job.printerId || "");
+      setPrice(job.price?.toString() ?? "");
       setScheduledStart(job.scheduledStart ? new Date(job.scheduledStart).toISOString().slice(0, 16) : "");
       setScheduledEnd(job.scheduledEnd ? new Date(job.scheduledEnd).toISOString().slice(0, 16) : "");
       setActualTime(job.actualTimeMinutes?.toString() ?? "");
@@ -641,6 +754,7 @@ function JobDetailModal({
         body: JSON.stringify({
           status,
           printerId: printerId || null,
+          price: price ? parseFloat(price) : null,
           scheduledStart: scheduledStart ? new Date(scheduledStart).toISOString() : null,
           scheduledEnd: scheduledEnd ? new Date(scheduledEnd).toISOString() : null,
           actualTimeMinutes: actualTime ? parseFloat(actualTime) : null,
@@ -702,6 +816,15 @@ function JobDetailModal({
 
         {/* Read-only info */}
         <div className="grid grid-cols-2 gap-3 text-sm">
+          {job.client && (
+            <div>
+              <span className="text-muted-foreground">Client</span>
+              <p className="font-medium">{job.client.name}</p>
+              {job.client.email && (
+                <p className="text-xs text-muted-foreground">{job.client.email}</p>
+              )}
+            </div>
+          )}
           <div>
             <span className="text-muted-foreground">Quote</span>
             <p className="font-medium">
@@ -750,6 +873,16 @@ function JobDetailModal({
               label: p.name,
             })),
           ]}
+        />
+
+        <Input
+          label="Price ($)"
+          type="number"
+          value={price}
+          onChange={(e) => setPrice(e.target.value)}
+          placeholder="0.00"
+          min={0}
+          step="0.01"
         />
 
         <div className="grid grid-cols-2 gap-3">
@@ -1202,6 +1335,7 @@ export function JobsPage() {
           onCardClick={(job) => setDetailJob(job)}
           onMoveNext={handleMoveNext}
           movingId={movingId}
+          onRefresh={fetchJobs}
         />
       )}
 

@@ -119,6 +119,36 @@ export async function POST(request: NextRequest) {
       }
     }
 
+    // If jobId is provided (and no quoteId), pre-fill from job data
+    if (invoiceData.jobId && !invoiceData.quoteId) {
+      const job = await prisma.job.findFirst({
+        where: { id: invoiceData.jobId, userId: user.id },
+        select: { clientId: true, price: true, notes: true, quoteId: true },
+      });
+
+      if (job) {
+        // Use job's quote if available
+        if (job.quoteId) {
+          invoiceData.quoteId = job.quoteId;
+        }
+        // Use job client if not explicitly set
+        if (!invoiceData.clientId && job.clientId) {
+          invoiceData.clientId = job.clientId;
+        }
+        // Create line item from job price if no line items and no quote
+        if (lineItems.length === 0 && !job.quoteId && job.price) {
+          const desc = job.notes?.split("\n")[0] || "Job";
+          lineItems = [{
+            description: desc,
+            quantity: 1,
+            unitPrice: job.price,
+            lineTotal: job.price,
+            notes: null,
+          }];
+        }
+      }
+    }
+
     // Auto-calculate due date from client's payment terms if not explicitly provided
     if (!invoiceData.dueDate && invoiceData.clientId) {
       const client = await prisma.client.findFirst({

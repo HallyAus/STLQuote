@@ -179,6 +179,21 @@ export function Sidebar({ open, onClose }: SidebarProps) {
     return () => { cancelled = true; };
   }, [isAdmin]);
 
+  // Fetch queued job count
+  const [queuedJobCount, setQueuedJobCount] = useState(0);
+  useEffect(() => {
+    let cancelled = false;
+    fetch("/api/jobs")
+      .then((res) => (res.ok ? res.json() : []))
+      .then((data: { status?: string }[]) => {
+        if (!cancelled && Array.isArray(data)) {
+          setQueuedJobCount(data.filter((j) => j.status === "QUEUED").length);
+        }
+      })
+      .catch(() => {});
+    return () => { cancelled = true; };
+  }, []);
+
   return (
     <>
       {/* Mobile overlay */}
@@ -234,6 +249,7 @@ export function Sidebar({ open, onClose }: SidebarProps) {
                     isActive={isRouteActive(item.href, pathname)}
                     onClose={onClose}
                     locked={item.proOnly && isFree}
+                    badge={item.href === "/jobs" ? queuedJobCount : undefined}
                   />
                 ))}
               </div>

@@ -201,6 +201,7 @@ model Client {
 
   quotes       Quote[]
   invoices     Invoice[]
+  jobs         Job[]
   interactions ClientInteraction[]
 
   @@index([userId])
@@ -293,11 +294,14 @@ model Job {
   user              User      @relation(fields: [userId], references: [id], onDelete: Cascade)
   quoteId           String?
   quote             Quote?    @relation(fields: [quoteId], references: [id])
+  clientId          String?
+  client            Client?   @relation(fields: [clientId], references: [id])
   printerId         String?
   printer           Printer?  @relation(fields: [printerId], references: [id])
   materialId        String?
   material          Material? @relation(fields: [materialId], references: [id])
   status            JobStatus @default(QUEUED)
+  price             Float?
   actualTimeMinutes Float?
   actualWeightG     Float?
   notes             String?   @db.Text

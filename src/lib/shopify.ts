@@ -195,10 +195,11 @@ export interface ShopifyOrder {
 export async function fetchOrders(
   shopDomain: string,
   accessToken: string,
-  params?: { since_id?: string; created_at_min?: string; limit?: number; status?: string }
+  params?: { since_id?: string; created_at_min?: string; limit?: number; status?: string; fulfillment_status?: string }
 ): Promise<ShopifyOrder[]> {
   const query = new URLSearchParams();
   query.set("status", params?.status ?? "any");
+  query.set("fulfillment_status", params?.fulfillment_status ?? "unfulfilled");
   query.set("limit", String(params?.limit ?? 50));
   if (params?.since_id) query.set("since_id", params.since_id);
   if (params?.created_at_min) query.set("created_at_min", params.created_at_min);
@@ -287,16 +288,9 @@ export function normaliseShopDomain(input: string): string {
   return domain;
 }
 
-/** Build job notes from a Shopify order */
+/** Build job notes from a Shopify order (client + price stored separately) */
 export function orderToJobNotes(order: ShopifyOrder): string {
-  const customerName = order.customer
-    ? [order.customer.first_name, order.customer.last_name].filter(Boolean).join(" ")
-    : "Unknown customer";
-  const customerEmail = order.customer?.email ?? order.email ?? "";
-
-  const lines = [
-    `Shopify ${order.name} — ${customerName}${customerEmail ? ` (${customerEmail})` : ""}`,
-  ];
+  const lines = [`Shopify ${order.name}`];
 
   if (order.line_items.length > 0) {
     lines.push("", "Items:");
@@ -310,7 +304,39 @@ export function orderToJobNotes(order: ShopifyOrder): string {
     lines.push("", `Order note: ${order.note}`);
   }
 
-  lines.push("", `Total: $${order.total_price} ${order.currency}`);
-
   return lines.join("\n");
+}
+
+/** Find an existing client by email or create a new one from Shopify order data */
+export async function findOrCreateShopifyClient(
+  userId: string,
+  order: ShopifyOrder
+): Promise<string | null> {
+  const email = order.customer?.email ?? order.email;
+  const firstName = order.customer?.first_name ?? "";
+  const lastName = order.customer?.last_name ?? "";
+  const name = [firstName, lastName].filter(Boolean).join(" ") || null;
+
+  if (!name && !email) return null;
+
+  // Try to find by email first (most reliable match)
+  if (email) {
+    const existing = await prisma.client.findFirst({
+      where: { userId, email: email.toLowerCase() },
+      select: { id: true },
+    });
+    if (existing) return existing.id;
+  }
+
+  // Create new client
+  const client = await prisma.client.create({
+    data: {
+      userId,
+      name: name || email || "Shopify Customer",
+      email: email?.toLowerCase() ?? null,
+      tags: ["shopify"],
+    },
+  });
+
+  return client.id;
 }

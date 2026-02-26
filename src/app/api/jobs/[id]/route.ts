@@ -16,8 +16,10 @@ const JOB_STATUS_VALUES = [
 
 const updateJobSchema = z.object({
   status: z.enum(JOB_STATUS_VALUES).optional(),
+  clientId: z.string().optional().nullable(),
   printerId: z.string().optional().nullable(),
   materialId: z.string().optional().nullable(),
+  price: z.number().min(0).optional().nullable(),
   actualTimeMinutes: z.number().min(0).optional().nullable(),
   actualWeightG: z.number().min(0).optional().nullable(),
   notes: z.string().optional().nullable(),
@@ -40,6 +42,7 @@ export async function GET(
       where: { id, userId: user.id },
       include: {
         quote: { select: { quoteNumber: true, total: true, status: true } },
+        client: { select: { id: true, name: true, email: true } },
         printer: { select: { name: true } },
       },
     });
@@ -134,6 +137,7 @@ export async function PUT(
         data,
         include: {
           quote: { select: { quoteNumber: true, total: true, status: true } },
+          client: { select: { id: true, name: true, email: true } },
           printer: { select: { name: true } },
         },
       });
