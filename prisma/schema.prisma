@@ -207,7 +207,7 @@ model Quote {
   user        User        @relation(fields: [userId], references: [id], onDelete: Cascade)
   clientId    String?
   client      Client?     @relation(fields: [clientId], references: [id])
-  quoteNumber String      @unique
+  quoteNumber String
   status      QuoteStatus @default(DRAFT)
   portalToken String?     @unique
   subtotal    Float       @default(0)
@@ -226,6 +226,7 @@ model Quote {
   events    QuoteEvent[]
   invoices  Invoice[]
 
+  @@unique([userId, quoteNumber])
   @@index([userId])
 }
 
@@ -480,7 +481,7 @@ model Invoice {
   job           Job?          @relation(fields: [jobId], references: [id])
   clientId      String?
   client        Client?       @relation(fields: [clientId], references: [id])
-  invoiceNumber String        @unique
+  invoiceNumber String
   status        InvoiceStatus @default(DRAFT)
   portalToken   String?       @unique
   subtotal      Float         @default(0)
@@ -498,6 +499,7 @@ model Invoice {
 
   lineItems InvoiceLineItem[]
 
+  @@unique([userId, invoiceNumber])
   @@index([userId])
 }
 
