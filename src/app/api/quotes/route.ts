@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { z } from "zod";
 import { prisma } from "@/lib/prisma";
 import { getSessionUser } from "@/lib/auth-helpers";
-import { logSystem } from "@/lib/logger";
+import { log } from "@/lib/logger";
 
 const lineItemSchema = z.object({
   description: z.string().min(1, "Description is required"),
@@ -140,9 +140,9 @@ export async function POST(request: NextRequest) {
     return NextResponse.json(quote, { status: 201 });
   } catch (error) {
     console.error("Failed to create quote:", error);
-    logSystem({
+    log({
       userId: (await getSessionUser().catch(() => null))?.id,
-      type: "error",
+      type: "system",
       level: "error",
       message: "Failed to create quote",
       detail: error instanceof Error ? error.message : String(error),

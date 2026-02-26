@@ -14,6 +14,15 @@ import { BANNER } from "@/lib/status-colours";
 // Types
 // ---------------------------------------------------------------------------
 
+interface TemplateOption {
+  id: string;
+  name: string;
+  lineItems: string | null;
+  markupPct: number;
+  notes: string | null;
+  terms: string | null;
+}
+
 interface CalculatorLineItem {
   description: string;
   printWeightG: number;
@@ -101,16 +110,21 @@ export function NewQuote() {
 
   const [calcLineItems, setCalcLineItems] = useState<CalculatorLineItem[]>([]);
 
+  const [templates, setTemplates] = useState<TemplateOption[]>([]);
+
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
-  // Load clients on mount
+  // Load clients and templates on mount
   useEffect(() => {
-    async function loadClients() {
+    async function loadData() {
       try {
-        const res = await fetch("/api/clients");
-        if (res.ok) {
-          const data = await res.json();
+        const [clientsRes, templatesRes] = await Promise.all([
+          fetch("/api/clients"),
+          fetch("/api/quote-templates"),
+        ]);
+        if (clientsRes.ok) {
+          const data = await clientsRes.json();
           setClients(
             data.map((c: { id: string; name: string; company: string | null }) => ({
               id: c.id,
@@ -119,13 +133,17 @@ export function NewQuote() {
             }))
           );
         }
+        if (templatesRes.ok) {
+          const data = await templatesRes.json();
+          setTemplates(data);
+        }
       } catch {
-        // ignore — clients list will be empty
+        // ignore — lists will be empty
       } finally {
         setLoadingClients(false);
       }
     }
-    loadClients();
+    loadData();
   }, []);
 
   // Read calculator data from sessionStorage when arriving from calculator
@@ -257,6 +275,34 @@ export function NewQuote() {
               <div className={BANNER.error}>
                 {error}
               </div>
+            )}
+
+            {/* ---- Template selector ---- */}
+            {templates.length > 0 && calcLineItems.length === 0 && (
+              <Select
+                label="Start from Template"
+                value=""
+                onChange={(e) => {
+                  const t = templates.find((tpl) => tpl.id === e.target.value);
+                  if (!t) return;
+                  // Apply template data
+                  setMarkupPct(String(t.markupPct));
+                  if (t.notes) setNotes(t.notes);
+                  if (t.terms) setTerms(t.terms);
+                  if (t.lineItems) {
+                    try {
+                      const items = JSON.parse(t.lineItems) as CalculatorLineItem[];
+                      setCalcLineItems(items);
+                    } catch {
+                      // ignore parse errors
+                    }
+                  }
+                }}
+                options={[
+                  { value: "", label: "-- None (blank quote) --" },
+                  ...templates.map((t) => ({ value: t.id, label: t.name })),
+                ]}
+              />
             )}
 
             {/* ---- Client selector (required, first thing) ---- */}

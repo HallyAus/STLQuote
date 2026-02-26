@@ -23,9 +23,11 @@ import {
   Download,
   Receipt,
   Camera,
+  CalendarDays,
 } from "lucide-react";
 import { JobTimeline } from "@/components/jobs/job-timeline";
 import { PhotoGallery } from "@/components/jobs/photo-gallery";
+import { CalendarView } from "@/components/jobs/calendar-view";
 import {
   DndContext,
   DragOverlay,
@@ -60,6 +62,8 @@ interface Job {
   actualTimeMinutes: number | null;
   actualWeightG: number | null;
   notes: string | null;
+  scheduledStart: string | null;
+  scheduledEnd: string | null;
   startedAt: string | null;
   completedAt: string | null;
   createdAt: string;
@@ -602,6 +606,8 @@ function JobDetailModal({
 }) {
   const [status, setStatus] = useState<JobStatus>("QUEUED");
   const [printerId, setPrinterId] = useState("");
+  const [scheduledStart, setScheduledStart] = useState("");
+  const [scheduledEnd, setScheduledEnd] = useState("");
   const [actualTime, setActualTime] = useState("");
   const [actualWeight, setActualWeight] = useState("");
   const [notes, setNotes] = useState("");
@@ -614,6 +620,8 @@ function JobDetailModal({
     if (job) {
       setStatus(job.status);
       setPrinterId(job.printerId || "");
+      setScheduledStart(job.scheduledStart ? new Date(job.scheduledStart).toISOString().slice(0, 16) : "");
+      setScheduledEnd(job.scheduledEnd ? new Date(job.scheduledEnd).toISOString().slice(0, 16) : "");
       setActualTime(job.actualTimeMinutes?.toString() ?? "");
       setActualWeight(job.actualWeightG?.toString() ?? "");
       setNotes(job.notes ?? "");
@@ -633,6 +641,8 @@ function JobDetailModal({
         body: JSON.stringify({
           status,
           printerId: printerId || null,
+          scheduledStart: scheduledStart ? new Date(scheduledStart).toISOString() : null,
+          scheduledEnd: scheduledEnd ? new Date(scheduledEnd).toISOString() : null,
           actualTimeMinutes: actualTime ? parseFloat(actualTime) : null,
           actualWeightG: actualWeight ? parseFloat(actualWeight) : null,
           notes: notes || null,
@@ -741,6 +751,21 @@ function JobDetailModal({
             })),
           ]}
         />
+
+        <div className="grid grid-cols-2 gap-3">
+          <Input
+            label="Scheduled Start"
+            type="datetime-local"
+            value={scheduledStart}
+            onChange={(e) => setScheduledStart(e.target.value)}
+          />
+          <Input
+            label="Scheduled End"
+            type="datetime-local"
+            value={scheduledEnd}
+            onChange={(e) => setScheduledEnd(e.target.value)}
+          />
+        </div>
 
         <div className="grid grid-cols-2 gap-3">
           <Input
@@ -862,7 +887,7 @@ export function JobsPage() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [filter, setFilter] = useState<FilterMode>("ACTIVE");
-  const [view, setView] = useState<"kanban" | "list">("kanban");
+  const [view, setView] = useState<"kanban" | "list" | "calendar">("kanban");
   const [newModalOpen, setNewModalOpen] = useState(false);
   const [detailJob, setDetailJob] = useState<Job | null>(null);
   const [movingId, setMovingId] = useState<string | null>(null);
@@ -1061,7 +1086,7 @@ export function JobsPage() {
             <button
               onClick={() => setView("list")}
               className={cn(
-                "flex items-center gap-1 rounded-r-md px-2.5 py-1.5 text-xs font-medium transition-colors",
+                "flex items-center gap-1 px-2.5 py-1.5 text-xs font-medium transition-colors",
                 view === "list"
                   ? "bg-primary text-primary-foreground"
                   : "text-muted-foreground hover:bg-muted"
@@ -1069,6 +1094,18 @@ export function JobsPage() {
             >
               <List className="h-3.5 w-3.5" />
               List
+            </button>
+            <button
+              onClick={() => setView("calendar")}
+              className={cn(
+                "flex items-center gap-1 rounded-r-md px-2.5 py-1.5 text-xs font-medium transition-colors",
+                view === "calendar"
+                  ? "bg-primary text-primary-foreground"
+                  : "text-muted-foreground hover:bg-muted"
+              )}
+            >
+              <CalendarDays className="h-3.5 w-3.5" />
+              Calendar
             </button>
           </div>
 
@@ -1165,6 +1202,28 @@ export function JobsPage() {
           onCardClick={(job) => setDetailJob(job)}
           onMoveNext={handleMoveNext}
           movingId={movingId}
+        />
+      )}
+
+      {/* Calendar View */}
+      {jobs.length > 0 && view === "calendar" && (
+        <CalendarView
+          jobs={filteredJobs}
+          printers={printers}
+          onReschedule={async (jobId, printerId, scheduledStart, scheduledEnd) => {
+            try {
+              const res = await fetch(`/api/jobs/${jobId}`, {
+                method: "PUT",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({ printerId, scheduledStart, scheduledEnd }),
+              });
+              if (!res.ok) throw new Error("Failed to reschedule");
+              await fetchJobs();
+            } catch {
+              setError("Failed to reschedule job");
+            }
+          }}
+          onJobClick={(job) => setDetailJob(job as Job)}
         />
       )}
 

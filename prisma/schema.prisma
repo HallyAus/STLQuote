@@ -87,6 +87,7 @@ model User {
   suppliers          Supplier[]
   consumables        Consumable[]
   subscriptionEvents SubscriptionEvent[]
+  quoteTemplates     QuoteTemplate[]
 }
 
 model Settings {
@@ -288,6 +289,8 @@ model Job {
   actualTimeMinutes Float?
   actualWeightG     Float?
   notes             String?   @db.Text
+  scheduledStart    DateTime?
+  scheduledEnd      DateTime?
   startedAt         DateTime?
   completedAt       DateTime?
   createdAt         DateTime  @default(now())
@@ -556,6 +559,24 @@ model SystemLog {
   @@index([userId])
   @@index([type])
   @@index([createdAt])
+}
+
+// --- Quote Templates ---
+
+model QuoteTemplate {
+  id          String   @id @default(cuid())
+  userId      String
+  user        User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  name        String
+  description String?  @db.Text
+  lineItems   String?  @db.Text // JSON array of line item templates
+  markupPct   Float    @default(0)
+  terms       String?  @db.Text
+  notes       String?  @db.Text
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  @@index([userId])
 }
 
 // --- Webhooks ---

@@ -114,31 +114,32 @@ export function RevenueCharts() {
           <div className="h-64">
             <ResponsiveContainer width="100%" height="100%">
               <BarChart data={data.monthlyRevenue}>
-                <CartesianGrid strokeDasharray="3 3" className="stroke-border" />
+                <CartesianGrid strokeDasharray="3 3" stroke="var(--color-border)" />
                 <XAxis
                   dataKey="month"
-                  tick={{ fontSize: 11, fill: "hsl(var(--muted-foreground))" }}
+                  tick={{ fontSize: 11, fill: "var(--color-muted-foreground)" }}
                   tickLine={false}
                   axisLine={false}
                 />
                 <YAxis
-                  tick={{ fontSize: 11, fill: "hsl(var(--muted-foreground))" }}
+                  tick={{ fontSize: 11, fill: "var(--color-muted-foreground)" }}
                   tickLine={false}
                   axisLine={false}
                   tickFormatter={(v) => `$${v}`}
                 />
                 <Tooltip
                   contentStyle={{
-                    backgroundColor: "hsl(var(--popover))",
-                    border: "1px solid hsl(var(--border))",
+                    backgroundColor: "var(--color-popover)",
+                    border: "1px solid var(--color-border)",
                     borderRadius: "8px",
                     fontSize: "12px",
+                    color: "var(--color-popover-foreground)",
                   }}
                   formatter={(value: number) => [`$${value.toFixed(2)}`, "Revenue"]}
                 />
                 <Bar
                   dataKey="revenue"
-                  fill="hsl(var(--primary))"
+                  fill="var(--color-chart-1)"
                   radius={[4, 4, 0, 0]}
                 />
               </BarChart>

@@ -1,0 +1,62 @@
+import { NextRequest, NextResponse } from "next/server";
+import { z } from "zod";
+import { prisma } from "@/lib/prisma";
+import { getSessionUser } from "@/lib/auth-helpers";
+
+const bulkSchema = z.object({
+  ids: z.array(z.string()).min(1),
+  action: z.enum(["change_status", "mark_paid", "delete"]),
+  status: z.enum(["DRAFT", "SENT", "PAID", "OVERDUE", "VOID"]).optional(),
+});
+
+export async function POST(request: NextRequest) {
+  try {
+    const user = await getSessionUser();
+    if (!user) return NextResponse.json({ error: "Unauthorised" }, { status: 401 });
+
+    const body = await request.json();
+    const parsed = bulkSchema.safeParse(body);
+
+    if (!parsed.success) {
+      return NextResponse.json(
+        { error: "Validation failed", details: parsed.error.flatten() },
+        { status: 400 }
+      );
+    }
+
+    const { ids, action, status } = parsed.data;
+
+    if (action === "change_status") {
+      if (!status) {
+        return NextResponse.json({ error: "Status is required for change_status action" }, { status: 400 });
+      }
+      const data: Record<string, unknown> = { status };
+      if (status === "PAID") data.paidAt = new Date();
+      const result = await prisma.invoice.updateMany({
+        where: { id: { in: ids }, userId: user.id },
+        data,
+      });
+      return NextResponse.json({ updated: result.count });
+    }
+
+    if (action === "mark_paid") {
+      const result = await prisma.invoice.updateMany({
+        where: { id: { in: ids }, userId: user.id },
+        data: { status: "PAID", paidAt: new Date() },
+      });
+      return NextResponse.json({ updated: result.count });
+    }
+
+    if (action === "delete") {
+      const result = await prisma.invoice.deleteMany({
+        where: { id: { in: ids }, userId: user.id },
+      });
+      return NextResponse.json({ deleted: result.count });
+    }
+
+    return NextResponse.json({ error: "Invalid action" }, { status: 400 });
+  } catch (error) {
+    console.error("Bulk invoice action failed:", error);
+    return NextResponse.json({ error: "Bulk action failed" }, { status: 500 });
+  }
+}

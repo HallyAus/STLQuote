@@ -10,8 +10,11 @@ import { Select } from "@/components/ui/select";
 import { Badge } from "@/components/ui/badge";
 import { Dialog, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
 import { roundCurrency } from "@/lib/utils";
-import { Plus, FileText, Loader2 } from "lucide-react";
+import { Plus, FileText, Loader2, Trash2, ArrowRightLeft, CheckCircle, Download } from "lucide-react";
 import { BANNER } from "@/lib/status-colours";
+import { Checkbox } from "@/components/ui/checkbox";
+import { useBulkSelection } from "@/hooks/use-bulk-selection";
+import { BulkActionBar } from "@/components/shared/bulk-action-bar";
 
 // ---------------------------------------------------------------------------
 // Types
@@ -387,6 +390,9 @@ export function InvoicesPage() {
   const [error, setError] = useState<string | null>(null);
   const [statusFilter, setStatusFilter] = useState("ALL");
   const [createModalOpen, setCreateModalOpen] = useState(false);
+  const [bulkStatusModalOpen, setBulkStatusModalOpen] = useState(false);
+  const [bulkNewStatus, setBulkNewStatus] = useState("DRAFT");
+  const [bulkActing, setBulkActing] = useState(false);
   const [clients, setClients] = useState<{ id: string; name: string; company: string | null; paymentTermsDays: number }[]>([]);
 
   // ---- Fetch invoices ----
@@ -446,6 +452,65 @@ export function InvoicesPage() {
     statusFilter === "ALL"
       ? invoices
       : invoices.filter((inv) => inv.status === statusFilter);
+
+  const bulk = useBulkSelection(filtered.map((inv) => inv.id));
+
+  async function handleBulkStatusChange() {
+    setBulkActing(true);
+    try {
+      const res = await fetch("/api/invoices/bulk", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ ids: Array.from(bulk.selectedIds), action: "change_status", status: bulkNewStatus }),
+      });
+      if (!res.ok) throw new Error("Failed");
+      bulk.clearSelection();
+      setBulkStatusModalOpen(false);
+      await fetchInvoices();
+    } catch {
+      setError("Bulk status change failed");
+    } finally {
+      setBulkActing(false);
+    }
+  }
+
+  async function handleBulkMarkPaid() {
+    if (!confirm(`Mark ${bulk.count} invoices as paid?`)) return;
+    setBulkActing(true);
+    try {
+      const res = await fetch("/api/invoices/bulk", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ ids: Array.from(bulk.selectedIds), action: "mark_paid" }),
+      });
+      if (!res.ok) throw new Error("Failed");
+      bulk.clearSelection();
+      await fetchInvoices();
+    } catch {
+      setError("Bulk mark paid failed");
+    } finally {
+      setBulkActing(false);
+    }
+  }
+
+  async function handleBulkDelete() {
+    if (!confirm(`Delete ${bulk.count} selected invoices? This cannot be undone.`)) return;
+    setBulkActing(true);
+    try {
+      const res = await fetch("/api/invoices/bulk", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ ids: Array.from(bulk.selectedIds), action: "delete" }),
+      });
+      if (!res.ok) throw new Error("Failed");
+      bulk.clearSelection();
+      await fetchInvoices();
+    } catch {
+      setError("Bulk delete failed");
+    } finally {
+      setBulkActing(false);
+    }
+  }
 
   // ---- Loading state ----
   if (loading) {
@@ -534,6 +599,13 @@ export function InvoicesPage() {
               <table className="w-full text-sm">
                 <thead>
                   <tr className="border-b border-border text-left">
+                    <th className="w-10 px-4 py-3">
+                      <Checkbox
+                        checked={bulk.isAllSelected}
+                        indeterminate={bulk.isIndeterminate}
+                        onChange={bulk.toggleAll}
+                      />
+                    </th>
                     <th className="px-4 py-3 font-medium text-muted-foreground">
                       Invoice #
                     </th>
@@ -564,6 +636,12 @@ export function InvoicesPage() {
                       className="cursor-pointer border-b border-border last:border-0 transition-colors hover:bg-muted/50"
                       onClick={() => router.push(`/invoices/${invoice.id}`)}
                     >
+                      <td className="px-4 py-3" onClick={(e) => e.stopPropagation()}>
+                        <Checkbox
+                          checked={bulk.selectedIds.has(invoice.id)}
+                          onChange={() => bulk.toggleOne(invoice.id)}
+                        />
+                      </td>
                       <td className="px-4 py-3 font-medium">
                         {invoice.invoiceNumber}
                       </td>
@@ -619,6 +697,65 @@ export function InvoicesPage() {
             router.push(`/invoices/${id}`);
           }}
         />
+      )}
+
+      {/* Bulk action bar */}
+      <BulkActionBar
+        count={bulk.count}
+        onClear={bulk.clearSelection}
+        actions={[
+          {
+            label: "Change Status",
+            icon: <ArrowRightLeft className="mr-1 h-3.5 w-3.5" />,
+            onClick: () => setBulkStatusModalOpen(true),
+          },
+          {
+            label: "Mark Paid",
+            icon: <CheckCircle className="mr-1 h-3.5 w-3.5" />,
+            onClick: handleBulkMarkPaid,
+            disabled: bulkActing,
+          },
+          {
+            label: "Export CSV",
+            icon: <Download className="mr-1 h-3.5 w-3.5" />,
+            onClick: () => {
+              window.location.href = "/api/export/invoices";
+            },
+          },
+          {
+            label: "Delete",
+            icon: <Trash2 className="mr-1 h-3.5 w-3.5" />,
+            onClick: handleBulkDelete,
+            variant: "destructive",
+            disabled: bulkActing,
+          },
+        ]}
+      />
+
+      {/* Bulk status change modal */}
+      {bulkStatusModalOpen && (
+        <Dialog open={true} onClose={() => setBulkStatusModalOpen(false)}>
+          <DialogHeader onClose={() => setBulkStatusModalOpen(false)}>
+            <DialogTitle>Change Status ({bulk.count} invoices)</DialogTitle>
+          </DialogHeader>
+          <div className="space-y-4">
+            <Select
+              label="New Status"
+              value={bulkNewStatus}
+              onChange={(e) => setBulkNewStatus(e.target.value)}
+              options={STATUS_OPTIONS.filter((o) => o.value !== "ALL")}
+            />
+            <DialogFooter>
+              <Button variant="secondary" onClick={() => setBulkStatusModalOpen(false)} disabled={bulkActing}>
+                Cancel
+              </Button>
+              <Button onClick={handleBulkStatusChange} disabled={bulkActing}>
+                {bulkActing ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : null}
+                Apply
+              </Button>
+            </DialogFooter>
+          </div>
+        </Dialog>
       )}
     </div>
   );

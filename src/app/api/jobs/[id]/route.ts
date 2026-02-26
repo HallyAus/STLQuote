@@ -21,6 +21,8 @@ const updateJobSchema = z.object({
   actualTimeMinutes: z.number().min(0).optional().nullable(),
   actualWeightG: z.number().min(0).optional().nullable(),
   notes: z.string().optional().nullable(),
+  scheduledStart: z.string().datetime().optional().nullable(),
+  scheduledEnd: z.string().datetime().optional().nullable(),
   startedAt: z.string().datetime().optional().nullable(),
   completedAt: z.string().datetime().optional().nullable(),
 });
@@ -112,6 +114,12 @@ export async function PUT(
     }
 
     // Convert datetime strings to Date objects
+    if (typeof data.scheduledStart === "string") {
+      data.scheduledStart = new Date(data.scheduledStart);
+    }
+    if (typeof data.scheduledEnd === "string") {
+      data.scheduledEnd = new Date(data.scheduledEnd);
+    }
     if (typeof data.startedAt === "string") {
       data.startedAt = new Date(data.startedAt);
     }

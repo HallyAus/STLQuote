@@ -7,8 +7,12 @@ import { Card, CardContent } from "@/components/ui/card";
 import { roundCurrency } from "@/lib/utils";
 import { Select } from "@/components/ui/select";
 import { Badge } from "@/components/ui/badge";
-import { Plus, FileText, Loader2, Download } from "lucide-react";
+import { Plus, FileText, Loader2, Download, Trash2, ArrowRightLeft } from "lucide-react";
 import { QUOTE_STATUS, BANNER, type QuoteStatus } from "@/lib/status-colours";
+import { Checkbox } from "@/components/ui/checkbox";
+import { useBulkSelection } from "@/hooks/use-bulk-selection";
+import { BulkActionBar } from "@/components/shared/bulk-action-bar";
+import { Dialog, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
 
 // ---------------------------------------------------------------------------
 // Types
@@ -115,6 +119,9 @@ export function QuotesPage() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [statusFilter, setStatusFilter] = useState("ALL");
+  const [bulkStatusModalOpen, setBulkStatusModalOpen] = useState(false);
+  const [bulkNewStatus, setBulkNewStatus] = useState("DRAFT");
+  const [bulkActing, setBulkActing] = useState(false);
 
   // ---- Fetch quotes ----
   const fetchQuotes = useCallback(async () => {
@@ -141,6 +148,46 @@ export function QuotesPage() {
     statusFilter === "ALL"
       ? quotes
       : quotes.filter((q) => q.status === statusFilter);
+
+  const bulk = useBulkSelection(filtered.map((q) => q.id));
+
+  async function handleBulkStatusChange() {
+    setBulkActing(true);
+    try {
+      const res = await fetch("/api/quotes/bulk", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ ids: Array.from(bulk.selectedIds), action: "change_status", status: bulkNewStatus }),
+      });
+      if (!res.ok) throw new Error("Failed");
+      bulk.clearSelection();
+      setBulkStatusModalOpen(false);
+      await fetchQuotes();
+    } catch {
+      setError("Bulk status change failed");
+    } finally {
+      setBulkActing(false);
+    }
+  }
+
+  async function handleBulkDelete() {
+    if (!confirm(`Delete ${bulk.count} selected quotes? This cannot be undone.`)) return;
+    setBulkActing(true);
+    try {
+      const res = await fetch("/api/quotes/bulk", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ ids: Array.from(bulk.selectedIds), action: "delete" }),
+      });
+      if (!res.ok) throw new Error("Failed");
+      bulk.clearSelection();
+      await fetchQuotes();
+    } catch {
+      setError("Bulk delete failed");
+    } finally {
+      setBulkActing(false);
+    }
+  }
 
   // ---- Loading state ----
   if (loading) {
@@ -222,6 +269,13 @@ export function QuotesPage() {
               <table className="w-full text-sm">
                 <thead>
                   <tr className="border-b border-border text-left">
+                    <th className="w-10 px-4 py-3">
+                      <Checkbox
+                        checked={bulk.isAllSelected}
+                        indeterminate={bulk.isIndeterminate}
+                        onChange={bulk.toggleAll}
+                      />
+                    </th>
                     <th className="px-4 py-3 font-medium text-muted-foreground">
                       Quote #
                     </th>
@@ -250,6 +304,12 @@ export function QuotesPage() {
                         className="cursor-pointer border-b border-border last:border-0 transition-colors hover:bg-muted/50"
                         onClick={() => router.push(`/quotes/${quote.id}`)}
                       >
+                        <td className="px-4 py-3" onClick={(e) => e.stopPropagation()}>
+                          <Checkbox
+                            checked={bulk.selectedIds.has(quote.id)}
+                            onChange={() => bulk.toggleOne(quote.id)}
+                          />
+                        </td>
                         <td className="px-4 py-3 font-medium">
                           {quote.quoteNumber}
                         </td>
@@ -291,6 +351,59 @@ export function QuotesPage() {
             />
           ))}
         </div>
+      )}
+
+      {/* Bulk action bar */}
+      <BulkActionBar
+        count={bulk.count}
+        onClear={bulk.clearSelection}
+        actions={[
+          {
+            label: "Change Status",
+            icon: <ArrowRightLeft className="mr-1 h-3.5 w-3.5" />,
+            onClick: () => setBulkStatusModalOpen(true),
+          },
+          {
+            label: "Export CSV",
+            icon: <Download className="mr-1 h-3.5 w-3.5" />,
+            onClick: () => {
+              window.location.href = "/api/export/quotes";
+            },
+          },
+          {
+            label: "Delete",
+            icon: <Trash2 className="mr-1 h-3.5 w-3.5" />,
+            onClick: handleBulkDelete,
+            variant: "destructive",
+            disabled: bulkActing,
+          },
+        ]}
+      />
+
+      {/* Bulk status change modal */}
+      {bulkStatusModalOpen && (
+        <Dialog open={true} onClose={() => setBulkStatusModalOpen(false)}>
+          <DialogHeader onClose={() => setBulkStatusModalOpen(false)}>
+            <DialogTitle>Change Status ({bulk.count} quotes)</DialogTitle>
+          </DialogHeader>
+          <div className="space-y-4">
+            <Select
+              label="New Status"
+              value={bulkNewStatus}
+              onChange={(e) => setBulkNewStatus(e.target.value)}
+              options={STATUS_OPTIONS.filter((o) => o.value !== "ALL")}
+            />
+            <DialogFooter>
+              <Button variant="secondary" onClick={() => setBulkStatusModalOpen(false)} disabled={bulkActing}>
+                Cancel
+              </Button>
+              <Button onClick={handleBulkStatusChange} disabled={bulkActing}>
+                {bulkActing ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : null}
+                Apply
+              </Button>
+            </DialogFooter>
+          </div>
+        </Dialog>
       )}
     </div>
   );

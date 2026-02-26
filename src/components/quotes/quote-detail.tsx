@@ -23,6 +23,7 @@ import {
   History,
   Receipt,
   Eye,
+  Bookmark,
 } from "lucide-react";
 import { QUOTE_STATUS, BANNER, type QuoteStatus } from "@/lib/status-colours";
 import { QuoteTimeline } from "@/components/quotes/quote-timeline";
@@ -755,6 +756,117 @@ export function QuoteDetail() {
         </Card>
       </div>
 
+      {/* Actions */}
+      <Card>
+        <CardContent className="flex flex-wrap gap-3 pt-6">
+          <Button variant="secondary" onClick={() => setPreviewOpen(true)}>
+            <Eye className="mr-2 h-4 w-4" />
+            Preview Quote
+          </Button>
+          <Button onClick={handleSendQuote} disabled={sending}>
+            {sending ? (
+              <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+            ) : (
+              <Send className="mr-2 h-4 w-4" />
+            )}
+            Send Quote
+          </Button>
+          {quote.status === "ACCEPTED" && (
+            <>
+              <Button onClick={() => setConvertModalOpen(true)}>
+                <Briefcase className="mr-2 h-4 w-4" />
+                Convert to Job
+              </Button>
+              <Button
+                variant="secondary"
+                onClick={async () => {
+                  try {
+                    const res = await fetch("/api/invoices", {
+                      method: "POST",
+                      headers: { "Content-Type": "application/json" },
+                      body: JSON.stringify({ quoteId: quote.id }),
+                    });
+                    if (!res.ok) throw new Error("Failed to create invoice");
+                    const inv = await res.json();
+                    router.push(`/invoices/${inv.id}`);
+                  } catch {
+                    // Best-effort — errors will show on the invoices page
+                  }
+                }}
+              >
+                <Receipt className="mr-2 h-4 w-4" />
+                Create Invoice
+              </Button>
+            </>
+          )}
+          <Button
+            variant="secondary"
+            onClick={() => window.open(`/api/quotes/${quoteId}/pdf`, "_blank")}
+          >
+            <Download className="mr-2 h-4 w-4" />
+            Download PDF
+          </Button>
+          <Button
+            variant="secondary"
+            onClick={handleDuplicateQuote}
+            disabled={duplicating}
+          >
+            {duplicating ? (
+              <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+            ) : (
+              <Copy className="mr-2 h-4 w-4" />
+            )}
+            Duplicate
+          </Button>
+          <Button
+            variant="secondary"
+            onClick={async () => {
+              try {
+                const res = await fetch("/api/quote-templates", {
+                  method: "POST",
+                  headers: { "Content-Type": "application/json" },
+                  body: JSON.stringify({
+                    name: `Template from ${quote.quoteNumber}`,
+                    lineItems: JSON.stringify(
+                      quote.lineItems.map((li) => ({
+                        description: li.description,
+                        printWeightG: li.printWeightG,
+                        printTimeMinutes: li.printTimeMinutes,
+                        materialCost: li.materialCost,
+                        machineCost: li.machineCost,
+                        labourCost: li.labourCost,
+                        overheadCost: li.overheadCost,
+                        lineTotal: li.lineTotal,
+                        quantity: li.quantity,
+                        notes: li.notes,
+                      }))
+                    ),
+                    markupPct: quote.markupPct,
+                    terms: quote.terms,
+                    notes: quote.notes,
+                  }),
+                });
+                if (!res.ok) throw new Error("Failed");
+                alert("Template saved!");
+              } catch {
+                setError("Failed to save as template");
+              }
+            }}
+          >
+            <Bookmark className="mr-2 h-4 w-4" />
+            Save as Template
+          </Button>
+          <Button
+            variant="ghost"
+            className="text-destructive-foreground hover:bg-destructive/10"
+            onClick={handleDeleteQuote}
+          >
+            <Trash2 className="mr-2 h-4 w-4" />
+            Delete Quote
+          </Button>
+        </CardContent>
+      </Card>
+
       {/* Line items section */}
       <Card>
         <CardHeader>
@@ -995,79 +1107,6 @@ export function QuoteDetail() {
               </Button>
             </div>
           </div>
-        </CardContent>
-      </Card>
-
-      {/* Actions */}
-      <Card>
-        <CardContent className="flex flex-wrap gap-3 pt-6">
-          <Button variant="secondary" onClick={() => setPreviewOpen(true)}>
-            <Eye className="mr-2 h-4 w-4" />
-            Preview Quote
-          </Button>
-          <Button onClick={handleSendQuote} disabled={sending}>
-            {sending ? (
-              <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-            ) : (
-              <Send className="mr-2 h-4 w-4" />
-            )}
-            Send Quote
-          </Button>
-          {quote.status === "ACCEPTED" && (
-            <>
-              <Button onClick={() => setConvertModalOpen(true)}>
-                <Briefcase className="mr-2 h-4 w-4" />
-                Convert to Job
-              </Button>
-              <Button
-                variant="secondary"
-                onClick={async () => {
-                  try {
-                    const res = await fetch("/api/invoices", {
-                      method: "POST",
-                      headers: { "Content-Type": "application/json" },
-                      body: JSON.stringify({ quoteId: quote.id }),
-                    });
-                    if (!res.ok) throw new Error("Failed to create invoice");
-                    const inv = await res.json();
-                    router.push(`/invoices/${inv.id}`);
-                  } catch {
-                    // Best-effort — errors will show on the invoices page
-                  }
-                }}
-              >
-                <Receipt className="mr-2 h-4 w-4" />
-                Create Invoice
-              </Button>
-            </>
-          )}
-          <Button
-            variant="secondary"
-            onClick={() => window.open(`/api/quotes/${quoteId}/pdf`, "_blank")}
-          >
-            <Download className="mr-2 h-4 w-4" />
-            Download PDF
-          </Button>
-          <Button
-            variant="secondary"
-            onClick={handleDuplicateQuote}
-            disabled={duplicating}
-          >
-            {duplicating ? (
-              <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-            ) : (
-              <Copy className="mr-2 h-4 w-4" />
-            )}
-            Duplicate
-          </Button>
-          <Button
-            variant="ghost"
-            className="text-destructive-foreground hover:bg-destructive/10"
-            onClick={handleDeleteQuote}
-          >
-            <Trash2 className="mr-2 h-4 w-4" />
-            Delete Quote
-          </Button>
         </CardContent>
       </Card>
 

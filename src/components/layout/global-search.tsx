@@ -2,7 +2,7 @@
 
 import { useState, useEffect, useRef } from "react";
 import { useRouter } from "next/navigation";
-import { Search, FileText, Users, Briefcase, Loader2 } from "lucide-react";
+import { Search, FileText, Users, Briefcase, Loader2, Receipt } from "lucide-react";
 
 interface SearchResults {
   quotes: {
@@ -23,6 +23,13 @@ interface SearchResults {
     status: string;
     quote: { quoteNumber: string } | null;
     printer: { name: string } | null;
+  }[];
+  invoices: {
+    id: string;
+    invoiceNumber: string;
+    status: string;
+    total: number;
+    client: { name: string } | null;
   }[];
 }
 
@@ -85,7 +92,7 @@ export function GlobalSearch() {
 
   const hasResults =
     results &&
-    (results.quotes.length > 0 || results.clients.length > 0 || results.jobs.length > 0);
+    (results.quotes.length > 0 || results.clients.length > 0 || results.jobs.length > 0 || results.invoices.length > 0);
 
   return (
     <div className="relative hidden sm:block" ref={containerRef}>
@@ -174,6 +181,28 @@ export function GlobalSearch() {
                         </p>
                         <p className="truncate text-xs text-muted-foreground">
                           {j.printer?.name ?? "No printer"} — {j.status}
+                        </p>
+                      </div>
+                    </button>
+                  ))}
+                </div>
+              )}
+              {results.invoices.length > 0 && (
+                <div>
+                  <p className="px-3 py-1.5 text-[10px] font-semibold uppercase text-muted-foreground">
+                    Invoices
+                  </p>
+                  {results.invoices.map((inv) => (
+                    <button
+                      key={inv.id}
+                      onClick={() => navigate(`/invoices/${inv.id}`)}
+                      className="flex w-full items-center gap-2 rounded-md px-3 py-2 text-sm hover:bg-accent"
+                    >
+                      <Receipt className="h-3.5 w-3.5 shrink-0 text-muted-foreground" />
+                      <div className="min-w-0 flex-1 text-left">
+                        <p className="font-medium">{inv.invoiceNumber}</p>
+                        <p className="truncate text-xs text-muted-foreground">
+                          {inv.client?.name ?? "No client"} — ${inv.total.toFixed(2)}
                         </p>
                       </div>
                     </button>

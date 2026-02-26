@@ -670,6 +670,47 @@ export function InvoiceDetail() {
         </Card>
       </div>
 
+      {/* Actions */}
+      <Card>
+        <CardContent className="flex flex-wrap gap-3 pt-6">
+          <Button onClick={handleSendInvoice} disabled={sending}>
+            {sending ? (
+              <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+            ) : (
+              <Send className="mr-2 h-4 w-4" />
+            )}
+            Send Invoice
+          </Button>
+          <Button
+            variant="secondary"
+            onClick={() => window.open(`/api/invoices/${invoiceId}/pdf`, "_blank")}
+          >
+            <Download className="mr-2 h-4 w-4" />
+            Download PDF
+          </Button>
+          {invoice.status !== "PAID" && invoice.status !== "VOID" && (
+            <Button variant="secondary" onClick={handleMarkAsPaid}>
+              <CheckCircle className="mr-2 h-4 w-4" />
+              Mark as Paid
+            </Button>
+          )}
+          {invoice.status !== "VOID" && (
+            <Button variant="secondary" onClick={handleVoidInvoice}>
+              <Ban className="mr-2 h-4 w-4" />
+              Void
+            </Button>
+          )}
+          <Button
+            variant="ghost"
+            className="text-destructive-foreground hover:bg-destructive/10"
+            onClick={handleDeleteInvoice}
+          >
+            <Trash2 className="mr-2 h-4 w-4" />
+            Delete Invoice
+          </Button>
+        </CardContent>
+      </Card>
+
       {/* Line items section */}
       <Card>
         <CardHeader>
@@ -891,47 +932,6 @@ export function InvoiceDetail() {
               </Button>
             </div>
           </div>
-        </CardContent>
-      </Card>
-
-      {/* Actions */}
-      <Card>
-        <CardContent className="flex flex-wrap gap-3 pt-6">
-          <Button onClick={handleSendInvoice} disabled={sending}>
-            {sending ? (
-              <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-            ) : (
-              <Send className="mr-2 h-4 w-4" />
-            )}
-            Send Invoice
-          </Button>
-          <Button
-            variant="secondary"
-            onClick={() => window.open(`/api/invoices/${invoiceId}/pdf`, "_blank")}
-          >
-            <Download className="mr-2 h-4 w-4" />
-            Download PDF
-          </Button>
-          {invoice.status !== "PAID" && invoice.status !== "VOID" && (
-            <Button variant="secondary" onClick={handleMarkAsPaid}>
-              <CheckCircle className="mr-2 h-4 w-4" />
-              Mark as Paid
-            </Button>
-          )}
-          {invoice.status !== "VOID" && (
-            <Button variant="secondary" onClick={handleVoidInvoice}>
-              <Ban className="mr-2 h-4 w-4" />
-              Void
-            </Button>
-          )}
-          <Button
-            variant="ghost"
-            className="text-destructive-foreground hover:bg-destructive/10"
-            onClick={handleDeleteInvoice}
-          >
-            <Trash2 className="mr-2 h-4 w-4" />
-            Delete Invoice
-          </Button>
         </CardContent>
       </Card>
 

@@ -9,12 +9,12 @@ export async function GET(request: NextRequest) {
 
     const q = request.nextUrl.searchParams.get("q")?.trim();
     if (!q || q.length < 2) {
-      return NextResponse.json({ quotes: [], clients: [], jobs: [] });
+      return NextResponse.json({ quotes: [], clients: [], jobs: [], invoices: [] });
     }
 
     const searchTerm = `%${q}%`;
 
-    const [quotes, clients, jobs] = await Promise.all([
+    const [quotes, clients, jobs, invoices] = await Promise.all([
       prisma.quote.findMany({
         where: {
           userId: user.id,
@@ -70,9 +70,28 @@ export async function GET(request: NextRequest) {
         orderBy: { createdAt: "desc" },
         take: 5,
       }),
+      prisma.invoice.findMany({
+        where: {
+          userId: user.id,
+          OR: [
+            { invoiceNumber: { contains: q, mode: "insensitive" } },
+            { notes: { contains: q, mode: "insensitive" } },
+            { client: { name: { contains: q, mode: "insensitive" } } },
+          ],
+        },
+        select: {
+          id: true,
+          invoiceNumber: true,
+          status: true,
+          total: true,
+          client: { select: { name: true } },
+        },
+        orderBy: { createdAt: "desc" },
+        take: 5,
+      }),
     ]);
 
-    return NextResponse.json({ quotes, clients, jobs });
+    return NextResponse.json({ quotes, clients, jobs, invoices });
   } catch (error) {
     console.error("Search error:", error);
     return NextResponse.json(

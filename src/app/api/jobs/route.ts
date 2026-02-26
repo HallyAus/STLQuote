@@ -8,6 +8,8 @@ const createJobSchema = z.object({
   printerId: z.string().optional().nullable(),
   materialId: z.string().optional().nullable(),
   notes: z.string().optional().nullable(),
+  scheduledStart: z.string().datetime().optional().nullable(),
+  scheduledEnd: z.string().datetime().optional().nullable(),
 });
 
 export async function GET() {
@@ -50,11 +52,15 @@ export async function POST(request: NextRequest) {
       );
     }
 
+    const { scheduledStart, scheduledEnd, ...rest } = parsed.data;
+
     const job = await prisma.$transaction(async (tx) => {
       const created = await tx.job.create({
         data: {
-          ...parsed.data,
+          ...rest,
           userId: user.id,
+          scheduledStart: scheduledStart ? new Date(scheduledStart) : null,
+          scheduledEnd: scheduledEnd ? new Date(scheduledEnd) : null,
         },
         include: {
           quote: { select: { quoteNumber: true, total: true } },
