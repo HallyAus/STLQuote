@@ -6,9 +6,11 @@ import { exchangeCodeForTokens, getXeroTenants } from "@/lib/xero";
 
 export async function GET(request: NextRequest) {
   try {
+    const baseUrl = process.env.NEXT_PUBLIC_APP_URL || request.nextUrl.origin;
+
     const user = await getSessionUser();
     if (!user) {
-      return NextResponse.redirect(new URL("/login", request.url));
+      return NextResponse.redirect(new URL("/login", baseUrl));
     }
 
     const { searchParams } = new URL(request.url);
@@ -20,13 +22,13 @@ export async function GET(request: NextRequest) {
     if (error) {
       console.error("Xero OAuth error:", error);
       return NextResponse.redirect(
-        new URL("/settings?xero=error&reason=denied", request.url)
+        new URL("/settings?xero=error&reason=denied", baseUrl)
       );
     }
 
     if (!code || !state) {
       return NextResponse.redirect(
-        new URL("/settings?xero=error&reason=missing_params", request.url)
+        new URL("/settings?xero=error&reason=missing_params", baseUrl)
       );
     }
 
@@ -36,7 +38,7 @@ export async function GET(request: NextRequest) {
 
     if (!storedState || storedState !== state) {
       return NextResponse.redirect(
-        new URL("/settings?xero=error&reason=state_mismatch", request.url)
+        new URL("/settings?xero=error&reason=state_mismatch", baseUrl)
       );
     }
 
@@ -50,7 +52,7 @@ export async function GET(request: NextRequest) {
     const tenants = await getXeroTenants(tokens.access_token);
     if (!tenants.length) {
       return NextResponse.redirect(
-        new URL("/settings?xero=error&reason=no_tenants", request.url)
+        new URL("/settings?xero=error&reason=no_tenants", baseUrl)
       );
     }
 
@@ -68,11 +70,11 @@ export async function GET(request: NextRequest) {
       },
     });
 
-    return NextResponse.redirect(new URL("/settings?xero=connected", request.url));
+    return NextResponse.redirect(new URL("/settings?xero=connected", baseUrl));
   } catch (error) {
     console.error("Xero callback error:", error);
     return NextResponse.redirect(
-      new URL("/settings?xero=error&reason=exchange_failed", request.url)
+      new URL("/settings?xero=error&reason=exchange_failed", baseUrl)
     );
   }
 }
