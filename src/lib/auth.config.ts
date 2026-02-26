@@ -13,6 +13,7 @@ declare module "next-auth" {
       subscriptionTier: string;
       subscriptionStatus: string;
       trialEndsAt: string | null;
+      createdAt: string | null;
     };
   }
 
@@ -22,6 +23,7 @@ declare module "next-auth" {
     subscriptionTier?: string;
     subscriptionStatus?: string;
     trialEndsAt?: Date | null;
+    createdAt?: Date | null;
   }
 }
 
@@ -46,6 +48,7 @@ export const authConfig = {
         token.subscriptionTier = (user as any).subscriptionTier ?? "free";
         token.subscriptionStatus = (user as any).subscriptionStatus ?? "trialing";
         token.trialEndsAt = (user as any).trialEndsAt?.toISOString() ?? null;
+        token.createdAt = (user as any).createdAt?.toISOString() ?? null;
         token.lastTouched = Date.now();
       }
 
@@ -60,7 +63,7 @@ export const authConfig = {
           const fresh = await db.user.update({
             where: { id: token.id as string },
             data: { lastLogin: new Date() },
-            select: { disabled: true, role: true, mustChangePassword: true, subscriptionTier: true, subscriptionStatus: true, trialEndsAt: true },
+            select: { disabled: true, role: true, mustChangePassword: true, subscriptionTier: true, subscriptionStatus: true, trialEndsAt: true, createdAt: true },
           });
           token.disabled = fresh.disabled;
           token.role = fresh.role;
@@ -68,6 +71,7 @@ export const authConfig = {
           token.subscriptionTier = fresh.subscriptionTier;
           token.subscriptionStatus = fresh.subscriptionStatus;
           token.trialEndsAt = fresh.trialEndsAt?.toISOString() ?? null;
+          token.createdAt = fresh.createdAt?.toISOString() ?? null;
           token.lastTouched = now;
         } catch {
           // Edge Runtime or DB error — skip, Node.js will catch it next
@@ -82,6 +86,7 @@ export const authConfig = {
       session.user.subscriptionTier = (token.subscriptionTier as string) ?? "free";
       session.user.subscriptionStatus = (token.subscriptionStatus as string) ?? "trialing";
       (session.user as any).trialEndsAt = (token.trialEndsAt as string) ?? null;
+      (session.user as any).createdAt = (token.createdAt as string) ?? null;
       (session.user as any).mustChangePassword = token.mustChangePassword ?? false;
       return session;
     },

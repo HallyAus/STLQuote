@@ -26,6 +26,7 @@ import {
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { getEffectiveTier } from "@/lib/tier";
+import { OnboardingGuide } from "@/components/onboarding/onboarding-guide";
 import type { LucideIcon } from "lucide-react";
 
 interface NavItem {
@@ -233,6 +234,9 @@ export function Sidebar({ open, onClose }: SidebarProps) {
             <X className="h-5 w-5" />
           </button>
         </div>
+
+        {/* Onboarding guide — shown for 14 days after signup */}
+        <OnboardingGuide onClose={onClose} />
 
         {/* Navigation groups */}
         <nav className="flex-1 overflow-y-auto px-2 pb-2">
