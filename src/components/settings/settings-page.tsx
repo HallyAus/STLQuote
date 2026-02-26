@@ -10,7 +10,6 @@ import { Loader2, Save, Check } from "lucide-react";
 import { BatchPricingSettings } from "@/components/settings/batch-pricing-settings";
 import { BillingSettings } from "@/components/settings/billing-settings";
 import { WebhookSettings } from "@/components/settings/webhook-settings";
-import { XeroSettings } from "@/components/settings/xero-settings";
 import { LogoUpload } from "@/components/settings/logo-upload";
 import type { BatchTier } from "@/lib/batch-pricing";
 
@@ -474,9 +473,6 @@ export function SettingsPage() {
 
       {/* Webhooks (independent save) */}
       <WebhookSettings />
-
-      {/* Xero Integration (independent save) */}
-      <XeroSettings />
     </div>
   );
 }

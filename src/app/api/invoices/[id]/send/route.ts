@@ -6,6 +6,8 @@ import { generateToken } from "@/lib/tokens";
 import { rateLimit } from "@/lib/rate-limit";
 import { renderToBuffer, type DocumentProps } from "@react-pdf/renderer";
 import { InvoiceDocument } from "@/lib/pdf/invoice-document";
+import { pushInvoiceToXero, pushContactToXero } from "@/lib/xero";
+import { log } from "@/lib/logger";
 import React, { type ReactElement, type JSXElementConstructor } from "react";
 
 type RouteContext = { params: Promise<{ id: string }> };
@@ -179,6 +181,49 @@ export async function POST(
         sentAt: new Date(),
       },
     });
+
+    // Auto-sync to Xero if connected (non-blocking)
+    try {
+      const xeroUser = await prisma.user.findUnique({
+        where: { id: user.id },
+        select: { xeroAccessToken: true },
+      });
+      if (xeroUser?.xeroAccessToken) {
+        // Push contact first, then invoice
+        if (invoice.client) {
+          await pushContactToXero(user.id, {
+            name: invoice.client.name,
+            email: invoice.client.email,
+            phone: invoice.client.phone,
+          });
+        }
+        await pushInvoiceToXero(user.id, {
+          invoiceNumber: invoice.invoiceNumber,
+          contactName: invoice.client?.name ?? "Unknown Client",
+          lineItems: invoice.lineItems.map((li) => ({
+            description: li.description,
+            quantity: li.quantity,
+            unitAmount: li.unitPrice,
+          })),
+          dueDate: invoice.dueDate?.toISOString().split("T")[0],
+          currency: invoice.currency,
+        });
+        await log({
+          type: "xero_sync",
+          level: "info",
+          message: `Auto-synced invoice ${invoice.invoiceNumber} to Xero on send`,
+          userId: user.id,
+        });
+      }
+    } catch (xeroErr) {
+      await log({
+        type: "xero_sync",
+        level: "error",
+        message: `Failed to auto-sync invoice ${invoice.invoiceNumber} to Xero`,
+        detail: xeroErr instanceof Error ? xeroErr.message : String(xeroErr),
+        userId: user.id,
+      });
+    }
 
     return NextResponse.json({
       message: sent ? "Invoice sent successfully." : "Invoice marked as sent (email not configured).",

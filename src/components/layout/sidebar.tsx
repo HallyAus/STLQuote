@@ -19,6 +19,7 @@ import {
   Receipt,
   Wrench,
   Lock,
+  Plug,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { getEffectiveTier } from "@/lib/tier";
@@ -49,6 +50,7 @@ const navGroups: NavGroup[] = [
     items: [
       { href: "/quotes", label: "Quotes", icon: FileText },
       { href: "/invoices", label: "Invoices", icon: Receipt, proOnly: true },
+      { href: "/integrations", label: "Integrations", icon: Plug, proOnly: true },
       { href: "/clients", label: "Clients", icon: Users },
       { href: "/jobs", label: "Jobs", icon: Briefcase },
     ],

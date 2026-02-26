@@ -45,7 +45,7 @@ export async function POST() {
     const invoices = await prisma.invoice.findMany({
       where: {
         userId: user.id,
-        status: { not: "VOID" },
+        status: { in: ["SENT", "PAID", "OVERDUE"] },
       },
       include: {
         client: { select: { name: true } },
