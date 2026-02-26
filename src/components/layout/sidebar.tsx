@@ -214,7 +214,7 @@ export function Sidebar({ open, onClose }: SidebarProps) {
       >
         {/* Logo / App name */}
         <div className="flex h-16 items-center justify-between border-b border-sidebar-border px-4">
-          <Link href="/" className="flex items-center gap-3">
+          <Link href="/dashboard" className="flex items-center gap-3">
             <div className="flex h-9 w-9 items-center justify-center rounded-lg bg-sidebar-primary shadow-sm">
               <Printer className="h-[18px] w-[18px] text-sidebar-primary-foreground" />
             </div>
