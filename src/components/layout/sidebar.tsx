@@ -55,7 +55,6 @@ const navGroups: NavGroup[] = [
       { href: "/quotes", label: "Quotes", icon: FileText },
       { href: "/quote-templates", label: "Templates", icon: BookTemplate },
       { href: "/invoices", label: "Invoices", icon: Receipt, proOnly: true },
-      { href: "/integrations", label: "Integrations", icon: Plug, proOnly: true },
       { href: "/clients", label: "Clients", icon: Users },
       { href: "/jobs", label: "Jobs", icon: Briefcase },
     ],
@@ -67,6 +66,12 @@ const navGroups: NavGroup[] = [
       { href: "/materials", label: "Materials", icon: Palette },
       { href: "/suppliers", label: "Suppliers", icon: Package, proOnly: true },
       { href: "/consumables", label: "Consumables", icon: Wrench, proOnly: true },
+    ],
+  },
+  {
+    label: "Integrations",
+    items: [
+      { href: "/integrations", label: "Integrations", icon: Plug, proOnly: true },
     ],
   },
 ];

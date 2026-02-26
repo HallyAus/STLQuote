@@ -101,8 +101,9 @@ export function OnboardingGuide({ onClose }: OnboardingGuideProps) {
   const [collapsed, setCollapsed] = useState(false);
 
   // Check if account is older than 14 days
+  // If createdAt isn't in the session yet (stale JWT), assume not expired
   const isExpired = useMemo(() => {
-    if (!createdAt) return true;
+    if (!createdAt) return false;
     return Date.now() - new Date(createdAt).getTime() > FOURTEEN_DAYS_MS;
   }, [createdAt]);
 
