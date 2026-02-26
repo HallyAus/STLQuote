@@ -72,6 +72,14 @@ function Dialog({ open, onClose, children, maxWidth = "max-w-lg" }: DialogProps)
     return () => window.removeEventListener("keydown", handleKey);
   }, [open, onClose]);
 
+  // Fallback: if animation doesn't fire, hide after timeout
+  React.useEffect(() => {
+    if (!open && visible) {
+      const timer = setTimeout(() => setVisible(false), 200);
+      return () => clearTimeout(timer);
+    }
+  }, [open, visible]);
+
   function handleAnimationEnd() {
     if (!open) {
       setVisible(false);

@@ -676,7 +676,7 @@ function NewJobModal({
         />
 
         <DialogFooter>
-          <Button variant="secondary" onClick={onClose} disabled={saving}>
+          <Button variant="secondary" onClick={onClose}>
             Cancel
           </Button>
           <Button onClick={handleSubmit} disabled={saving}>
