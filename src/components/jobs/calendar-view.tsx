@@ -427,9 +427,9 @@ export function CalendarView({
   const nowOnSelectedDay = isSameDay(tzDate, selectedDay);
   const nowHour = tzHour + tzMinute / 60;
   const nowInRange = nowHour >= START_HOUR && nowHour <= END_HOUR + 1;
-  const nowLeftPct =
+  const nowLeftPx =
     nowOnSelectedDay && nowInRange
-      ? ((nowHour - START_HOUR) / HOUR_COUNT) * 100
+      ? 160 + ((nowHour - START_HOUR) / HOUR_COUNT) * (HOUR_COUNT * HOUR_WIDTH_PX)
       : null;
 
   // ---- Render ----
@@ -595,11 +595,11 @@ export function CalendarView({
                 </div>
 
                 {/* Now marker */}
-                {nowLeftPct !== null && (
+                {nowLeftPx !== null && (
                   <div
                     className="pointer-events-none absolute top-0 z-30 w-px bg-destructive"
                     style={{
-                      left: `calc(160px + ${nowLeftPct}%)`,
+                      left: `${nowLeftPx}px`,
                       height: "100%",
                     }}
                   />
