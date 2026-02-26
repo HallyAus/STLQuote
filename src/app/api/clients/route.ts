@@ -13,6 +13,7 @@ const createClientSchema = z.object({
   shippingSameAsBilling: z.boolean().default(true),
   tags: z.array(z.string()).default([]),
   notes: z.string().optional().nullable(),
+  paymentTermsDays: z.number().int().min(0).default(14),
 });
 
 export async function GET() {

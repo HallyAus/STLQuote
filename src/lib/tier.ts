@@ -46,12 +46,18 @@ export function hasFeature(tier: Tier, feature: Feature): boolean {
   return tier === "pro";
 }
 
-/** Get the user's effective tier, considering trial status */
+/** Get the user's effective tier, considering trial status and admin role */
 export function getEffectiveTier(user: {
   subscriptionTier: string;
   subscriptionStatus: string;
   trialEndsAt: Date | string | null;
+  role?: string;
 }): Tier {
+  // Admins always get Pro access
+  if (user.role === "ADMIN" || user.role === "SUPER_ADMIN") {
+    return "pro";
+  }
+
   // Active paid subscription = pro
   if (user.subscriptionTier === "pro" && user.subscriptionStatus === "active") {
     return "pro";

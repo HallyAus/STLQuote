@@ -7,6 +7,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card";
 import { Textarea } from "@/components/ui/textarea";
+import { Select } from "@/components/ui/select";
 import { Badge } from "@/components/ui/badge";
 import { Dialog, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
 import { TagInput } from "@/components/ui/tag-input";
@@ -26,6 +27,7 @@ interface Client {
   shippingSameAsBilling: boolean;
   tags: string[];
   notes: string | null;
+  paymentTermsDays: number;
   createdAt: string;
   updatedAt: string;
   _count: { quotes: number };
@@ -41,6 +43,20 @@ interface ClientFormData {
   shippingSameAsBilling: boolean;
   tags: string[];
   notes: string;
+  paymentTermsDays: number;
+}
+
+const PAYMENT_TERMS_OPTIONS = [
+  { value: 0, label: "Due on receipt" },
+  { value: 7, label: "Net 7" },
+  { value: 14, label: "Net 14" },
+  { value: 30, label: "Net 30" },
+  { value: 60, label: "Net 60" },
+];
+
+function paymentTermsLabel(days: number): string {
+  if (days === 0) return "Due on receipt";
+  return `Net ${days}`;
 }
 
 const emptyForm: ClientFormData = {
@@ -53,6 +69,7 @@ const emptyForm: ClientFormData = {
   shippingSameAsBilling: true,
   tags: [],
   notes: "",
+  paymentTermsDays: 14,
 };
 
 const SUGGESTED_TAGS = ["Tradie", "EV Owner", "Maker", "Commercial"];
@@ -70,6 +87,7 @@ function clientToFormData(client: Client): ClientFormData {
     shippingSameAsBilling: client.shippingSameAsBilling,
     tags: [...client.tags],
     notes: client.notes ?? "",
+    paymentTermsDays: client.paymentTermsDays ?? 14,
   };
 }
 
@@ -86,6 +104,7 @@ function formDataToPayload(form: ClientFormData) {
     shippingSameAsBilling: form.shippingSameAsBilling,
     tags: form.tags.map((t) => t.trim()).filter((t) => t.length > 0),
     notes: form.notes.trim() || null,
+    paymentTermsDays: form.paymentTermsDays,
   };
 }
 
@@ -187,7 +206,7 @@ export function ClientsPage() {
     setForm(emptyForm);
   }
 
-  function updateField(field: keyof ClientFormData, value: string | boolean | string[]) {
+  function updateField(field: keyof ClientFormData, value: string | boolean | string[] | number) {
     setForm((prev) => ({ ...prev, [field]: value }));
   }
 
@@ -442,12 +461,20 @@ function ClientCard({
           </div>
         )}
 
-        {/* Quote count */}
-        <div className="flex items-center justify-between border-t border-border pt-2 text-sm">
-          <span className="text-muted-foreground">Quotes</span>
-          <span className="font-medium text-foreground">
-            {client._count.quotes}
-          </span>
+        {/* Payment terms & quote count */}
+        <div className="space-y-1.5 border-t border-border pt-2 text-sm">
+          <div className="flex items-center justify-between">
+            <span className="text-muted-foreground">Payment Terms</span>
+            <span className="font-medium text-foreground">
+              {paymentTermsLabel(client.paymentTermsDays)}
+            </span>
+          </div>
+          <div className="flex items-center justify-between">
+            <span className="text-muted-foreground">Quotes</span>
+            <span className="font-medium text-foreground">
+              {client._count.quotes}
+            </span>
+          </div>
         </div>
       </CardContent>
     </Card>
@@ -467,7 +494,7 @@ function ClientModal({
   title: string;
   form: ClientFormData;
   saving: boolean;
-  onFieldChange: (field: keyof ClientFormData, value: string | boolean | string[]) => void;
+  onFieldChange: (field: keyof ClientFormData, value: string | boolean | string[] | number) => void;
   onSave: () => void;
   onClose: () => void;
 }) {
@@ -551,6 +578,17 @@ function ClientModal({
           onChange={(tags) => onFieldChange("tags", tags)}
           placeholder="Add a tag..."
           suggestions={SUGGESTED_TAGS}
+        />
+
+        {/* Payment Terms */}
+        <Select
+          label="Payment Terms"
+          value={String(form.paymentTermsDays)}
+          onChange={(e) => onFieldChange("paymentTermsDays", parseInt(e.target.value))}
+          options={PAYMENT_TERMS_OPTIONS.map((opt) => ({
+            value: String(opt.value),
+            label: opt.label,
+          }))}
         />
 
         {/* Notes */}

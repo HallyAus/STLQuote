@@ -114,6 +114,19 @@ export async function POST(request: NextRequest) {
       }
     }
 
+    // Auto-calculate due date from client's payment terms if not explicitly provided
+    if (!invoiceData.dueDate && invoiceData.clientId) {
+      const client = await prisma.client.findFirst({
+        where: { id: invoiceData.clientId, userId: user.id },
+        select: { paymentTermsDays: true },
+      });
+      if (client) {
+        const due = new Date();
+        due.setDate(due.getDate() + client.paymentTermsDays);
+        invoiceData.dueDate = due.toISOString();
+      }
+    }
+
     const subtotal = roundCurrency(
       lineItems.reduce((sum, item) => sum + item.lineTotal, 0)
     );

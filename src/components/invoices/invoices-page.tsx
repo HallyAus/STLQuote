@@ -93,7 +93,7 @@ function CreateInvoiceModal({
   onClose,
   onCreated,
 }: {
-  clients: { id: string; name: string; company: string | null }[];
+  clients: { id: string; name: string; company: string | null; paymentTermsDays: number }[];
   onClose: () => void;
   onCreated: (id: string) => void;
 }) {
@@ -105,6 +105,20 @@ function CreateInvoiceModal({
   const [terms, setTerms] = useState("");
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
+
+  // Auto-fill due date from client payment terms
+  function handleClientChange(newClientId: string) {
+    setClientId(newClientId);
+    if (newClientId) {
+      const client = clients.find((c) => c.id === newClientId);
+      if (client) {
+        const days = client.paymentTermsDays ?? 14;
+        const due = new Date();
+        due.setDate(due.getDate() + days);
+        setDueDate(due.toISOString().slice(0, 10));
+      }
+    }
+  }
 
   // Line items state
   const [lineItems, setLineItems] = useState<
@@ -198,7 +212,7 @@ function CreateInvoiceModal({
         <Select
           label="Client"
           value={clientId}
-          onChange={(e) => setClientId(e.target.value)}
+          onChange={(e) => handleClientChange(e.target.value)}
           options={clientOptions}
         />
 
@@ -373,7 +387,7 @@ export function InvoicesPage() {
   const [error, setError] = useState<string | null>(null);
   const [statusFilter, setStatusFilter] = useState("ALL");
   const [createModalOpen, setCreateModalOpen] = useState(false);
-  const [clients, setClients] = useState<{ id: string; name: string; company: string | null }[]>([]);
+  const [clients, setClients] = useState<{ id: string; name: string; company: string | null; paymentTermsDays: number }[]>([]);
 
   // ---- Fetch invoices ----
   const fetchInvoices = useCallback(async () => {
@@ -402,10 +416,11 @@ export function InvoicesPage() {
       if (res?.ok) {
         const data = await res.json();
         setClients(
-          data.map((c: { id: string; name: string; company: string | null }) => ({
+          data.map((c: { id: string; name: string; company: string | null; paymentTermsDays?: number }) => ({
             id: c.id,
             name: c.name,
             company: c.company,
+            paymentTermsDays: c.paymentTermsDays ?? 14,
           }))
         );
       }

@@ -225,6 +225,7 @@ export function InvoiceDetail() {
 
   // Editable fields
   const [taxPct, setTaxPct] = useState("10");
+  const [dueDate, setDueDate] = useState("");
   const [notes, setNotes] = useState("");
   const [terms, setTerms] = useState("");
 
@@ -252,6 +253,7 @@ export function InvoiceDetail() {
       const data: Invoice = await res.json();
       setInvoice(data);
       setTaxPct(String(data.taxPct));
+      setDueDate(data.dueDate ? new Date(data.dueDate).toISOString().slice(0, 10) : "");
       setNotes(data.notes ?? "");
       setTerms(data.terms ?? "");
       setSelectedClientId(data.clientId ?? "");
@@ -328,6 +330,7 @@ export function InvoiceDetail() {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           taxPct: parseFloat(taxPct) || 0,
+          dueDate: dueDate ? new Date(dueDate).toISOString() : null,
           notes: notes.trim() || null,
           terms: terms.trim() || null,
         }),
@@ -622,7 +625,12 @@ export function InvoiceDetail() {
             </div>
             <div>
               <p className="text-muted-foreground">Due Date</p>
-              <p className="font-medium">{formatDate(invoice.dueDate)}</p>
+              <input
+                type="date"
+                value={dueDate}
+                onChange={(e) => setDueDate(e.target.value)}
+                className="mt-0.5 w-full rounded-md border border-input bg-background px-2 py-1 text-sm font-medium text-foreground"
+              />
             </div>
             <div>
               <p className="text-muted-foreground">Sent</p>
