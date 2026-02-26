@@ -71,7 +71,9 @@ function LoginForm() {
         setError(
           result.error === "CredentialsSignin"
             ? "Invalid email or password"
-            : result.error
+            : result.error === "Configuration"
+              ? "Unable to sign in. Please reset your password or contact support."
+              : result.error
         );
       } else {
         router.push(callbackUrl);

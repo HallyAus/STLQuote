@@ -13,6 +13,7 @@ export default auth((req) => {
     "/register",
     "/forgot-password",
     "/reset-password",
+    "/change-password",
     "/api/auth",
     "/portal",
     "/api/portal",
@@ -55,6 +56,14 @@ export default auth((req) => {
     const loginUrl = new URL("/login", req.url);
     loginUrl.searchParams.set("callbackUrl", pathname);
     return NextResponse.redirect(loginUrl);
+  }
+
+  // Force password change for users with temporary passwords
+  if ((req.auth as any)?.token?.mustChangePassword) {
+    const allowed = ["/change-password", "/api/auth/change-password", "/api/auth"];
+    if (!allowed.some((p) => pathname.startsWith(p))) {
+      return NextResponse.redirect(new URL("/change-password", req.url));
+    }
   }
 
   // Block disabled users mid-session (disabled flag synced via JWT refresh)

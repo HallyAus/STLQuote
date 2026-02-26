@@ -32,9 +32,11 @@ export async function POST(
       );
     }
 
-    // Generate random password and hash it
-    const randomPassword = crypto.randomUUID();
-    const passwordHash = await bcrypt.hash(randomPassword, 12);
+    // Generate readable temp password (PF-xxxx-xxxx)
+    const chars = "abcdefghjkmnpqrstuvwxyz23456789"; // no ambiguous chars
+    const seg = () => Array.from({ length: 4 }, () => chars[crypto.randomInt(chars.length)]).join("");
+    const tempPassword = `PF-${seg()}-${seg()}`;
+    const passwordHash = await bcrypt.hash(tempPassword, 12);
 
     const trialEndsAt = new Date(Date.now() + 14 * 24 * 60 * 60 * 1000);
 
@@ -45,6 +47,8 @@ export async function POST(
           name: entry.name,
           email: entry.email,
           passwordHash,
+          emailVerified: new Date(),
+          mustChangePassword: true,
           role: "USER",
           subscriptionTier: "free",
           subscriptionStatus: "trialing",
@@ -90,7 +94,7 @@ export async function POST(
       })
       .catch(() => {});
 
-    // Send welcome email with password reset prompt (non-blocking)
+    // Send welcome email with temp password (non-blocking)
     const appUrl = process.env.NEXT_PUBLIC_APP_URL || "http://localhost:3000";
     sendEmail({
       to: entry.email,
@@ -100,10 +104,14 @@ export async function POST(
       html: `<div style="font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; max-width: 600px; margin: 0 auto;">
         <h2 style="color: #171717;">Welcome, ${entry.name}!</h2>${entry.businessName ? `\n        <p style="color: #666; font-size: 14px;">Business: ${entry.businessName}</p>` : ""}
         <p>Great news — your Printforge account has been approved!</p>
-        <p>You can now sign in and start calculating your 3D print costs. Use the "Forgot password" option on the login page to set your password.</p>
+        <p>Sign in with your temporary password below. You'll be asked to set a new password on first login.</p>
+        <div style="background: #f5f5f5; border-radius: 8px; padding: 16px; margin: 16px 0; text-align: center;">
+          <p style="margin: 0 0 4px; font-size: 12px; color: #666; text-transform: uppercase; letter-spacing: 0.05em;">Your temporary password</p>
+          <p style="margin: 0; font-size: 24px; font-weight: bold; font-family: monospace; color: #171717; letter-spacing: 0.1em;">${tempPassword}</p>
+        </div>
         <p style="margin: 24px 0;">
-          <a href="${appUrl}/forgot-password" style="background-color: #2563eb; color: white; padding: 12px 24px; border-radius: 6px; text-decoration: none; font-weight: 600;">
-            Set Your Password
+          <a href="${appUrl}/login" style="background-color: #2563eb; color: white; padding: 12px 24px; border-radius: 6px; text-decoration: none; font-weight: 600;">
+            Sign In Now
           </a>
         </p>
         <p style="color: #666; font-size: 14px;">Your 14-day Pro trial has started. Enjoy full access to all features!</p>

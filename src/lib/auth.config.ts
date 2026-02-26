@@ -18,6 +18,7 @@ declare module "next-auth" {
 
   interface User {
     role?: string;
+    mustChangePassword?: boolean;
     subscriptionTier?: string;
     subscriptionStatus?: string;
     trialEndsAt?: Date | null;
@@ -41,6 +42,7 @@ export const authConfig = {
         token.id = user.id as string;
         token.role = (user as any).role as string;
         token.disabled = false;
+        token.mustChangePassword = (user as any).mustChangePassword ?? false;
         token.subscriptionTier = (user as any).subscriptionTier ?? "free";
         token.subscriptionStatus = (user as any).subscriptionStatus ?? "trialing";
         token.trialEndsAt = (user as any).trialEndsAt?.toISOString() ?? null;
@@ -58,10 +60,11 @@ export const authConfig = {
           const fresh = await db.user.update({
             where: { id: token.id as string },
             data: { lastLogin: new Date() },
-            select: { disabled: true, role: true, subscriptionTier: true, subscriptionStatus: true, trialEndsAt: true },
+            select: { disabled: true, role: true, mustChangePassword: true, subscriptionTier: true, subscriptionStatus: true, trialEndsAt: true },
           });
           token.disabled = fresh.disabled;
           token.role = fresh.role;
+          token.mustChangePassword = fresh.mustChangePassword;
           token.subscriptionTier = fresh.subscriptionTier;
           token.subscriptionStatus = fresh.subscriptionStatus;
           token.trialEndsAt = fresh.trialEndsAt?.toISOString() ?? null;
