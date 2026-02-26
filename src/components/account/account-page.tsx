@@ -4,6 +4,7 @@ import { useState, useEffect, useCallback } from "react";
 import { useSession, signOut } from "next-auth/react";
 import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
+import { Select } from "@/components/ui/select";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { BANNER } from "@/lib/status-colours";
@@ -74,6 +75,29 @@ function getInitials(name: string | null, email: string | null): string {
   return "??";
 }
 
+const TIMEZONES = [
+  { value: "Pacific/Auckland", label: "Auckland (NZST)" },
+  { value: "Australia/Sydney", label: "Sydney (AEST)" },
+  { value: "Australia/Brisbane", label: "Brisbane (AEST)" },
+  { value: "Australia/Adelaide", label: "Adelaide (ACST)" },
+  { value: "Australia/Darwin", label: "Darwin (ACST)" },
+  { value: "Australia/Perth", label: "Perth (AWST)" },
+  { value: "Asia/Tokyo", label: "Tokyo (JST)" },
+  { value: "Asia/Shanghai", label: "Shanghai (CST)" },
+  { value: "Asia/Singapore", label: "Singapore (SGT)" },
+  { value: "Asia/Kolkata", label: "Mumbai (IST)" },
+  { value: "Asia/Dubai", label: "Dubai (GST)" },
+  { value: "Europe/London", label: "London (GMT)" },
+  { value: "Europe/Paris", label: "Paris (CET)" },
+  { value: "Europe/Berlin", label: "Berlin (CET)" },
+  { value: "America/New_York", label: "New York (EST)" },
+  { value: "America/Chicago", label: "Chicago (CST)" },
+  { value: "America/Denver", label: "Denver (MST)" },
+  { value: "America/Los_Angeles", label: "Los Angeles (PST)" },
+  { value: "America/Sao_Paulo", label: "São Paulo (BRT)" },
+  { value: "Pacific/Honolulu", label: "Honolulu (HST)" },
+];
+
 export function AccountPage() {
   const { update: updateSession } = useSession();
   const [profile, setProfile] = useState<Profile | null>(null);
@@ -82,6 +106,7 @@ export function AccountPage() {
   // Profile form
   const [name, setName] = useState("");
   const [email, setEmail] = useState("");
+  const [timezone, setTimezone] = useState("Australia/Sydney");
   const [profileSaving, setProfileSaving] = useState(false);
   const [profileMsg, setProfileMsg] = useState<{ type: "success" | "error"; text: string } | null>(null);
 
@@ -110,6 +135,13 @@ export function AccountPage() {
 
   useEffect(() => {
     fetchProfile();
+    // Fetch timezone from settings
+    fetch("/api/settings")
+      .then((res) => (res.ok ? res.json() : null))
+      .then((data) => {
+        if (data?.timezone) setTimezone(data.timezone);
+      })
+      .catch(() => {});
   }, [fetchProfile]);
 
   // Auto-clear messages
@@ -131,11 +163,19 @@ export function AccountPage() {
     setProfileSaving(true);
 
     try {
+      // Save profile
       const res = await fetch("/api/account", {
         method: "PUT",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ name, email }),
       });
+
+      // Save timezone to settings
+      await fetch("/api/settings", {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ timezone }),
+      }).catch(() => {});
 
       const data = await res.json();
       if (!res.ok) {
@@ -321,6 +361,12 @@ export function AccountPage() {
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
                 placeholder="you@example.com"
+              />
+              <Select
+                label="Timezone"
+                value={timezone}
+                onChange={(e) => setTimezone(e.target.value)}
+                options={TIMEZONES.map((tz) => ({ value: tz.value, label: tz.label }))}
               />
 
               <div className="flex justify-end pt-2">

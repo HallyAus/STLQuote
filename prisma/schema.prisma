@@ -106,6 +106,7 @@ model Settings {
   id                    String  @id @default(cuid())
   userId                String  @unique
   user                  User    @relation(fields: [userId], references: [id], onDelete: Cascade)
+  timezone              String  @default("Australia/Sydney")
   defaultCurrency       String  @default("AUD")
   defaultElectricityRate Float  @default(0.30) // $/kWh
   defaultMarkupPct      Float  @default(50.0)

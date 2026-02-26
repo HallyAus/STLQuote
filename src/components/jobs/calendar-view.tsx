@@ -1,6 +1,6 @@
 "use client";
 
-import { Fragment, useState, useMemo, useCallback, type DragEvent } from "react";
+import { Fragment, useState, useEffect, useMemo, useCallback, type DragEvent } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -294,6 +294,19 @@ export function CalendarView({
 }: CalendarViewProps) {
   const [weekStart, setWeekStart] = useState<Date>(() => getMonday(new Date()));
   const [selectedDay, setSelectedDay] = useState<Date>(new Date());
+  const [userTimezone, setUserTimezone] = useState<string>(
+    Intl.DateTimeFormat().resolvedOptions().timeZone
+  );
+
+  // Fetch user timezone from settings
+  useEffect(() => {
+    fetch("/api/settings")
+      .then((res) => (res.ok ? res.json() : null))
+      .then((data) => {
+        if (data?.timezone) setUserTimezone(data.timezone);
+      })
+      .catch(() => {});
+  }, []);
   const [dragOverCell, setDragOverCell] = useState<{
     printerId: string;
     hour: number;
@@ -394,10 +407,25 @@ export function CalendarView({
     setDragOverCell(null);
   }
 
-  // ---- Determine the "now" marker position ----
+  // ---- Determine the "now" marker position (user timezone) ----
   const now = new Date();
-  const nowOnSelectedDay = isSameDay(now, selectedDay);
-  const nowHour = now.getHours() + now.getMinutes() / 60;
+  const tzParts = new Intl.DateTimeFormat("en-US", {
+    timeZone: userTimezone,
+    hour: "numeric",
+    minute: "numeric",
+    day: "numeric",
+    month: "numeric",
+    year: "numeric",
+    hour12: false,
+  }).formatToParts(now);
+  const tzHour = Number(tzParts.find((p) => p.type === "hour")?.value ?? 0);
+  const tzMinute = Number(tzParts.find((p) => p.type === "minute")?.value ?? 0);
+  const tzDay = Number(tzParts.find((p) => p.type === "day")?.value ?? 0);
+  const tzMonth = Number(tzParts.find((p) => p.type === "month")?.value ?? 1) - 1;
+  const tzYear = Number(tzParts.find((p) => p.type === "year")?.value ?? now.getFullYear());
+  const tzDate = new Date(tzYear, tzMonth, tzDay);
+  const nowOnSelectedDay = isSameDay(tzDate, selectedDay);
+  const nowHour = tzHour + tzMinute / 60;
   const nowInRange = nowHour >= START_HOUR && nowHour <= END_HOUR + 1;
   const nowLeftPct =
     nowOnSelectedDay && nowInRange

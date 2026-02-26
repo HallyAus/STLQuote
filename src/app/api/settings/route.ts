@@ -4,6 +4,7 @@ import { prisma } from "@/lib/prisma";
 import { getSessionUser } from "@/lib/auth-helpers";
 
 const updateSettingsSchema = z.object({
+  timezone: z.string().min(1).optional(),
   defaultCurrency: z.enum(["AUD", "USD", "EUR", "GBP"]).optional(),
   defaultElectricityRate: z
     .number()
