@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect, useCallback } from "react";
+import { useState, useEffect, useCallback, Fragment } from "react";
 import { useRouter } from "next/navigation";
 import { useSession } from "next-auth/react";
 import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card";
@@ -32,6 +32,10 @@ import {
   ClipboardList,
   Check,
   Ban,
+  Terminal,
+  ChevronDown,
+  ChevronUp,
+  RefreshCw,
 } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import { Select } from "@/components/ui/select";
@@ -86,7 +90,7 @@ export default function AdminPage() {
   const [users, setUsers] = useState<AdminUser[]>([]);
   const [loading, setLoading] = useState(true);
   const [actionLoading, setActionLoading] = useState<string | null>(null);
-  const [activeTab, setActiveTab] = useState<"users" | "waitlist" | "deploys" | "email" | "newsletter" | "config">("users");
+  const [activeTab, setActiveTab] = useState<"users" | "waitlist" | "deploys" | "email" | "newsletter" | "config" | "logs">("users");
 
   // Create user modal
   const [showCreateModal, setShowCreateModal] = useState(false);
@@ -154,6 +158,21 @@ export default function AdminPage() {
   const [nlCounts, setNlCounts] = useState<{ all: number; active: number; admins: number } | null>(null);
   const [nlLoading, setNlLoading] = useState(false);
   const [nlResult, setNlResult] = useState<{ ok: boolean; message: string } | null>(null);
+
+  // System logs
+  const [systemLogs, setSystemLogs] = useState<{
+    id: string;
+    userId: string | null;
+    type: string;
+    level: string;
+    message: string;
+    detail: string | null;
+    createdAt: string;
+  }[]>([]);
+  const [logsFilter, setLogsFilter] = useState({ type: "all", level: "all" });
+  const [logsPagination, setLogsPagination] = useState({ page: 1, total: 0, totalPages: 1 });
+  const [logsLoading, setLogsLoading] = useState(false);
+  const [expandedLogId, setExpandedLogId] = useState<string | null>(null);
 
   const fetchUsers = useCallback(async () => {
     try {
@@ -498,6 +517,30 @@ export default function AdminPage() {
     fetchConfig();
   }, [activeTab, fetchConfig]);
 
+  // Fetch system logs when tab is opened or filter/page changes
+  const fetchSystemLogs = useCallback(async (page = 1, type = "all", level = "all") => {
+    setLogsLoading(true);
+    try {
+      const params = new URLSearchParams({ page: String(page) });
+      if (type !== "all") params.set("type", type);
+      if (level !== "all") params.set("level", level);
+      const res = await fetch(`/api/admin/logs?${params}`);
+      if (res.ok) {
+        const data = await res.json();
+        setSystemLogs(data.logs);
+        setLogsPagination(data.pagination);
+      }
+    } catch { /* ignore */ } finally {
+      setLogsLoading(false);
+    }
+  }, []);
+
+  useEffect(() => {
+    if (activeTab !== "logs") return;
+    fetchSystemLogs(logsPagination.page, logsFilter.type, logsFilter.level);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [activeTab]);
+
   async function toggleConfig(key: string, currentValue: string) {
     const newValue = currentValue === "true" ? "false" : "true";
     setConfigSaving(key);
@@ -563,6 +606,7 @@ export default function AdminPage() {
           { key: "email", icon: Mail, label: "Email" },
           { key: "newsletter", icon: Megaphone, label: "Newsletter" },
           { key: "config", icon: Settings, label: "Config" },
+          { key: "logs", icon: Terminal, label: "Logs" },
         ] as const).map((tab) => {
           const pendingCount = tab.key === "waitlist"
             ? waitlistEntries.filter((e) => e.status === "pending").length
@@ -1126,6 +1170,249 @@ export default function AdminPage() {
                   </button>
                 </div>
               </div>
+            )}
+          </CardContent>
+        </Card>
+      )}
+
+      {/* Logs tab */}
+      {activeTab === "logs" && (
+        <Card>
+          <CardHeader>
+            <div className="flex items-center justify-between">
+              <CardTitle className="flex items-center gap-2">
+                <Terminal className="h-5 w-5" />
+                System Logs
+              </CardTitle>
+              <div className="flex items-center gap-2">
+                <Select
+                  options={[
+                    { value: "all", label: "All types" },
+                    { value: "xero_sync", label: "Xero sync" },
+                    { value: "email", label: "Email" },
+                    { value: "billing", label: "Billing" },
+                    { value: "auth", label: "Auth" },
+                    { value: "system", label: "System" },
+                  ]}
+                  value={logsFilter.type}
+                  onChange={(e) => {
+                    const newFilter = { ...logsFilter, type: e.target.value };
+                    setLogsFilter(newFilter);
+                    fetchSystemLogs(1, newFilter.type, newFilter.level);
+                  }}
+                />
+                <Select
+                  options={[
+                    { value: "all", label: "All levels" },
+                    { value: "info", label: "Info" },
+                    { value: "warn", label: "Warn" },
+                    { value: "error", label: "Error" },
+                  ]}
+                  value={logsFilter.level}
+                  onChange={(e) => {
+                    const newFilter = { ...logsFilter, level: e.target.value };
+                    setLogsFilter(newFilter);
+                    fetchSystemLogs(1, newFilter.type, newFilter.level);
+                  }}
+                />
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  onClick={() => fetchSystemLogs(logsPagination.page, logsFilter.type, logsFilter.level)}
+                  disabled={logsLoading}
+                  title="Refresh"
+                >
+                  {logsLoading ? (
+                    <Loader2 className="h-4 w-4 animate-spin" />
+                  ) : (
+                    <RefreshCw className="h-4 w-4" />
+                  )}
+                </Button>
+              </div>
+            </div>
+          </CardHeader>
+          <CardContent>
+            {logsLoading && systemLogs.length === 0 ? (
+              <div className="flex items-center justify-center py-8">
+                <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
+              </div>
+            ) : systemLogs.length === 0 ? (
+              <div className="py-8 text-center text-muted-foreground">
+                No logs recorded yet.
+              </div>
+            ) : (
+              <>
+                {/* Desktop table */}
+                <div className="hidden md:block overflow-x-auto">
+                  <table className="w-full text-sm font-mono">
+                    <thead>
+                      <tr className="border-b border-border text-left text-muted-foreground">
+                        <th className="pb-3 pr-4 font-medium">Time</th>
+                        <th className="pb-3 pr-4 font-medium">Level</th>
+                        <th className="pb-3 pr-4 font-medium">Type</th>
+                        <th className="pb-3 pr-4 font-medium">Message</th>
+                        <th className="pb-3 font-medium w-8"></th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {systemLogs.map((entry) => (
+                        <Fragment key={entry.id}>
+                          <tr
+                            className={cn(
+                              "border-b border-border/50 last:border-0",
+                              entry.detail ? "cursor-pointer hover:bg-muted/50" : ""
+                            )}
+                            onClick={() => {
+                              if (entry.detail) {
+                                setExpandedLogId(expandedLogId === entry.id ? null : entry.id);
+                              }
+                            }}
+                          >
+                            <td className="py-2 pr-4 whitespace-nowrap text-muted-foreground text-xs">
+                              {new Date(entry.createdAt).toLocaleString("en-AU", {
+                                day: "2-digit",
+                                month: "2-digit",
+                                hour: "2-digit",
+                                minute: "2-digit",
+                                second: "2-digit",
+                              })}
+                            </td>
+                            <td className="py-2 pr-4">
+                              <span
+                                className={cn(
+                                  "inline-flex items-center rounded-full px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wider",
+                                  entry.level === "info"
+                                    ? "bg-success/15 text-success-foreground"
+                                    : entry.level === "warn"
+                                      ? "bg-amber-500/15 text-amber-600 dark:text-amber-400"
+                                      : "bg-destructive/10 text-destructive-foreground"
+                                )}
+                              >
+                                {entry.level}
+                              </span>
+                            </td>
+                            <td className="py-2 pr-4">
+                              <span className="inline-flex rounded-full bg-muted px-2 py-0.5 text-[10px] font-medium text-muted-foreground uppercase tracking-wider">
+                                {entry.type.replace(/_/g, " ")}
+                              </span>
+                            </td>
+                            <td className="py-2 pr-4 text-xs max-w-[400px] truncate" title={entry.message}>
+                              {entry.message}
+                            </td>
+                            <td className="py-2">
+                              {entry.detail && (
+                                expandedLogId === entry.id
+                                  ? <ChevronUp className="h-3.5 w-3.5 text-muted-foreground" />
+                                  : <ChevronDown className="h-3.5 w-3.5 text-muted-foreground" />
+                              )}
+                            </td>
+                          </tr>
+                          {expandedLogId === entry.id && entry.detail && (
+                            <tr>
+                              <td colSpan={5} className="pb-3 pt-0 px-4">
+                                <pre className="whitespace-pre-wrap break-all rounded-md bg-muted/50 p-3 text-xs text-muted-foreground font-mono max-h-64 overflow-auto">
+                                  {entry.detail}
+                                </pre>
+                              </td>
+                            </tr>
+                          )}
+                        </Fragment>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+
+                {/* Mobile cards */}
+                <div className="space-y-3 md:hidden">
+                  {systemLogs.map((entry) => (
+                    <div
+                      key={entry.id}
+                      className="rounded-lg border border-border p-3 space-y-2 font-mono"
+                      onClick={() => {
+                        if (entry.detail) {
+                          setExpandedLogId(expandedLogId === entry.id ? null : entry.id);
+                        }
+                      }}
+                    >
+                      <div className="flex items-start justify-between gap-2">
+                        <div className="flex items-center gap-2 flex-wrap">
+                          <span
+                            className={cn(
+                              "inline-flex items-center rounded-full px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wider",
+                              entry.level === "info"
+                                ? "bg-success/15 text-success-foreground"
+                                : entry.level === "warn"
+                                  ? "bg-amber-500/15 text-amber-600 dark:text-amber-400"
+                                  : "bg-destructive/10 text-destructive-foreground"
+                            )}
+                          >
+                            {entry.level}
+                          </span>
+                          <span className="inline-flex rounded-full bg-muted px-2 py-0.5 text-[10px] font-medium text-muted-foreground uppercase tracking-wider">
+                            {entry.type.replace(/_/g, " ")}
+                          </span>
+                        </div>
+                        <span className="text-[10px] text-muted-foreground whitespace-nowrap">
+                          {formatRelativeTime(entry.createdAt)}
+                        </span>
+                      </div>
+                      <p className="text-xs text-foreground">{entry.message}</p>
+                      {expandedLogId === entry.id && entry.detail && (
+                        <pre className="whitespace-pre-wrap break-all rounded-md bg-muted/50 p-2 text-[10px] text-muted-foreground font-mono max-h-48 overflow-auto">
+                          {entry.detail}
+                        </pre>
+                      )}
+                      {entry.detail && (
+                        <div className="flex items-center gap-1 text-[10px] text-muted-foreground">
+                          {expandedLogId === entry.id ? (
+                            <><ChevronUp className="h-3 w-3" /> Hide detail</>
+                          ) : (
+                            <><ChevronDown className="h-3 w-3" /> Show detail</>
+                          )}
+                        </div>
+                      )}
+                    </div>
+                  ))}
+                </div>
+
+                {/* Pagination */}
+                {logsPagination.totalPages > 1 && (
+                  <div className="flex items-center justify-between pt-4 border-t border-border mt-4">
+                    <p className="text-sm text-muted-foreground font-mono">
+                      {logsPagination.total} log{logsPagination.total !== 1 ? "s" : ""} total
+                    </p>
+                    <div className="flex items-center gap-1">
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        onClick={() => {
+                          const newPage = logsPagination.page - 1;
+                          setLogsPagination((p) => ({ ...p, page: newPage }));
+                          fetchSystemLogs(newPage, logsFilter.type, logsFilter.level);
+                        }}
+                        disabled={logsPagination.page <= 1 || logsLoading}
+                      >
+                        <ChevronLeft className="h-4 w-4" />
+                      </Button>
+                      <span className="text-sm text-muted-foreground px-2 font-mono">
+                        {logsPagination.page} / {logsPagination.totalPages}
+                      </span>
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        onClick={() => {
+                          const newPage = logsPagination.page + 1;
+                          setLogsPagination((p) => ({ ...p, page: newPage }));
+                          fetchSystemLogs(newPage, logsFilter.type, logsFilter.level);
+                        }}
+                        disabled={logsPagination.page >= logsPagination.totalPages || logsLoading}
+                      >
+                        <ChevronRight className="h-4 w-4" />
+                      </Button>
+                    </div>
+                  </div>
+                )}
+              </>
             )}
           </CardContent>
         </Card>

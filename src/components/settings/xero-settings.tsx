@@ -34,6 +34,7 @@ export function XeroSettings() {
     contacts: number;
     invoices: number;
   } | null>(null);
+  const [syncErrors, setSyncErrors] = useState<string[]>([]);
 
   // ---- Fetch Xero connection status ----
 
@@ -122,6 +123,7 @@ export function XeroSettings() {
     setSyncing(true);
     setError(null);
     setSyncResult(null);
+    setSyncErrors([]);
 
     try {
       const res = await fetch("/api/xero/sync", { method: "POST" });
@@ -133,12 +135,14 @@ export function XeroSettings() {
       const data = await res.json();
       setSyncResult(data.synced);
 
-      const errorCount =
-        (data.errors?.contacts?.length ?? 0) +
-        (data.errors?.invoices?.length ?? 0);
+      const allErrors: string[] = [
+        ...(data.errors?.contacts ?? []),
+        ...(data.errors?.invoices ?? []),
+      ];
 
-      if (errorCount > 0) {
-        setError(`Sync completed with ${errorCount} error(s). Check console for details.`);
+      if (allErrors.length > 0) {
+        setError(`Sync completed with ${allErrors.length} error(s).`);
+        setSyncErrors(allErrors);
       } else {
         setSuccess("Sync complete!");
       }
@@ -223,6 +227,22 @@ export function XeroSettings() {
               <div className={BANNER.info}>
                 Synced {syncResult.contacts} contact{syncResult.contacts !== 1 ? "s" : ""} and{" "}
                 {syncResult.invoices} invoice{syncResult.invoices !== 1 ? "s" : ""} to Xero.
+              </div>
+            )}
+
+            {/* Sync errors */}
+            {syncErrors.length > 0 && (
+              <div className="rounded-md border border-destructive/30 bg-destructive/5 p-3 space-y-1">
+                <p className="text-sm font-medium text-destructive-foreground">
+                  Sync errors:
+                </p>
+                <ul className="list-disc list-inside space-y-0.5">
+                  {syncErrors.map((err, i) => (
+                    <li key={i} className="text-sm text-destructive-foreground/80">
+                      {err}
+                    </li>
+                  ))}
+                </ul>
               </div>
             )}
 

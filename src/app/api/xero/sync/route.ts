@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { requireFeature } from "@/lib/auth-helpers";
 import { prisma } from "@/lib/prisma";
 import { pushContactToXero, pushInvoiceToXero } from "@/lib/xero";
+import { log } from "@/lib/logger";
 
 export async function POST() {
   try {
@@ -85,6 +86,16 @@ export async function POST() {
         console.error(`Xero sync invoice "${invoice.invoiceNumber}" failed:`, err);
       }
     }
+
+    // Log sync results
+    const totalErrors = contactErrors.length + invoiceErrors.length;
+    await log({
+      type: "xero_sync",
+      level: totalErrors > 0 ? "warn" : "info",
+      message: `Xero sync: ${contactsSynced} contacts, ${invoicesSynced} invoices synced${totalErrors > 0 ? `, ${totalErrors} error(s)` : ""}`,
+      detail: totalErrors > 0 ? JSON.stringify({ contactErrors, invoiceErrors }, null, 2) : undefined,
+      userId: user.id,
+    });
 
     return NextResponse.json({
       synced: {

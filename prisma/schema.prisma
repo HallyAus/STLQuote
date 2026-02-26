@@ -540,6 +540,22 @@ model Waitlist {
   approvedBy   String?
 }
 
+// --- System Logs ---
+
+model SystemLog {
+  id        String   @id @default(cuid())
+  userId    String?
+  type      String   // xero_sync, email, billing, auth, error
+  level     String   @default("info") // info, warn, error
+  message   String
+  detail    String?  @db.Text
+  createdAt DateTime @default(now())
+
+  @@index([userId])
+  @@index([type])
+  @@index([createdAt])
+}
+
 // --- Webhooks ---
 
 model Webhook {
