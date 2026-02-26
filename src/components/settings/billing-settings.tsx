@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { Suspense, useState, useEffect } from "react";
 import { useSession } from "next-auth/react";
 import { useSearchParams } from "next/navigation";
 import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card";
@@ -44,6 +44,14 @@ const ANNUAL_SAVINGS_PCT = Math.round(
 // ---------------------------------------------------------------------------
 
 export function BillingSettings() {
+  return (
+    <Suspense fallback={null}>
+      <BillingSettingsInner />
+    </Suspense>
+  );
+}
+
+function BillingSettingsInner() {
   const { data: session } = useSession();
   const searchParams = useSearchParams();
   const { toast } = useToast();
