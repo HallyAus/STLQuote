@@ -184,7 +184,7 @@ function JobCardContent({
                 )}
                 {!job.client && !job.quote && !job.printer && (
                   <p className="text-sm font-medium text-muted-foreground">
-                    Unlinked job
+                    {job.notes?.match(/^Shopify (#\S+)/)?.[1] ?? "Unlinked job"}
                   </p>
                 )}
               </div>

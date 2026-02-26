@@ -22,7 +22,18 @@ interface Job {
   scheduledEnd: string | null;
   createdAt: string;
   quote: { quoteNumber: string; total: number } | null;
+  client: { id: string; name: string; email: string | null } | null;
   printer: { name: string } | null;
+}
+
+/** Extract a display label for a job — quote number, Shopify order ref, client name, or fallback */
+function jobLabel(job: Job): string {
+  if (job.quote?.quoteNumber) return job.quote.quoteNumber;
+  // Shopify order reference from notes (e.g. "Shopify #41279PF")
+  const shopifyMatch = job.notes?.match(/^Shopify (#\S+)/);
+  if (shopifyMatch) return shopifyMatch[1];
+  if (job.client?.name) return job.client.name;
+  return "Unlinked job";
 }
 
 interface PrinterOption {
@@ -219,11 +230,11 @@ function JobBlock({
         width: `${widthPct}%`,
         minWidth: "2rem",
       }}
-      title={`${job.quote?.quoteNumber ?? "Job"} — ${statusConfig.label} (${formatHour(start.getHours())}–${formatHour(end.getHours())})`}
+      title={`${jobLabel(job)} — ${statusConfig.label} (${formatHour(start.getHours())}–${formatHour(end.getHours())})`}
     >
       <GripHorizontal className="h-3 w-3 shrink-0 opacity-50" />
       <span className="truncate">
-        {job.quote?.quoteNumber ?? "Job"}
+        {jobLabel(job)}
       </span>
     </div>
   );
@@ -257,7 +268,7 @@ function UnscheduledJobCard({
     >
       <span className={cn("h-2 w-2 shrink-0 rounded-full", statusConfig.dotColour)} />
       <span className="min-w-0 flex-1 truncate font-medium">
-        {job.quote?.quoteNumber ?? "Unlinked job"}
+        {jobLabel(job)}
       </span>
       {job.printer && (
         <span className="shrink-0 text-xs text-muted-foreground">
