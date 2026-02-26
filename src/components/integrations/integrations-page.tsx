@@ -5,7 +5,7 @@ import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card";
 import { XeroSettings } from "@/components/settings/xero-settings";
 import { ShopifySettings } from "@/components/integrations/shopify-settings";
 import { WebhookSettings } from "@/components/settings/webhook-settings";
-import { CreditCard, MessageSquare } from "lucide-react";
+import { CreditCard, MessageSquare, Gamepad2, Send } from "lucide-react";
 
 const comingSoon = [
   {
@@ -17,6 +17,16 @@ const comingSoon = [
     name: "Slack",
     description: "Get notifications for quotes, invoices, and jobs.",
     icon: MessageSquare,
+  },
+  {
+    name: "Discord",
+    description: "Send job updates and alerts to your Discord server.",
+    icon: Gamepad2,
+  },
+  {
+    name: "Telegram",
+    description: "Get instant notifications via Telegram bot.",
+    icon: Send,
   },
 ];
 

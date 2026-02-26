@@ -93,13 +93,16 @@ export async function POST(request: Request) {
       pricePerGram: +(m.price / m.spoolWeightG).toFixed(4),
     }));
 
+    const electricityRate = settings?.defaultElectricityRate ?? 0.3;
+
     const printersContext = printers.map((p) => {
       const depreciationPerHour = p.purchasePrice / p.lifetimeHours;
+      const electricityPerHour = (p.powerWatts / 1000) * electricityRate;
       return {
         id: p.id,
         name: p.name,
         model: p.model,
-        hourlyRate: +(depreciationPerHour + p.maintenanceCostPerHour).toFixed(2),
+        hourlyRate: +(depreciationPerHour + p.maintenanceCostPerHour + electricityPerHour).toFixed(2),
         powerWatts: p.powerWatts,
       };
     });
@@ -115,7 +118,7 @@ ${materialsContext.length > 0
   ? materialsContext.map((m) => `- ${m.type}${m.brand ? ` (${m.brand})` : ""}${m.colour ? `, ${m.colour}` : ""} — $${m.pricePerGram}/g [ID: ${m.id}]`).join("\n")
   : "No materials configured. Use generic estimates."}
 
-AVAILABLE PRINTERS:
+AVAILABLE PRINTERS (hourly rate includes depreciation + maintenance + electricity):
 ${printersContext.length > 0
   ? printersContext.map((p) => `- ${p.name}${p.model ? ` (${p.model})` : ""} — $${p.hourlyRate}/hr, ${p.powerWatts}W [ID: ${p.id}]`).join("\n")
   : "No printers configured. Use generic estimates."}
@@ -131,16 +134,18 @@ RULES:
 2. All prices in AUD
 3. CRITICAL: All costs are PER SINGLE UNIT, not for the whole batch. The quantity field handles multiplication. Example: if someone wants 50 dinosaurs at 100g each, printWeightG=100, and costs reflect ONE dinosaur, with quantity=50
 4. If the user specifies a quantity, use it. Otherwise default to 1
-5. Pick the most appropriate material and printer from the lists. If none match, omit the IDs
-6. Calculate costs PER SINGLE UNIT:
-   - materialCost = weight_per_unit_grams × price_per_gram
-   - machineCost = print_time_per_unit_hours × printer_hourly_rate
+5. CRITICAL: You MUST use the exact price_per_gram from AVAILABLE MATERIALS above. Do NOT make up your own material prices. If a 1kg spool costs $20, price_per_gram is $0.02, so 100g = $2.00
+6. Add 10% material waste factor for supports, purge, and failed prints: materialCost = weight_grams × price_per_gram × 1.10
+7. Pick the most appropriate material and printer from the lists. If none match, omit the IDs
+8. Calculate costs PER SINGLE UNIT:
+   - materialCost = weight_per_unit_grams × price_per_gram × 1.10 (includes 10% waste)
+   - machineCost = print_time_per_unit_hours × printer_hourly_rate (rate already includes depreciation + maintenance + electricity)
    - labourCost = estimated_labour_per_unit_hours × labour_rate (setup, post-processing amortised per unit)
    - overheadCost = overhead_per_job / quantity (spread across units)
    - lineTotal = materialCost + machineCost + labourCost + overheadCost (per unit!)
-7. lineTotal must be >= minimum charge per item
-8. Be conservative with estimates — slightly over is better than under
-9. Typical small FDM prints (30-100g): 1-3 hours each. Labour per unit for batch jobs is low (a few minutes setup amortised)
+9. lineTotal must be >= minimum charge per item
+10. Be conservative with estimates — slightly over is better than under
+11. Typical FDM print speeds: ~30-50g/hr for standard quality. A 100g part takes roughly 2-3 hours. Labour per unit for batch jobs is low (a few minutes setup amortised across the batch)
 
 Return ONLY valid JSON (no markdown, no code fences) with this exact structure:
 {
