@@ -41,8 +41,10 @@ export default auth((req) => {
   }
 
   // Landing page: public for guests, redirect logged-in users to dashboard
+  // Allow ?preview=true to bypass redirect (for admins viewing their landing page)
   if (pathname === "/") {
-    if (req.auth?.user) {
+    const preview = req.nextUrl.searchParams.get("preview");
+    if (req.auth?.user && preview !== "true") {
       return NextResponse.redirect(new URL("/dashboard", req.url));
     }
     return NextResponse.next();
