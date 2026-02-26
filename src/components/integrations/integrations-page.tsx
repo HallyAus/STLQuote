@@ -3,19 +3,15 @@
 import { Suspense } from "react";
 import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card";
 import { XeroSettings } from "@/components/settings/xero-settings";
+import { ShopifySettings } from "@/components/integrations/shopify-settings";
 import { WebhookSettings } from "@/components/settings/webhook-settings";
-import { CreditCard, ShoppingBag, MessageSquare } from "lucide-react";
+import { CreditCard, MessageSquare } from "lucide-react";
 
 const comingSoon = [
   {
     name: "Stripe Connect",
     description: "Accept card payments directly from invoices.",
     icon: CreditCard,
-  },
-  {
-    name: "Shopify",
-    description: "Sync orders from your Shopify storefront.",
-    icon: ShoppingBag,
   },
   {
     name: "Slack",
@@ -38,6 +34,11 @@ export function IntegrationsPage() {
       {/* Xero */}
       <Suspense fallback={null}>
         <XeroSettings />
+      </Suspense>
+
+      {/* Shopify */}
+      <Suspense fallback={null}>
+        <ShopifySettings />
       </Suspense>
 
       {/* Webhooks */}

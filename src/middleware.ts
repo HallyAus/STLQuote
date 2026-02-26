@@ -18,6 +18,7 @@ export default auth((req) => {
     "/api/portal",
     "/api/health",
     "/api/billing/webhook",
+    "/api/shopify/webhook",
     "/api/xero/callback",
     "/api/invoices/portal",
     "/waitlist",

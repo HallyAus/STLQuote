@@ -20,7 +20,8 @@ export type Feature =
   | "business_logo"
   | "dashboard_analytics"
   | "xero_sync"
-  | "ai_assistant";
+  | "ai_assistant"
+  | "shopify_sync";
 
 const PRO_FEATURES: Set<Feature> = new Set([
   "client_portal",
@@ -35,6 +36,7 @@ const PRO_FEATURES: Set<Feature> = new Set([
   "dashboard_analytics",
   "xero_sync",
   "ai_assistant",
+  "shopify_sync",
 ]);
 
 /** Check if a feature requires Pro */
@@ -103,4 +105,5 @@ export const PRO_FEATURE_LIST: { feature: Feature; label: string; description: s
   { feature: "dashboard_analytics", label: "Dashboard Analytics", description: "Printer utilisation, top materials, and markup insights" },
   { feature: "xero_sync", label: "Xero Accounting Sync", description: "Sync invoices, contacts, and payments with Xero" },
   { feature: "ai_assistant", label: "AI Quote Assistant", description: "Describe a job in plain English and get a draft quote with line items" },
+  { feature: "shopify_sync", label: "Shopify Integration", description: "Pull Shopify orders in as jobs automatically" },
 ];

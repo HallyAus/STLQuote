@@ -74,6 +74,14 @@ model User {
   xeroTokenExpiresAt DateTime?
   xeroConnectedAt    DateTime?
 
+  // Shopify Custom App (per user)
+  shopifyShopDomain      String?
+  shopifyAccessToken     String?   @db.Text
+  shopifyConnectedAt     DateTime?
+  shopifyLastSyncAt      DateTime?
+  shopifyAutoCreateJobs  Boolean   @default(true)
+  shopifyWebhookId       String?
+
   accounts           Account[]
   sessions           Session[]
   settings           Settings?
