@@ -577,72 +577,98 @@ export function InvoiceDetail() {
         </div>
       )}
 
-      {/* Header section */}
-      <Card>
-        <CardHeader>
-          <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
-            <div>
+      {/* Header + Details */}
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+        {/* Left: Header + controls */}
+        <Card>
+          <CardHeader className="pb-3">
+            <div className="flex items-start justify-between gap-3">
               <CardTitle className="text-2xl">{invoice.invoiceNumber}</CardTitle>
-              <div className="mt-2 w-56">
-                <Select
-                  label="Client"
-                  options={clientOptions}
-                  value={selectedClientId}
-                  onChange={(e) => handleClientChange(e.target.value)}
-                />
+              <div className="flex flex-wrap items-center gap-2">
+                {invoice.quote && (
+                  <Badge
+                    variant="info"
+                    className="cursor-pointer"
+                    onClick={() => router.push(`/quotes/${invoice.quote!.id}`)}
+                  >
+                    {invoice.quote.quoteNumber}
+                  </Badge>
+                )}
+                <Badge variant={INVOICE_STATUS[invoice.status].variant}>
+                  {INVOICE_STATUS[invoice.status].label}
+                </Badge>
               </div>
             </div>
-            <div className="flex flex-wrap items-center gap-3">
-              {invoice.quote && (
-                <Badge
-                  variant="info"
-                  className="cursor-pointer"
-                  onClick={() => router.push(`/quotes/${invoice.quote!.id}`)}
-                >
-                  {invoice.quote.quoteNumber}
-                </Badge>
-              )}
+          </CardHeader>
+          <CardContent className="space-y-3">
+            <div className="grid grid-cols-2 gap-3">
               <Select
+                label="Client"
+                options={clientOptions}
+                value={selectedClientId}
+                onChange={(e) => handleClientChange(e.target.value)}
+              />
+              <Select
+                label="Status"
                 value={invoice.status}
                 onChange={(e) => handleStatusChange(e.target.value)}
                 options={ALL_STATUSES.map((s) => ({
                   value: s,
                   label: INVOICE_STATUS[s].label,
                 }))}
-                className="w-36"
               />
-              <Badge variant={INVOICE_STATUS[invoice.status].variant}>
-                {INVOICE_STATUS[invoice.status].label}
-              </Badge>
-            </div>
-          </div>
-        </CardHeader>
-        <CardContent>
-          <div className="grid gap-4 text-sm sm:grid-cols-4">
-            <div>
-              <p className="text-muted-foreground">Created</p>
-              <p className="font-medium">{formatDate(invoice.createdAt)}</p>
             </div>
             <div>
-              <p className="text-muted-foreground">Due Date</p>
+              <p className="text-xs text-muted-foreground mb-1">Due Date</p>
               <input
                 type="date"
                 value={dueDate}
                 onChange={(e) => setDueDate(e.target.value)}
-                className="mt-0.5 w-full rounded-md border border-input bg-background px-2 py-1 text-sm font-medium text-foreground"
+                className="w-full rounded-md border border-input bg-background px-2 py-1.5 text-sm font-medium text-foreground"
               />
             </div>
-            <div>
-              <p className="text-muted-foreground">Sent</p>
-              <p className="font-medium">{formatDate(invoice.sentAt)}</p>
+          </CardContent>
+        </Card>
+
+        {/* Right: Dates & Summary */}
+        <Card>
+          <CardHeader className="pb-3">
+            <CardTitle className="text-base">Invoice Details</CardTitle>
+          </CardHeader>
+          <CardContent>
+            <div className="space-y-3">
+              <div className="grid grid-cols-3 gap-3 text-sm">
+                <div>
+                  <p className="text-muted-foreground">Created</p>
+                  <p className="font-medium">{formatDate(invoice.createdAt)}</p>
+                </div>
+                <div>
+                  <p className="text-muted-foreground">Sent</p>
+                  <p className="font-medium">{formatDate(invoice.sentAt)}</p>
+                </div>
+                <div>
+                  <p className="text-muted-foreground">Paid</p>
+                  <p className="font-medium">{formatDate(invoice.paidAt)}</p>
+                </div>
+              </div>
+              <div className="border-t border-border pt-3">
+                <div className="flex items-center justify-between text-sm">
+                  <span className="text-muted-foreground">Subtotal</span>
+                  <span className="font-medium tabular-nums">{formatCurrency(subtotal)}</span>
+                </div>
+                <div className="flex items-center justify-between text-sm mt-1">
+                  <span className="text-muted-foreground">GST ({currentTaxPct}%)</span>
+                  <span className="font-medium tabular-nums">{formatCurrency(tax)}</span>
+                </div>
+                <div className="flex items-center justify-between mt-2 pt-2 border-t border-border">
+                  <span className="font-semibold">Total</span>
+                  <span className="text-xl font-bold text-primary tabular-nums">{formatCurrency(total)}</span>
+                </div>
+              </div>
             </div>
-            <div>
-              <p className="text-muted-foreground">Paid</p>
-              <p className="font-medium">{formatDate(invoice.paidAt)}</p>
-            </div>
-          </div>
-        </CardContent>
-      </Card>
+          </CardContent>
+        </Card>
+      </div>
 
       {/* Line items section */}
       <Card>

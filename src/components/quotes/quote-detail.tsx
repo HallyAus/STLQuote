@@ -682,64 +682,78 @@ export function QuoteDetail() {
         </div>
       )}
 
-      {/* Header section */}
-      <Card>
-        <CardHeader>
-          <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
-            <div>
+      {/* Header + Activity */}
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+        {/* Left: Header + metadata */}
+        <Card>
+          <CardHeader className="pb-3">
+            <div className="flex items-start justify-between gap-3">
               <CardTitle className="text-2xl">{quote.quoteNumber}</CardTitle>
-              <div className="mt-2 w-56">
-                <Select
-                  label="Client"
-                  options={clientOptions}
-                  value={selectedClientId}
-                  onChange={(e) => handleClientChange(e.target.value)}
-                />
+              <div className="flex flex-wrap items-center gap-2">
+                {jobCount > 0 && (
+                  <Badge
+                    variant="info"
+                    className="cursor-pointer"
+                    onClick={() => router.push("/jobs")}
+                  >
+                    <Briefcase className="mr-1 h-3 w-3" />
+                    {jobCount} job{jobCount !== 1 ? "s" : ""}
+                  </Badge>
+                )}
+                <Badge variant={QUOTE_STATUS[quote.status].variant}>
+                  {QUOTE_STATUS[quote.status].label}
+                </Badge>
               </div>
             </div>
-            <div className="flex flex-wrap items-center gap-3">
-              {jobCount > 0 && (
-                <Badge
-                  variant="info"
-                  className="cursor-pointer"
-                  onClick={() => router.push("/jobs")}
-                >
-                  <Briefcase className="mr-1 h-3 w-3" />
-                  {jobCount} job{jobCount !== 1 ? "s" : ""}
-                </Badge>
-              )}
+          </CardHeader>
+          <CardContent className="space-y-3">
+            <div className="grid grid-cols-2 gap-3">
               <Select
+                label="Client"
+                options={clientOptions}
+                value={selectedClientId}
+                onChange={(e) => handleClientChange(e.target.value)}
+              />
+              <Select
+                label="Status"
                 value={quote.status}
                 onChange={(e) => handleStatusChange(e.target.value)}
                 options={ALL_STATUSES.map((s) => ({
                   value: s,
                   label: QUOTE_STATUS[s].label,
                 }))}
-                className="w-36"
               />
-              <Badge variant={QUOTE_STATUS[quote.status].variant}>
-                {QUOTE_STATUS[quote.status].label}
-              </Badge>
             </div>
-          </div>
-        </CardHeader>
-        <CardContent>
-          <div className="grid gap-4 text-sm sm:grid-cols-3">
-            <div>
-              <p className="text-muted-foreground">Created</p>
-              <p className="font-medium">{formatDate(quote.createdAt)}</p>
+            <div className="grid grid-cols-3 gap-3 text-sm">
+              <div>
+                <p className="text-muted-foreground">Created</p>
+                <p className="font-medium">{formatDate(quote.createdAt)}</p>
+              </div>
+              <div>
+                <p className="text-muted-foreground">Expiry</p>
+                <p className="font-medium">{formatDate(quote.expiryDate)}</p>
+              </div>
+              <div>
+                <p className="text-muted-foreground">Currency</p>
+                <p className="font-medium">{quote.currency}</p>
+              </div>
             </div>
-            <div>
-              <p className="text-muted-foreground">Expiry</p>
-              <p className="font-medium">{formatDate(quote.expiryDate)}</p>
-            </div>
-            <div>
-              <p className="text-muted-foreground">Currency</p>
-              <p className="font-medium">{quote.currency}</p>
-            </div>
-          </div>
-        </CardContent>
-      </Card>
+          </CardContent>
+        </Card>
+
+        {/* Right: Activity timeline */}
+        <Card>
+          <CardHeader className="pb-3">
+            <CardTitle className="flex items-center gap-2 text-base">
+              <History className="h-4 w-4" />
+              Activity
+            </CardTitle>
+          </CardHeader>
+          <CardContent className="max-h-[260px] overflow-y-auto">
+            <QuoteTimeline quoteId={quoteId} />
+          </CardContent>
+        </Card>
+      </div>
 
       {/* Line items section */}
       <Card>
@@ -981,19 +995,6 @@ export function QuoteDetail() {
               </Button>
             </div>
           </div>
-        </CardContent>
-      </Card>
-
-      {/* Activity Timeline */}
-      <Card>
-        <CardHeader>
-          <CardTitle className="flex items-center gap-2">
-            <History className="h-4 w-4" />
-            Activity
-          </CardTitle>
-        </CardHeader>
-        <CardContent>
-          <QuoteTimeline quoteId={quoteId} />
         </CardContent>
       </Card>
 

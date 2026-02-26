@@ -5,8 +5,9 @@ import { prisma } from "@/lib/prisma";
 import { exchangeCodeForTokens, getXeroTenants } from "@/lib/xero";
 
 export async function GET(request: NextRequest) {
+  const baseUrl = process.env.NEXT_PUBLIC_APP_URL || request.nextUrl.origin;
+
   try {
-    const baseUrl = process.env.NEXT_PUBLIC_APP_URL || request.nextUrl.origin;
 
     const user = await getSessionUser();
     if (!user) {
@@ -22,13 +23,13 @@ export async function GET(request: NextRequest) {
     if (error) {
       console.error("Xero OAuth error:", error);
       return NextResponse.redirect(
-        new URL("/settings?xero=error&reason=denied", baseUrl)
+        new URL("/integrations?xero=error&reason=denied", baseUrl)
       );
     }
 
     if (!code || !state) {
       return NextResponse.redirect(
-        new URL("/settings?xero=error&reason=missing_params", baseUrl)
+        new URL("/integrations?xero=error&reason=missing_params", baseUrl)
       );
     }
 
@@ -38,7 +39,7 @@ export async function GET(request: NextRequest) {
 
     if (!storedState || storedState !== state) {
       return NextResponse.redirect(
-        new URL("/settings?xero=error&reason=state_mismatch", baseUrl)
+        new URL("/integrations?xero=error&reason=state_mismatch", baseUrl)
       );
     }
 
@@ -52,7 +53,7 @@ export async function GET(request: NextRequest) {
     const tenants = await getXeroTenants(tokens.access_token);
     if (!tenants.length) {
       return NextResponse.redirect(
-        new URL("/settings?xero=error&reason=no_tenants", baseUrl)
+        new URL("/integrations?xero=error&reason=no_tenants", baseUrl)
       );
     }
 
@@ -70,11 +71,11 @@ export async function GET(request: NextRequest) {
       },
     });
 
-    return NextResponse.redirect(new URL("/settings?xero=connected", baseUrl));
+    return NextResponse.redirect(new URL("/integrations?xero=connected", baseUrl));
   } catch (error) {
     console.error("Xero callback error:", error);
     return NextResponse.redirect(
-      new URL("/settings?xero=error&reason=exchange_failed", baseUrl)
+      new URL("/integrations?xero=error&reason=exchange_failed", baseUrl)
     );
   }
 }
