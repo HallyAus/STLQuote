@@ -31,7 +31,7 @@ I'm looking for **10 people** to test it out and give honest feedback. In return
 **Interested?** Drop a comment or DM me and I'll get you set up.
 
 For everyone else — **Printforge Quote is launching soon**. Join the waitlist to be first in line:
-https://app.printforge.com.au/waitlist
+https://crm.printforge.com.au/waitlist
 
 Built by a maker, for makers.
 

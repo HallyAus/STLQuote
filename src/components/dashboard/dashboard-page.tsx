@@ -531,6 +531,7 @@ function TrialBanner() {
     subscriptionTier: session.user.subscriptionTier ?? "free",
     subscriptionStatus: session.user.subscriptionStatus ?? "trialing",
     trialEndsAt: session.user.trialEndsAt ?? null,
+    role: session.user.role,
   });
   const isTrialing = session.user.subscriptionStatus === "trialing";
   const daysLeft = trialDaysRemaining(session.user.trialEndsAt ?? null);

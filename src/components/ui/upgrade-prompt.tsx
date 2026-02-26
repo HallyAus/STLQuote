@@ -43,6 +43,7 @@ export function UpgradePrompt({
     subscriptionTier: user.subscriptionTier,
     subscriptionStatus: user.subscriptionStatus,
     trialEndsAt: user.trialEndsAt,
+    role: user.role,
   });
 
   if (effectiveTier === "pro") return null;

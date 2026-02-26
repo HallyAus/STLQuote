@@ -72,6 +72,7 @@ export function BillingSettings() {
     subscriptionTier: user.subscriptionTier,
     subscriptionStatus: user.subscriptionStatus,
     trialEndsAt: user.trialEndsAt,
+    role: user.role,
   });
   const trialing =
     user.subscriptionStatus === "trialing" && isTrialActive(user.trialEndsAt);

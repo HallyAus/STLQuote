@@ -54,7 +54,7 @@ export async function getSessionUser(): Promise<SessionUser | null> {
           subscriptionTier: impersonatedUser.subscriptionTier,
           subscriptionStatus: impersonatedUser.subscriptionStatus,
           trialEndsAt: impTrialEndsAt,
-          effectiveTier: getEffectiveTier({ subscriptionTier: impersonatedUser.subscriptionTier, subscriptionStatus: impersonatedUser.subscriptionStatus, trialEndsAt: impTrialEndsAt }),
+          effectiveTier: getEffectiveTier({ subscriptionTier: impersonatedUser.subscriptionTier, subscriptionStatus: impersonatedUser.subscriptionStatus, trialEndsAt: impTrialEndsAt, role: impersonatedUser.role }),
         };
       }
     }
@@ -69,7 +69,7 @@ export async function getSessionUser(): Promise<SessionUser | null> {
     subscriptionTier,
     subscriptionStatus,
     trialEndsAt,
-    effectiveTier: getEffectiveTier({ subscriptionTier, subscriptionStatus, trialEndsAt }),
+    effectiveTier: getEffectiveTier({ subscriptionTier, subscriptionStatus, trialEndsAt, role }),
   };
 }
 
@@ -146,7 +146,7 @@ export async function requireAdmin(): Promise<SessionUser> {
     subscriptionTier: tier,
     subscriptionStatus: status,
     trialEndsAt: trial,
-    effectiveTier: getEffectiveTier({ subscriptionTier: tier, subscriptionStatus: status, trialEndsAt: trial }),
+    effectiveTier: getEffectiveTier({ subscriptionTier: tier, subscriptionStatus: status, trialEndsAt: trial, role: session.user.role }),
   };
 }
 
@@ -179,6 +179,6 @@ export async function requireSuperAdmin(): Promise<SessionUser> {
     subscriptionTier: tier,
     subscriptionStatus: status,
     trialEndsAt: trial,
-    effectiveTier: getEffectiveTier({ subscriptionTier: tier, subscriptionStatus: status, trialEndsAt: trial }),
+    effectiveTier: getEffectiveTier({ subscriptionTier: tier, subscriptionStatus: status, trialEndsAt: trial, role: session.user.role }),
   };
 }

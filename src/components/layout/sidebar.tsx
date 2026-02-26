@@ -140,6 +140,7 @@ export function Sidebar({ open, onClose }: SidebarProps) {
     subscriptionTier: session.user.subscriptionTier ?? "free",
     subscriptionStatus: session.user.subscriptionStatus ?? "trialing",
     trialEndsAt: session.user.trialEndsAt ?? null,
+    role: session.user.role,
   }) : "free";
   const isFree = effectiveTier === "free";
 
