@@ -12,22 +12,6 @@ export async function POST() {
     // Get valid access token (auto-refreshes if expired)
     const { token, shopDomain } = await getAccessToken(user.id);
 
-    const lastSync = await prisma.user.findUnique({
-      where: { id: user.id },
-      select: { shopifyLastSyncAt: true },
-    });
-
-    // Fetch orders since last sync (or last 30 days)
-    const sinceDate = lastSync?.shopifyLastSyncAt
-      ? lastSync.shopifyLastSyncAt.toISOString()
-      : new Date(Date.now() - 30 * 24 * 60 * 60 * 1000).toISOString();
-
-    const orders = await fetchOrders(
-      shopDomain,
-      token,
-      { created_at_min: sinceDate, limit: 50 }
-    );
-
     // Check which orders already have jobs (by Shopify order ID in notes)
     const existingJobs = await prisma.job.findMany({
       where: {
@@ -36,6 +20,25 @@ export async function POST() {
       },
       select: { notes: true },
     });
+
+    // Determine how far back to look for orders
+    // If no Shopify jobs exist (e.g. user deleted them all), always look back 90 days
+    const lastSync = await prisma.user.findUnique({
+      where: { id: user.id },
+      select: { shopifyLastSyncAt: true },
+    });
+
+    const sinceDate = existingJobs.length === 0
+      ? new Date(Date.now() - 90 * 24 * 60 * 60 * 1000).toISOString()
+      : lastSync?.shopifyLastSyncAt
+        ? lastSync.shopifyLastSyncAt.toISOString()
+        : new Date(Date.now() - 30 * 24 * 60 * 60 * 1000).toISOString();
+
+    const orders = await fetchOrders(
+      shopDomain,
+      token,
+      { created_at_min: sinceDate, limit: 50 }
+    );
 
     const existingOrderNames = new Set(
       existingJobs

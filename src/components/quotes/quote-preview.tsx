@@ -248,7 +248,7 @@ export function QuotePreview({
                     </tbody>
                   </table>
 
-                  {/* Totals — subtotal + total only, NO markup */}
+                  {/* Totals */}
                   <div className="mt-6 flex justify-end">
                     <div className="w-64 space-y-2">
                       <div className="flex justify-between text-sm">
@@ -257,6 +257,14 @@ export function QuotePreview({
                           {formatCurrency(quote.subtotal)}
                         </span>
                       </div>
+                      {quote.total > quote.subtotal && (
+                        <div className="flex justify-between text-sm">
+                          <span className="text-gray-500">Markup</span>
+                          <span className="text-gray-900">
+                            {formatCurrency(quote.total - quote.subtotal)}
+                          </span>
+                        </div>
+                      )}
                       <div className="flex justify-between border-t-2 border-blue-600 pt-3">
                         <span className="text-lg font-bold text-gray-900">
                           Total
