@@ -445,7 +445,7 @@ function ConsumableAlertsList({ alerts }: { alerts: ConsumableAlert[] }) {
               >
                 <div className="min-w-0">
                   <p className="font-medium">{consumable.name}</p>
-                  <Badge variant="secondary" className="mt-1 text-[10px]">
+                  <Badge variant="default" className="mt-1 text-[10px]">
                     {consumable.category}
                   </Badge>
                 </div>
