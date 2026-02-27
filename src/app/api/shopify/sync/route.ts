@@ -4,10 +4,20 @@ import { requireFeature } from "@/lib/auth-helpers";
 import { getAccessToken, fetchOrders, orderToJobNotes, findOrCreateShopifyClient } from "@/lib/shopify";
 import { fireWebhooks } from "@/lib/webhooks";
 import { log } from "@/lib/logger";
+import { rateLimit } from "@/lib/rate-limit";
 
 export async function POST() {
   try {
     const user = await requireFeature("shopify_sync");
+
+    // Rate limit: 3 syncs per 60 min per user
+    const rl = rateLimit(`shopify-sync:${user.id}`, { windowMs: 60 * 60 * 1000, maxRequests: 3 });
+    if (rl.limited) {
+      return NextResponse.json(
+        { error: "Sync already ran recently. Please wait before syncing again." },
+        { status: 429, headers: { "Retry-After": String(rl.retryAfterSeconds) } }
+      );
+    }
 
     // Get valid access token (auto-refreshes if expired)
     const { token, shopDomain } = await getAccessToken(user.id);

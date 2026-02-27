@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import crypto from "crypto";
 import { prisma } from "@/lib/prisma";
 import { getSessionUser } from "@/lib/auth-helpers";
+import { isPrivateUrl } from "@/lib/url-safety";
 
 type RouteContext = { params: Promise<{ id: string }> };
 
@@ -18,6 +19,14 @@ export async function POST(_request: NextRequest, context: RouteContext) {
 
     if (!webhook) {
       return NextResponse.json({ error: "Webhook not found" }, { status: 404 });
+    }
+
+    // SSRF prevention
+    if (isPrivateUrl(webhook.url)) {
+      return NextResponse.json(
+        { error: "Webhook URL points to a private network and cannot be tested" },
+        { status: 400 }
+      );
     }
 
     const body = JSON.stringify({

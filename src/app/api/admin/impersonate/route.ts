@@ -2,10 +2,21 @@ import { NextRequest, NextResponse } from "next/server";
 import { cookies } from "next/headers";
 import { prisma } from "@/lib/prisma";
 import { requireAdmin } from "@/lib/auth-helpers";
+import { rateLimit } from "@/lib/rate-limit";
+import { log } from "@/lib/logger";
 
 export async function POST(request: NextRequest) {
   try {
-    await requireAdmin();
+    const admin = await requireAdmin();
+
+    // Rate limit: 10 attempts per 60 min per admin
+    const rl = rateLimit(`impersonate:${admin.id}`, { windowMs: 60 * 60 * 1000, maxRequests: 10 });
+    if (rl.limited) {
+      return NextResponse.json(
+        { error: "Too many impersonation attempts. Please try again later." },
+        { status: 429, headers: { "Retry-After": String(rl.retryAfterSeconds) } }
+      );
+    }
 
     const { userId } = await request.json();
     if (!userId || typeof userId !== "string") {
@@ -44,6 +55,14 @@ export async function POST(request: NextRequest) {
       maxAge: 60 * 60, // 1 hour
     });
 
+    // Audit log
+    log({
+      type: "system",
+      level: "warn",
+      message: `Admin ${admin.email} started impersonating ${target.email}`,
+      userId: admin.id,
+    });
+
     return NextResponse.json({ impersonating: target });
   } catch (error) {
     if (error instanceof Response) return error;
@@ -57,10 +76,17 @@ export async function POST(request: NextRequest) {
 
 export async function DELETE() {
   try {
-    await requireAdmin();
+    const admin = await requireAdmin();
 
     const cookieStore = await cookies();
     cookieStore.delete("impersonate-user-id");
+
+    log({
+      type: "system",
+      level: "info",
+      message: `Admin ${admin.email} stopped impersonation`,
+      userId: admin.id,
+    });
 
     return NextResponse.json({ impersonating: null });
   } catch (error) {

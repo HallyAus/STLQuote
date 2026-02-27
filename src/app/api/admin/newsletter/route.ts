@@ -3,6 +3,7 @@ import { z } from "zod";
 import { prisma } from "@/lib/prisma";
 import { requireAdmin } from "@/lib/auth-helpers";
 import { sendBulkEmail } from "@/lib/email";
+import { rateLimit } from "@/lib/rate-limit";
 
 const newsletterSchema = z.object({
   subject: z.string().min(1, "Subject is required"),
@@ -36,6 +37,15 @@ export async function GET() {
 export async function POST(request: NextRequest) {
   try {
     const admin = await requireAdmin();
+
+    // Rate limit: 1 newsletter per 60 min per admin
+    const rl = rateLimit(`newsletter:${admin.id}`, { windowMs: 60 * 60 * 1000, maxRequests: 1 });
+    if (rl.limited) {
+      return NextResponse.json(
+        { error: "Newsletter already sent recently. Please wait before sending another." },
+        { status: 429, headers: { "Retry-After": String(rl.retryAfterSeconds) } }
+      );
+    }
 
     const body = await request.json();
     const parsed = newsletterSchema.safeParse(body);

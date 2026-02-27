@@ -3,10 +3,20 @@ import { requireFeature } from "@/lib/auth-helpers";
 import { prisma } from "@/lib/prisma";
 import { pushContactToXero, pushInvoiceToXero } from "@/lib/xero";
 import { log } from "@/lib/logger";
+import { rateLimit } from "@/lib/rate-limit";
 
 export async function POST() {
   try {
     const user = await requireFeature("xero_sync");
+
+    // Rate limit: 3 syncs per 60 min per user
+    const rl = rateLimit(`xero-sync:${user.id}`, { windowMs: 60 * 60 * 1000, maxRequests: 3 });
+    if (rl.limited) {
+      return NextResponse.json(
+        { error: "Sync already ran recently. Please wait before syncing again." },
+        { status: 429, headers: { "Retry-After": String(rl.retryAfterSeconds) } }
+      );
+    }
 
     // Verify user has Xero connected
     const dbUser = await prisma.user.findUnique({

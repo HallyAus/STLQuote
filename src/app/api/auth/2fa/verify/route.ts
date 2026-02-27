@@ -4,6 +4,8 @@ import * as OTPAuth from "otpauth";
 import bcrypt from "bcryptjs";
 import { prisma } from "@/lib/prisma";
 import { auth } from "@/lib/auth";
+import { rateLimit, getClientIp } from "@/lib/rate-limit";
+import { log } from "@/lib/logger";
 
 const schema = z.object({
   code: z.string().min(1, "Code is required"),
@@ -17,6 +19,31 @@ export async function POST(request: NextRequest) {
       return NextResponse.json(
         { error: "Unauthorised" },
         { status: 401 }
+      );
+    }
+
+    // IP-based rate limit: 5 attempts per 15 min
+    const ip = getClientIp(request);
+    const ipResult = rateLimit(`2fa-verify:${ip}`, {
+      windowMs: 15 * 60 * 1000,
+      maxRequests: 5,
+    });
+    if (ipResult.limited) {
+      return NextResponse.json(
+        { error: "Too many verification attempts. Please try again later." },
+        { status: 429, headers: { "Retry-After": String(ipResult.retryAfterSeconds) } }
+      );
+    }
+
+    // Per-user lockout: 5 attempts per 15 min
+    const userResult = rateLimit(`2fa-user:${session.user.id}`, {
+      windowMs: 15 * 60 * 1000,
+      maxRequests: 5,
+    });
+    if (userResult.limited) {
+      return NextResponse.json(
+        { error: "Too many verification attempts. Please try again later." },
+        { status: 429, headers: { "Retry-After": String(userResult.retryAfterSeconds) } }
       );
     }
 
@@ -95,6 +122,16 @@ export async function POST(request: NextRequest) {
       );
     }
 
+    // Audit log backup code usage
+    if (backupCodeUsed) {
+      log({
+        type: "auth",
+        level: "warn",
+        message: `2FA backup code used by ${dbUser.email}`,
+        userId: session.user.id,
+      });
+    }
+
     // Set HttpOnly cookie to signal 2FA verification to middleware
     const timestamp = Date.now();
     const cookieValue = `${session.user.id}:${timestamp}`;
@@ -111,7 +148,7 @@ export async function POST(request: NextRequest) {
       httpOnly: true,
       secure: process.env.NODE_ENV === "production",
       sameSite: "strict",
-      maxAge: 30 * 24 * 60 * 60, // 30 days
+      maxAge: 7 * 24 * 60 * 60, // 7 days
       path: "/",
     });
 

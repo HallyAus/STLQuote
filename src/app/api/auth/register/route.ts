@@ -64,14 +64,14 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    // Check if already on waitlist
+    // Check if already on waitlist — same generic message to prevent enumeration
     const existingWaitlist = await prisma.waitlist.findUnique({
       where: { email },
     });
 
     if (existingWaitlist) {
       return NextResponse.json(
-        { error: "This email is already on the waitlist" },
+        { error: "An account with this email already exists" },
         { status: 409 }
       );
     }

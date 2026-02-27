@@ -3,6 +3,11 @@ import { getSessionUser } from "@/lib/auth-helpers";
 import { readFile } from "fs/promises";
 import path from "path";
 
+/** Sanitise a filename for use in Content-Disposition headers */
+function sanitiseFilename(name: string): string {
+  return name.replace(/[\r\n\0"]/g, "").substring(0, 255);
+}
+
 // GET — serve uploaded files (auth required, scoped to user)
 export async function GET(
   _request: NextRequest,
@@ -25,13 +30,13 @@ export async function GET(
       return NextResponse.json({ error: "Forbidden" }, { status: 403 });
     }
 
-    // Prevent path traversal
-    const normalized = path.normalize(filePath);
-    if (normalized.includes("..")) {
+    // Resolve to absolute path and verify it stays within the allowed directory
+    const baseDir = path.resolve(process.cwd(), "uploads");
+    const absolutePath = path.resolve(process.cwd(), filePath);
+    if (!absolutePath.startsWith(baseDir + path.sep)) {
       return NextResponse.json({ error: "Forbidden" }, { status: 403 });
     }
 
-    const absolutePath = path.join(process.cwd(), normalized);
     const buffer = await readFile(absolutePath);
 
     // Determine content type from extension
@@ -50,8 +55,9 @@ export async function GET(
     return new NextResponse(buffer, {
       headers: {
         "Content-Type": contentTypes[ext] || "application/octet-stream",
-        "Content-Disposition": `attachment; filename="${path.basename(absolutePath)}"`,
+        "Content-Disposition": `attachment; filename="${sanitiseFilename(path.basename(absolutePath))}"`,
         "Content-Length": buffer.length.toString(),
+        "X-Content-Type-Options": "nosniff",
       },
     });
   } catch (error: unknown) {

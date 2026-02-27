@@ -31,12 +31,12 @@ export async function GET(
       return NextResponse.json({ error: "Forbidden" }, { status: 403 });
     }
 
-    // Prevent directory traversal via .. segments
-    if (segments.path.some((s) => s === ".." || s === ".")) {
+    // Resolve to absolute path and verify it stays within the allowed directory
+    const baseDir = path.resolve(process.cwd(), "uploads");
+    const absolutePath = path.resolve(baseDir, filePath);
+    if (!absolutePath.startsWith(baseDir + path.sep)) {
       return NextResponse.json({ error: "Forbidden" }, { status: 403 });
     }
-
-    const absolutePath = path.join(process.cwd(), "uploads", filePath);
 
     // Determine MIME type from extension
     const ext = path.extname(absolutePath).replace(".", "").toLowerCase();
@@ -49,6 +49,7 @@ export async function GET(
       headers: {
         "Content-Type": contentType,
         "Cache-Control": "private, max-age=3600",
+        "X-Content-Type-Options": "nosniff",
       },
     });
   } catch (error: unknown) {

@@ -94,7 +94,14 @@ export async function POST(
     }
 
     // Build file path: uploads/photos/{userId}/{jobId}/{timestamp}-{uuid}.{ext}
-    const ext = file.name.split(".").pop()?.toLowerCase() || "jpg";
+    const VALID_PHOTO_EXTS = ["jpg", "jpeg", "png", "webp", "gif"];
+    const ext = file.name.split(".").pop()?.toLowerCase() || "";
+    if (!VALID_PHOTO_EXTS.includes(ext)) {
+      return NextResponse.json(
+        { error: "Invalid file extension. Only JPG, PNG, WebP, and GIF are allowed." },
+        { status: 400 }
+      );
+    }
     const uniqueName = `${Date.now()}-${crypto.randomUUID()}.${ext}`;
     // Use forward slashes for the DB-stored path (used in URLs)
     const relativePath = `photos/${user.id}/${id}/${uniqueName}`;

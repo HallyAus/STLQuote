@@ -8,6 +8,59 @@ import crypto from "crypto";
 const ALLOWED_EXTENSIONS = new Set(["stl", "3mf", "step", "stp", "obj", "gcode", "gco", "g"]);
 const MAX_FILE_SIZE = 50 * 1024 * 1024; // 50MB
 
+/** Validate file content matches claimed extension (magic bytes / structure check) */
+function validateFileContent(buffer: Buffer, ext: string): string | null {
+  if (buffer.length === 0) return "File is empty";
+
+  switch (ext) {
+    case "stl": {
+      // ASCII STL starts with "solid"
+      const head = buffer.subarray(0, 80).toString("ascii").trimStart();
+      if (head.startsWith("solid")) return null; // ASCII STL
+      // Binary STL: 80-byte header + 4-byte triangle count, then 50 bytes per triangle
+      if (buffer.length >= 84) {
+        const numTriangles = buffer.readUInt32LE(80);
+        const expectedSize = 80 + 4 + numTriangles * 50;
+        if (buffer.length === expectedSize) return null;
+        // Some exporters pad the file — allow if reasonably close
+        if (buffer.length >= expectedSize && buffer.length <= expectedSize + 2) return null;
+      }
+      return "File content does not match STL format";
+    }
+
+    case "3mf":
+      // 3MF is ZIP-based — check for ZIP magic bytes PK\x03\x04
+      if (buffer.length >= 4 && buffer[0] === 0x50 && buffer[1] === 0x4B && buffer[2] === 0x03 && buffer[3] === 0x04) {
+        return null;
+      }
+      return "File content does not match 3MF format (expected ZIP archive)";
+
+    case "step":
+    case "stp": {
+      const stepHead = buffer.subarray(0, 64).toString("ascii").trimStart();
+      if (stepHead.startsWith("ISO-10303-21")) return null;
+      return "File content does not match STEP format";
+    }
+
+    case "obj": {
+      const objHead = buffer.subarray(0, 1024).toString("ascii");
+      if (/^(v |f |#|vn |vt |o |g |s |mtllib |usemtl )/m.test(objHead)) return null;
+      return "File content does not match OBJ format";
+    }
+
+    case "gcode":
+    case "gco":
+    case "g": {
+      const gcodeHead = buffer.subarray(0, 1024).toString("ascii");
+      if (/G[01]\s|M10[49]|M140|;/.test(gcodeHead)) return null;
+      return "File content does not match G-code format";
+    }
+
+    default:
+      return null;
+  }
+}
+
 // GET — validate token and return link info (public, no auth)
 export async function GET(
   _request: NextRequest,
@@ -157,6 +210,15 @@ export async function POST(
       console.error("Failed to read file buffer:", bufErr);
       return NextResponse.json(
         { error: "Failed to read uploaded file" },
+        { status: 400 }
+      );
+    }
+
+    // Validate file content matches extension (magic bytes)
+    const contentError = validateFileContent(buffer, ext);
+    if (contentError) {
+      return NextResponse.json(
+        { error: `Invalid file: ${contentError}` },
         { status: 400 }
       );
     }

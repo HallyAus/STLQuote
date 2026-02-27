@@ -11,12 +11,11 @@ export async function GET() {
       where: { id: user.id },
       select: {
         xeroTenantId: true,
-        xeroAccessToken: true,
         xeroConnectedAt: true,
       },
     });
 
-    const connected = !!(dbUser?.xeroAccessToken && dbUser?.xeroTenantId);
+    const connected = !!(dbUser?.xeroTenantId && dbUser?.xeroConnectedAt);
 
     return NextResponse.json({
       connected,

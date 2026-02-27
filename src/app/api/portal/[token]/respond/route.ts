@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { z } from "zod";
 import { prisma } from "@/lib/prisma";
 import { sendEmail } from "@/lib/email";
+import { rateLimit, getClientIp } from "@/lib/rate-limit";
 
 type RouteContext = { params: Promise<{ token: string }> };
 
@@ -15,6 +16,16 @@ export async function POST(
 ) {
   try {
     const { token } = await context.params;
+
+    // Rate limit: 10 responses per 60 min per IP
+    const ip = getClientIp(request);
+    const rl = rateLimit(`portal-respond:${ip}`, { windowMs: 60 * 60 * 1000, maxRequests: 10 });
+    if (rl.limited) {
+      return NextResponse.json(
+        { error: "Too many requests. Please try again later." },
+        { status: 429, headers: { "Retry-After": String(rl.retryAfterSeconds) } }
+      );
+    }
 
     const quote = await prisma.quote.findUnique({
       where: { portalToken: token },

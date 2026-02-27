@@ -3,6 +3,7 @@ import { z } from "zod";
 import bcrypt from "bcryptjs";
 import { prisma } from "@/lib/prisma";
 import { consumePasswordResetToken } from "@/lib/tokens";
+import { rateLimit, getClientIp } from "@/lib/rate-limit";
 
 const schema = z.object({
   token: z.string().min(1, "Token is required"),
@@ -11,6 +12,19 @@ const schema = z.object({
 
 export async function POST(request: NextRequest) {
   try {
+    // Rate limit: 5 attempts per 15 min per IP
+    const ip = getClientIp(request);
+    const result = rateLimit(`reset-password:${ip}`, {
+      windowMs: 15 * 60 * 1000,
+      maxRequests: 5,
+    });
+    if (result.limited) {
+      return NextResponse.json(
+        { error: "Too many attempts. Please try again later." },
+        { status: 429, headers: { "Retry-After": String(result.retryAfterSeconds) } }
+      );
+    }
+
     const body = await request.json();
     const parsed = schema.safeParse(body);
 

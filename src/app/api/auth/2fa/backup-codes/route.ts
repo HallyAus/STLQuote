@@ -4,6 +4,7 @@ import bcrypt from "bcryptjs";
 import crypto from "crypto";
 import { prisma } from "@/lib/prisma";
 import { requireAuth } from "@/lib/auth-helpers";
+import { rateLimit } from "@/lib/rate-limit";
 
 const schema = z.object({
   password: z.string().min(1, "Password is required"),
@@ -12,6 +13,15 @@ const schema = z.object({
 export async function POST(request: NextRequest) {
   try {
     const user = await requireAuth();
+
+    // Rate limit: 3 attempts per 15 min per user
+    const rl = rateLimit(`2fa-backup:${user.id}`, { windowMs: 15 * 60 * 1000, maxRequests: 3 });
+    if (rl.limited) {
+      return NextResponse.json(
+        { error: "Too many attempts. Please try again later." },
+        { status: 429, headers: { "Retry-After": String(rl.retryAfterSeconds) } }
+      );
+    }
 
     const body = await request.json();
     const parsed = schema.safeParse(body);

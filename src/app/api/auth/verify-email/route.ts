@@ -1,23 +1,34 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { validateEmailVerificationToken } from "@/lib/tokens";
+import { rateLimit, getClientIp } from "@/lib/rate-limit";
 
 export async function GET(request: NextRequest) {
   try {
+    // Rate limit: 10 attempts per 15 min per IP
+    const ip = getClientIp(request);
+    const result = rateLimit(`verify-email:${ip}`, {
+      windowMs: 15 * 60 * 1000,
+      maxRequests: 10,
+    });
+    if (result.limited) {
+      return NextResponse.redirect(new URL("/login?error=TooManyAttempts", request.url));
+    }
+
     const token = request.nextUrl.searchParams.get("token");
 
     if (!token) {
       return NextResponse.redirect(new URL("/login?error=InvalidToken", request.url));
     }
 
-    const result = await validateEmailVerificationToken(token);
+    const tokenResult = await validateEmailVerificationToken(token);
 
-    if (!result.valid) {
+    if (!tokenResult.valid) {
       return NextResponse.redirect(new URL("/login?error=ExpiredToken", request.url));
     }
 
     await prisma.user.update({
-      where: { email: result.email },
+      where: { email: tokenResult.email },
       data: { emailVerified: new Date() },
     });
 

@@ -7,6 +7,29 @@ const { auth } = NextAuth(authConfig);
 export default auth((req) => {
   const { pathname } = req.nextUrl;
 
+  // CSRF protection: block state-changing requests from foreign origins
+  const method = req.method;
+  if (method !== "GET" && method !== "HEAD" && method !== "OPTIONS") {
+    const origin = req.headers.get("origin");
+    const host = req.headers.get("host");
+    // Allow requests with no origin (same-origin navigations, curl, etc.)
+    // Block requests where origin exists but doesn't match host
+    if (origin && host) {
+      try {
+        const originHost = new URL(origin).host;
+        if (originHost !== host) {
+          // Allow Stripe/Shopify webhooks — they don't send matching origin
+          const webhookPaths = ["/api/billing/webhook", "/api/shopify/webhook"];
+          if (!webhookPaths.some((p) => pathname.startsWith(p))) {
+            return NextResponse.json({ error: "Forbidden" }, { status: 403 });
+          }
+        }
+      } catch {
+        return NextResponse.json({ error: "Forbidden" }, { status: 403 });
+      }
+    }
+  }
+
   // Allow auth routes, static assets, API auth routes, and public portal
   const publicPaths = [
     "/login",

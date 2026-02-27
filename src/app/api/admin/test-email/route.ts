@@ -1,10 +1,20 @@
 import { NextRequest, NextResponse } from "next/server";
 import { requireAdmin } from "@/lib/auth-helpers";
 import { sendEmail } from "@/lib/email";
+import { rateLimit } from "@/lib/rate-limit";
 
 export async function POST(request: NextRequest) {
   try {
     const admin = await requireAdmin();
+
+    // Rate limit: 10 test emails per 60 min per admin
+    const rl = rateLimit(`test-email:${admin.id}`, { windowMs: 60 * 60 * 1000, maxRequests: 10 });
+    if (rl.limited) {
+      return NextResponse.json(
+        { error: "Too many test emails. Please try again later." },
+        { status: 429, headers: { "Retry-After": String(rl.retryAfterSeconds) } }
+      );
+    }
 
     const { to } = await request.json();
     const email = to || admin.email;

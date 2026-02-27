@@ -3,6 +3,7 @@ import { z } from "zod";
 import crypto from "crypto";
 import { prisma } from "@/lib/prisma";
 import { requireFeature } from "@/lib/auth-helpers";
+import { isPrivateUrl } from "@/lib/url-safety";
 
 const createWebhookSchema = z.object({
   url: z.string().url("Invalid URL"),
@@ -36,6 +37,14 @@ export async function POST(request: NextRequest) {
     if (!parsed.success) {
       return NextResponse.json(
         { error: "Validation failed", details: parsed.error.flatten() },
+        { status: 400 }
+      );
+    }
+
+    // Block private/internal URLs (SSRF prevention)
+    if (isPrivateUrl(parsed.data.url)) {
+      return NextResponse.json(
+        { error: "Webhook URL cannot point to private or internal networks" },
         { status: 400 }
       );
     }
