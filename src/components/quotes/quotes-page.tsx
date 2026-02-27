@@ -7,6 +7,7 @@ import { Card, CardContent } from "@/components/ui/card";
 import { roundCurrency } from "@/lib/utils";
 import { Select } from "@/components/ui/select";
 import { Badge } from "@/components/ui/badge";
+import { SkeletonListPage } from "@/components/ui/skeleton";
 import { Plus, FileText, Loader2, Download, Trash2, ArrowRightLeft } from "lucide-react";
 import { QUOTE_STATUS, BANNER, type QuoteStatus } from "@/lib/status-colours";
 import { Checkbox } from "@/components/ui/checkbox";
@@ -191,11 +192,7 @@ export function QuotesPage() {
 
   // ---- Loading state ----
   if (loading) {
-    return (
-      <div className="flex items-center justify-center py-20">
-        <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
-      </div>
-    );
+    return <SkeletonListPage />;
   }
 
   return (

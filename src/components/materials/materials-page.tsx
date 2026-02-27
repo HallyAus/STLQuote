@@ -9,6 +9,7 @@ import { Select } from "@/components/ui/select";
 import { Textarea } from "@/components/ui/textarea";
 import { Badge } from "@/components/ui/badge";
 import { Dialog, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
+import { SkeletonListPage } from "@/components/ui/skeleton";
 import { Plus, Minus, Pencil, Trash2, Package, Loader2, History, TrendingUp, TrendingDown, Upload } from "lucide-react";
 import { MATERIAL_PRESETS } from "@/lib/presets";
 import { InvoiceImportModal } from "./invoice-import-modal";
@@ -340,25 +341,25 @@ function MaterialCard({
           </div>
           <div>
             <span className="text-muted-foreground">Stock</span>
-            <div className="flex items-center gap-1">
+            <div className="flex items-center gap-0.5">
               <Button
                 variant="ghost"
                 size="icon"
-                className="h-6 w-6"
+                className="h-8 w-8"
                 disabled={adjustingId === material.id || material.stockQty === 0}
                 onClick={(e) => { e.stopPropagation(); onStockAdjust(-1); }}
               >
-                <Minus className="h-3 w-3" />
+                <Minus className="h-3.5 w-3.5" />
               </Button>
-              <span className="font-medium tabular-nums">{material.stockQty}</span>
+              <span className="min-w-6 text-center font-medium tabular-nums">{material.stockQty}</span>
               <Button
                 variant="ghost"
                 size="icon"
-                className="h-6 w-6"
+                className="h-8 w-8"
                 disabled={adjustingId === material.id}
                 onClick={(e) => { e.stopPropagation(); onStockAdjust(1); }}
               >
-                <Plus className="h-3 w-3" />
+                <Plus className="h-3.5 w-3.5" />
               </Button>
             </div>
           </div>
@@ -754,11 +755,7 @@ export function MaterialsPage() {
 
   // ---- Loading state ----
   if (loading) {
-    return (
-      <div className="flex items-center justify-center py-20">
-        <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
-      </div>
-    );
+    return <SkeletonListPage />;
   }
 
   return (

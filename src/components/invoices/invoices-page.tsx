@@ -10,6 +10,7 @@ import { Select } from "@/components/ui/select";
 import { Badge } from "@/components/ui/badge";
 import { Dialog, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
 import { roundCurrency } from "@/lib/utils";
+import { SkeletonListPage } from "@/components/ui/skeleton";
 import { Plus, FileText, Loader2, Trash2, ArrowRightLeft, CheckCircle, Download } from "lucide-react";
 import { BANNER } from "@/lib/status-colours";
 import { Checkbox } from "@/components/ui/checkbox";
@@ -514,11 +515,7 @@ export function InvoicesPage() {
 
   // ---- Loading state ----
   if (loading) {
-    return (
-      <div className="flex items-center justify-center py-20">
-        <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
-      </div>
-    );
+    return <SkeletonListPage />;
   }
 
   return (

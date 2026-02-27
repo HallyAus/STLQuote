@@ -12,6 +12,7 @@ import { Badge } from "@/components/ui/badge";
 import { Dialog, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
 import { TagInput } from "@/components/ui/tag-input";
 import { tagColour, BANNER } from "@/lib/status-colours";
+import { SkeletonListPage } from "@/components/ui/skeleton";
 import { Download } from "lucide-react";
 import { COUNTRY_OPTIONS } from "@/lib/tax-regions";
 
@@ -365,9 +366,7 @@ export function ClientsPage() {
       )}
 
       {/* Loading state */}
-      {loading && (
-        <p className="text-sm text-muted-foreground">Loading clients...</p>
-      )}
+      {loading && <SkeletonListPage />}
 
       {/* Empty state */}
       {!loading && clients.length === 0 && (

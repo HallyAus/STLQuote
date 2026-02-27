@@ -1291,41 +1291,56 @@ export function JobsPage() {
         </Card>
       )}
 
-      {/* Kanban View */}
+      {/* Kanban View — hidden on mobile, shows list instead */}
       {jobs.length > 0 && view === "kanban" && (
-        <DndContext
-          sensors={sensors}
-          collisionDetection={closestCorners}
-          onDragStart={handleDragStart}
-          onDragEnd={handleDragEnd}
-          onDragCancel={handleDragCancel}
-        >
-          <div className="snap-x snap-mandatory overflow-x-auto pb-4">
-            <div className="flex gap-3" style={{ minWidth: "fit-content" }}>
-              {JOB_STATUS_ORDER.filter((status) => {
-                if (filter === "ACTIVE") return status !== "COMPLETE";
-                if (filter === "COMPLETE") return status === "COMPLETE";
-                return true;
-              }).map((status) => (
-                <KanbanColumn
-                  key={status}
-                  status={status}
-                  jobs={filteredJobs.filter((j) => j.status === status)}
-                  onCardClick={(job) => setDetailJob(job)}
-                  onMoveNext={handleMoveNext}
-                  movingId={movingId}
-                />
-              ))}
-            </div>
-          </div>
-          <DragOverlay>
-            {activeDragJob ? (
-              <div className="w-64 opacity-90">
-                <JobCardContent job={activeDragJob} />
+        <>
+          {/* Desktop: full kanban with drag & drop */}
+          <div className="hidden sm:block">
+            <DndContext
+              sensors={sensors}
+              collisionDetection={closestCorners}
+              onDragStart={handleDragStart}
+              onDragEnd={handleDragEnd}
+              onDragCancel={handleDragCancel}
+            >
+              <div className="snap-x snap-mandatory overflow-x-auto pb-4">
+                <div className="flex gap-3" style={{ minWidth: "fit-content" }}>
+                  {JOB_STATUS_ORDER.filter((status) => {
+                    if (filter === "ACTIVE") return status !== "COMPLETE";
+                    if (filter === "COMPLETE") return status === "COMPLETE";
+                    return true;
+                  }).map((status) => (
+                    <KanbanColumn
+                      key={status}
+                      status={status}
+                      jobs={filteredJobs.filter((j) => j.status === status)}
+                      onCardClick={(job) => setDetailJob(job)}
+                      onMoveNext={handleMoveNext}
+                      movingId={movingId}
+                    />
+                  ))}
+                </div>
               </div>
-            ) : null}
-          </DragOverlay>
-        </DndContext>
+              <DragOverlay>
+                {activeDragJob ? (
+                  <div className="w-64 opacity-90">
+                    <JobCardContent job={activeDragJob} />
+                  </div>
+                ) : null}
+              </DragOverlay>
+            </DndContext>
+          </div>
+          {/* Mobile: compact list view instead of kanban */}
+          <div className="sm:hidden">
+            <ListView
+              jobs={filteredJobs}
+              onCardClick={(job) => setDetailJob(job)}
+              onMoveNext={handleMoveNext}
+              movingId={movingId}
+              onRefresh={fetchJobs}
+            />
+          </div>
+        </>
       )}
 
       {/* List View */}

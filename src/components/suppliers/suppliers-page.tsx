@@ -9,6 +9,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { Badge } from "@/components/ui/badge";
 import { Dialog, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
 import { BANNER } from "@/lib/status-colours";
+import { SkeletonListPage } from "@/components/ui/skeleton";
 import { Package, Plus, Globe, Mail, Phone } from "lucide-react";
 
 // ---------- Types ----------
@@ -234,9 +235,7 @@ export function SuppliersPage() {
       )}
 
       {/* Loading state */}
-      {loading && (
-        <p className="text-sm text-muted-foreground">Loading suppliers...</p>
-      )}
+      {loading && <SkeletonListPage />}
 
       {/* Empty state */}
       {!loading && suppliers.length === 0 && (

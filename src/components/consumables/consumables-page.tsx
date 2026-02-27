@@ -14,6 +14,7 @@ import {
   DialogTitle,
   DialogFooter,
 } from "@/components/ui/dialog";
+import { SkeletonListPage } from "@/components/ui/skeleton";
 import { Plus, Minus, Pencil, Trash2, Loader2, Wrench, Search } from "lucide-react";
 import { BANNER } from "@/lib/status-colours";
 
@@ -278,25 +279,25 @@ function ConsumableCard({
         <div className="mt-3 grid grid-cols-3 gap-2 text-sm">
           <div>
             <span className="text-muted-foreground">Stock</span>
-            <div className="flex items-center gap-1">
+            <div className="flex items-center gap-0.5">
               <Button
                 variant="ghost"
                 size="icon"
-                className="h-6 w-6"
+                className="h-8 w-8"
                 disabled={adjustingId === consumable.id || consumable.stockQty === 0}
                 onClick={(e) => { e.stopPropagation(); onStockAdjust(-1); }}
               >
-                <Minus className="h-3 w-3" />
+                <Minus className="h-3.5 w-3.5" />
               </Button>
-              <span className="font-medium tabular-nums">{consumable.stockQty}</span>
+              <span className="min-w-6 text-center font-medium tabular-nums">{consumable.stockQty}</span>
               <Button
                 variant="ghost"
                 size="icon"
-                className="h-6 w-6"
+                className="h-8 w-8"
                 disabled={adjustingId === consumable.id}
                 onClick={(e) => { e.stopPropagation(); onStockAdjust(1); }}
               >
-                <Plus className="h-3 w-3" />
+                <Plus className="h-3.5 w-3.5" />
               </Button>
             </div>
           </div>
@@ -552,11 +553,7 @@ export function ConsumablesPage() {
 
   // ---- Loading state ----
   if (loading) {
-    return (
-      <div className="flex items-center justify-center py-20">
-        <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
-      </div>
-    );
+    return <SkeletonListPage />;
   }
 
   return (
