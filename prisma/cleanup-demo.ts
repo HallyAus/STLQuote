@@ -26,7 +26,7 @@ async function cleanup() {
 
   if (qIds.length > 0) {
     await p.job.deleteMany({ where: { quoteId: { in: qIds } } });
-    await p.lineItem.deleteMany({ where: { quoteId: { in: qIds } } });
+    await p.quoteLineItem.deleteMany({ where: { quoteId: { in: qIds } } });
     await p.quote.deleteMany({ where: { id: { in: qIds } } });
     console.log(`Deleted ${qIds.length} demo quotes + line items + jobs`);
   }
