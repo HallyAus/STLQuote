@@ -1,5 +1,4 @@
 import { PrismaClient, QuoteStatus, JobStatus } from "@prisma/client";
-import bcrypt from "bcryptjs";
 
 const prisma = new PrismaClient();
 
@@ -104,7 +103,8 @@ async function main() {
   }
   console.log(`📎 Linking seed data to admin: ${adminUser.email}\n`);
 
-  const passwordHash = await bcrypt.hash("DemoPass123!", 12);
+  // Pre-computed bcrypt hash for "DemoPass123!" (avoids bcryptjs dependency in Docker standalone)
+  const passwordHash = "$2a$12$LJ3m4ys3Lk0TSwHCpNkr6.FDHi/a3F6RN0tV9g5MwMo7rLOdmRK2i";
 
   // 1. Create demo users
   console.log("👤 Creating demo users...");
