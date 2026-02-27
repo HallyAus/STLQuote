@@ -154,6 +154,58 @@ function CreatePOModal({
   const [newSupplierPhone, setNewSupplierPhone] = useState("");
   const [creatingSupplier, setCreatingSupplier] = useState(false);
 
+  // Read pre-filled data from invoice import (Materials page → PO flow)
+  useEffect(() => {
+    try {
+      const raw = sessionStorage.getItem("invoiceToPurchaseOrder");
+      if (!raw) return;
+      const data = JSON.parse(raw);
+      sessionStorage.removeItem("invoiceToPurchaseOrder");
+
+      // Auto-match supplier by name
+      if (data.supplierName) {
+        const match = suppliers.find(
+          (s) =>
+            s.name.toLowerCase().includes(data.supplierName.toLowerCase()) ||
+            data.supplierName.toLowerCase().includes(s.name.toLowerCase())
+        );
+        if (match) {
+          setSupplierId(match.id);
+        } else {
+          setShowNewSupplier(true);
+          setNewSupplierName(data.supplierName);
+        }
+      }
+
+      if (data.expectedDelivery) {
+        setExpectedDelivery(data.expectedDelivery.slice(0, 10));
+      }
+
+      const noteParts: string[] = [];
+      if (data.invoiceNumber) noteParts.push(`Invoice #: ${data.invoiceNumber}`);
+      if (data.notes) noteParts.push(data.notes);
+      if (noteParts.length > 0) {
+        setNotes(noteParts.join("\n"));
+      }
+
+      if (data.items?.length) {
+        setItems(
+          data.items.map((item: { type: string; materialId: string | null; consumableId: string | null; description: string; quantity: number; unitCost: number }) => ({
+            type: item.type === "material" || item.type === "consumable" ? item.type : "other",
+            materialId: item.materialId || "",
+            consumableId: item.consumableId || "",
+            description: item.description || "",
+            quantity: item.quantity || 1,
+            unitCost: item.unitCost || 0,
+          }))
+        );
+      }
+    } catch {
+      // Ignore parse errors
+    }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
   async function handleQuickCreateSupplier() {
     if (!newSupplierName.trim()) return;
     setCreatingSupplier(true);
@@ -652,6 +704,15 @@ export function PurchaseOrdersPage() {
   const [loading, setLoading] = useState(true);
   const [filter, setFilter] = useState("ALL");
   const [showCreate, setShowCreate] = useState(false);
+
+  // Auto-open create modal when redirected from invoice import
+  useEffect(() => {
+    const params = new URLSearchParams(window.location.search);
+    if (params.get("fromInvoice") === "true") {
+      setShowCreate(true);
+      window.history.replaceState({}, "", "/purchase-orders");
+    }
+  }, []);
 
   const fetchOrders = useCallback(async () => {
     try {

@@ -9,8 +9,9 @@ import { Select } from "@/components/ui/select";
 import { Textarea } from "@/components/ui/textarea";
 import { Badge } from "@/components/ui/badge";
 import { Dialog, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
-import { Plus, Minus, Pencil, Trash2, Package, Loader2, History, TrendingUp, TrendingDown } from "lucide-react";
+import { Plus, Minus, Pencil, Trash2, Package, Loader2, History, TrendingUp, TrendingDown, Upload } from "lucide-react";
 import { MATERIAL_PRESETS } from "@/lib/presets";
+import { InvoiceImportModal } from "./invoice-import-modal";
 
 // ---------------------------------------------------------------------------
 // Stock Transaction Types
@@ -559,6 +560,7 @@ export function MaterialsPage() {
   const [formData, setFormData] = useState<MaterialFormData>(EMPTY_FORM);
   const [adjustingId, setAdjustingId] = useState<string | null>(null);
   const [historyMaterial, setHistoryMaterial] = useState<Material | null>(null);
+  const [showInvoiceImport, setShowInvoiceImport] = useState(false);
 
   // Preset dropdown state
   const [presetOpen, setPresetOpen] = useState(false);
@@ -804,6 +806,10 @@ export function MaterialsPage() {
               </div>
             )}
           </div>
+          <Button variant="secondary" onClick={() => setShowInvoiceImport(true)}>
+            <Upload className="mr-2 h-4 w-4" />
+            Import from Invoice
+          </Button>
           <Button onClick={openAddForm}>
             <Plus className="mr-2 h-4 w-4" />
             Add Material
@@ -1034,6 +1040,15 @@ export function MaterialsPage() {
         <StockHistoryModal
           material={historyMaterial}
           onClose={() => setHistoryMaterial(null)}
+        />
+      )}
+
+      {/* Invoice import modal */}
+      {showInvoiceImport && (
+        <InvoiceImportModal
+          onClose={() => setShowInvoiceImport(false)}
+          onProductsCreated={fetchMaterials}
+          existingMaterials={materials}
         />
       )}
     </div>
