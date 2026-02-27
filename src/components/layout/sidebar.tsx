@@ -210,46 +210,19 @@ export function Sidebar({ open, onClose }: SidebarProps) {
     return isFree;
   }
 
-  // Fetch pending waitlist count for admins
+  // Fetch sidebar badge counts (single lightweight endpoint)
   const [waitlistCount, setWaitlistCount] = useState(0);
-  useEffect(() => {
-    if (!isAdmin) return;
-    let cancelled = false;
-    fetch("/api/waitlist")
-      .then((res) => (res.ok ? res.json() : []))
-      .then((data: { status?: string }[]) => {
-        if (!cancelled && Array.isArray(data)) {
-          setWaitlistCount(data.filter((e) => e.status === "pending").length);
-        }
-      })
-      .catch(() => {});
-    return () => { cancelled = true; };
-  }, [isAdmin]);
-
-  // Fetch queued job count
   const [queuedJobCount, setQueuedJobCount] = useState(0);
-  useEffect(() => {
-    let cancelled = false;
-    fetch("/api/jobs")
-      .then((res) => (res.ok ? res.json() : []))
-      .then((data: { status?: string }[]) => {
-        if (!cancelled && Array.isArray(data)) {
-          setQueuedJobCount(data.filter((j) => j.status === "QUEUED").length);
-        }
-      })
-      .catch(() => {});
-    return () => { cancelled = true; };
-  }, []);
-
-  // Fetch pending quote request count
   const [pendingRequestCount, setPendingRequestCount] = useState(0);
   useEffect(() => {
     let cancelled = false;
-    fetch("/api/quote-requests")
-      .then((res) => (res.ok ? res.json() : []))
-      .then((data: { status?: string }[]) => {
-        if (!cancelled && Array.isArray(data)) {
-          setPendingRequestCount(data.filter((r) => r.status === "PENDING").length);
+    fetch("/api/sidebar-counts")
+      .then((res) => (res.ok ? res.json() : null))
+      .then((data) => {
+        if (!cancelled && data) {
+          setQueuedJobCount(data.queuedJobs ?? 0);
+          setPendingRequestCount(data.pendingRequests ?? 0);
+          setWaitlistCount(data.pendingWaitlist ?? 0);
         }
       })
       .catch(() => {});

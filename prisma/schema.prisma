@@ -202,6 +202,7 @@ model Material {
   purchaseOrderItems PurchaseOrderItem[]
 
   @@index([userId])
+  @@index([userId, stockQty])
 }
 
 model Client {
@@ -274,6 +275,8 @@ model Quote {
 
   @@unique([userId, quoteNumber])
   @@index([userId])
+  @@index([userId, status])
+  @@index([userId, createdAt])
 }
 
 model QuoteEvent {
@@ -350,6 +353,8 @@ model Job {
   designs  Design[]
 
   @@index([userId])
+  @@index([userId, status])
+  @@index([userId, createdAt])
 }
 
 model JobEvent {
@@ -515,6 +520,7 @@ model Consumable {
   purchaseOrderItems PurchaseOrderItem[]
 
   @@index([userId])
+  @@index([userId, stockQty])
 }
 
 // --- Invoices ---
@@ -559,6 +565,8 @@ model Invoice {
 
   @@unique([userId, invoiceNumber])
   @@index([userId])
+  @@index([userId, status])
+  @@index([userId, createdAt])
 }
 
 model InvoiceLineItem {

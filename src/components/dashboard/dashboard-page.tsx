@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import dynamic from "next/dynamic";
 import Link from "next/link";
 import { useSession } from "next-auth/react";
 import {
@@ -25,8 +26,14 @@ import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { cn } from "@/lib/utils";
 import { QUOTE_STATUS, JOB_STATUS, JOB_STATUS_ORDER, BANNER, STATUS_TEXT, type QuoteStatus as QStatus } from "@/lib/status-colours";
-import { RevenueCharts } from "@/components/dashboard/revenue-charts";
-import { AnalyticsCards } from "@/components/dashboard/analytics-cards";
+const RevenueCharts = dynamic(
+  () => import("@/components/dashboard/revenue-charts").then((m) => ({ default: m.RevenueCharts })),
+  { ssr: false, loading: () => <div className="h-80 rounded-xl bg-muted animate-pulse" /> }
+);
+const AnalyticsCards = dynamic(
+  () => import("@/components/dashboard/analytics-cards").then((m) => ({ default: m.AnalyticsCards })),
+  { ssr: false, loading: () => <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3"><div className="h-48 rounded-xl bg-muted animate-pulse" /><div className="h-48 rounded-xl bg-muted animate-pulse" /><div className="h-48 rounded-xl bg-muted animate-pulse" /></div> }
+);
 import { getEffectiveTier, trialDaysRemaining } from "@/lib/tier";
 
 // ---------------------------------------------------------------------------

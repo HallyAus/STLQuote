@@ -161,9 +161,13 @@ export function QuotesPage() {
         body: JSON.stringify({ ids: Array.from(bulk.selectedIds), action: "change_status", status: bulkNewStatus }),
       });
       if (!res.ok) throw new Error("Failed");
-      bulk.clearSelection();
       setBulkStatusModalOpen(false);
-      await fetchQuotes();
+      setQuotes((prev) =>
+        prev.map((q) =>
+          bulk.selectedIds.has(q.id) ? { ...q, status: bulkNewStatus as QuoteStatus } : q
+        )
+      );
+      bulk.clearSelection();
     } catch {
       setError("Bulk status change failed");
     } finally {
@@ -181,8 +185,8 @@ export function QuotesPage() {
         body: JSON.stringify({ ids: Array.from(bulk.selectedIds), action: "delete" }),
       });
       if (!res.ok) throw new Error("Failed");
+      setQuotes((prev) => prev.filter((q) => !bulk.selectedIds.has(q.id)));
       bulk.clearSelection();
-      await fetchQuotes();
     } catch {
       setError("Bulk delete failed");
     } finally {

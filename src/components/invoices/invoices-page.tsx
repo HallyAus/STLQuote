@@ -465,9 +465,13 @@ export function InvoicesPage() {
         body: JSON.stringify({ ids: Array.from(bulk.selectedIds), action: "change_status", status: bulkNewStatus }),
       });
       if (!res.ok) throw new Error("Failed");
-      bulk.clearSelection();
       setBulkStatusModalOpen(false);
-      await fetchInvoices();
+      setInvoices((prev) =>
+        prev.map((inv) =>
+          bulk.selectedIds.has(inv.id) ? { ...inv, status: bulkNewStatus as InvoiceStatus } : inv
+        )
+      );
+      bulk.clearSelection();
     } catch {
       setError("Bulk status change failed");
     } finally {
@@ -485,8 +489,12 @@ export function InvoicesPage() {
         body: JSON.stringify({ ids: Array.from(bulk.selectedIds), action: "mark_paid" }),
       });
       if (!res.ok) throw new Error("Failed");
+      setInvoices((prev) =>
+        prev.map((inv) =>
+          bulk.selectedIds.has(inv.id) ? { ...inv, status: "PAID" as InvoiceStatus, paidAt: new Date().toISOString() } : inv
+        )
+      );
       bulk.clearSelection();
-      await fetchInvoices();
     } catch {
       setError("Bulk mark paid failed");
     } finally {
@@ -504,8 +512,8 @@ export function InvoicesPage() {
         body: JSON.stringify({ ids: Array.from(bulk.selectedIds), action: "delete" }),
       });
       if (!res.ok) throw new Error("Failed");
+      setInvoices((prev) => prev.filter((inv) => !bulk.selectedIds.has(inv.id)));
       bulk.clearSelection();
-      await fetchInvoices();
     } catch {
       setError("Bulk delete failed");
     } finally {

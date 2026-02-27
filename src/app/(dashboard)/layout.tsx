@@ -5,6 +5,7 @@ import { usePathname } from "next/navigation";
 import { Sidebar } from "@/components/layout/sidebar";
 import { Header } from "@/components/layout/header";
 import { DebugPanel } from "@/components/debug/debug-panel";
+import { NavigationProgress } from "@/components/layout/navigation-progress";
 
 const pageTitles: Record<string, string> = {
   "/dashboard": "Dashboard",
@@ -57,6 +58,7 @@ export default function DashboardLayout({
 
   return (
     <div className="flex h-screen overflow-hidden">
+      <NavigationProgress />
       <Sidebar open={sidebarOpen} onClose={() => setSidebarOpen(false)} />
       <div className="flex flex-1 flex-col overflow-hidden">
         <Header

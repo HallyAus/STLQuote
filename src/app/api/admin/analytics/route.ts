@@ -75,31 +75,25 @@ export async function GET() {
         ORDER BY week ASC
       `,
 
-      // Top 5 users by activity
-      prisma.user.findMany({
-        take: 5,
-        orderBy: { updatedAt: "desc" },
-        select: {
-          id: true,
-          name: true,
-          email: true,
-          lastLogin: true,
-          _count: {
-            select: {
-              quotes: true,
-              jobs: true,
-            },
-          },
-        },
-      }).then(async (users) => {
-        // Sort by total activity
-        return users
-          .map((u) => ({
-            ...u,
-            totalActivity: u._count.quotes + u._count.jobs,
-          }))
-          .sort((a, b) => b.totalActivity - a.totalActivity);
-      }),
+      // Top 5 users by activity (sorted in DB)
+      prisma.$queryRaw<Array<{
+        id: string;
+        name: string | null;
+        email: string;
+        lastLogin: Date | null;
+        quotesCount: bigint;
+        jobsCount: bigint;
+      }>>`
+        SELECT u.id, u.name, u.email, u."lastLogin",
+               COUNT(DISTINCT q.id)::bigint as "quotesCount",
+               COUNT(DISTINCT j.id)::bigint as "jobsCount"
+        FROM "User" u
+        LEFT JOIN "Quote" q ON q."userId" = u.id
+        LEFT JOIN "Job" j ON j."userId" = u.id
+        GROUP BY u.id
+        ORDER BY COUNT(DISTINCT q.id) + COUNT(DISTINCT j.id) DESC
+        LIMIT 5
+      `,
 
       // Per-user storage from QuoteRequest + JobPhoto
       prisma.$queryRaw<{ userId: string; totalBytes: bigint; fileCount: bigint }[]>`
@@ -248,14 +242,14 @@ export async function GET() {
       });
     }
 
-    // Enhance top users with storage
+    // Enhance top users with storage (convert bigint from raw SQL to number)
     const topUsersWithStorage = topUsers.map((u) => ({
       id: u.id,
       name: u.name,
       email: u.email,
       lastLogin: u.lastLogin,
-      quotesCount: u._count.quotes,
-      jobsCount: u._count.jobs,
+      quotesCount: Number(u.quotesCount),
+      jobsCount: Number(u.jobsCount),
       storage: storageMap.get(u.id) || { totalBytes: 0, fileCount: 0 },
     }));
 

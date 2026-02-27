@@ -301,48 +301,28 @@ export function CalculatorForm({ onAddToQuote }: CalculatorFormProps = {}) {
   const [savingPreset, setSavingPreset] = useState(false);
   const [deletingPreset, setDeletingPreset] = useState(false);
 
-  // Fetch printers, materials, and presets on mount
+  // Fetch printers, materials, and settings in parallel on mount
   useEffect(() => {
-    fetch("/api/printers")
-      .then((res) => res.json())
-      .then((data) => {
-        if (Array.isArray(data)) setPrinters(data);
-      })
-      .catch(() => {});
-  }, []);
-
-  useEffect(() => {
-    fetch("/api/materials")
-      .then((res) => res.json())
-      .then((data) => {
-        if (Array.isArray(data)) setMaterials(data);
-      })
-      .catch(() => {});
-  }, []);
-
-  // Fetch batch pricing tiers from settings
-  useEffect(() => {
-    fetch("/api/settings")
-      .then((res) => res.json())
-      .then((data) => {
-        if (data?.defaultElectricityRate != null) {
-          setInput((prev) => ({
-            ...prev,
-            machine: { ...prev.machine, electricityRate: data.defaultElectricityRate },
-          }));
-        }
-        if (data?.batchPricingTiers) {
-          try {
-            const tiers = JSON.parse(data.batchPricingTiers);
-            if (Array.isArray(tiers) && tiers.length > 0) {
-              setBatchTiers(tiers);
-            }
-          } catch {
-            // Invalid JSON, ignore
-          }
-        }
-      })
-      .catch(() => {});
+    Promise.all([
+      fetch("/api/printers").then((r) => r.ok ? r.json() : []),
+      fetch("/api/materials").then((r) => r.ok ? r.json() : []),
+      fetch("/api/settings").then((r) => r.ok ? r.json() : null),
+    ]).then(([printersData, materialsData, settingsData]) => {
+      if (Array.isArray(printersData)) setPrinters(printersData);
+      if (Array.isArray(materialsData)) setMaterials(materialsData);
+      if (settingsData?.defaultElectricityRate != null) {
+        setInput((prev) => ({
+          ...prev,
+          machine: { ...prev.machine, electricityRate: settingsData.defaultElectricityRate },
+        }));
+      }
+      if (settingsData?.batchPricingTiers) {
+        try {
+          const tiers = JSON.parse(settingsData.batchPricingTiers);
+          if (Array.isArray(tiers) && tiers.length > 0) setBatchTiers(tiers);
+        } catch { /* ignore */ }
+      }
+    }).catch(() => {});
   }, []);
 
   const fetchPresets = useCallback(() => {

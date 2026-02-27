@@ -21,12 +21,7 @@ export async function GET() {
 
     const [
       // Quotes
-      totalQuotes,
-      draftQuotes,
-      sentQuotes,
-      acceptedQuotes,
-      rejectedQuotes,
-      expiredQuotes,
+      quotesByStatus,
       acceptedRevenue,
       quotesThisMonth,
       recentQuotes,
@@ -35,7 +30,6 @@ export async function GET() {
       totalJobs,
       jobsByStatus,
       activeJobs,
-      printersInActiveJobs,
 
       // Clients
       totalClients,
@@ -43,22 +37,22 @@ export async function GET() {
       // Printers
       totalPrinters,
 
-      // Materials
-      allMaterials,
+      // Materials (low-stock rows + aggregate stats)
+      lowStockMaterials,
+      materialStats,
 
-      // Consumables
-      consumableAlerts,
+      // Consumables (low-stock only)
+      lowStockConsumableRows,
 
       // Job revenue (Shopify etc)
       jobRevenue,
     ] = await Promise.all([
-      // Quote counts
-      prisma.quote.count({ where: { userId: user.id } }),
-      prisma.quote.count({ where: { userId: user.id, status: "DRAFT" } }),
-      prisma.quote.count({ where: { userId: user.id, status: "SENT" } }),
-      prisma.quote.count({ where: { userId: user.id, status: "ACCEPTED" } }),
-      prisma.quote.count({ where: { userId: user.id, status: "REJECTED" } }),
-      prisma.quote.count({ where: { userId: user.id, status: "EXPIRED" } }),
+      // Single groupBy replaces 6 separate count queries
+      prisma.quote.groupBy({
+        by: ["status"],
+        where: { userId: user.id },
+        _count: true,
+      }),
       prisma.quote.aggregate({
         where: { userId: user.id, status: "ACCEPTED" },
         _sum: { total: true },
@@ -95,15 +89,6 @@ export async function GET() {
         orderBy: { createdAt: "desc" },
         take: 5,
       }),
-      prisma.job.findMany({
-        where: {
-          userId: user.id,
-          status: { in: ACTIVE_JOB_STATUSES },
-          printerId: { not: null },
-        },
-        select: { printerId: true },
-        distinct: ["printerId"],
-      }),
 
       // Clients
       prisma.client.count({ where: { userId: user.id } }),
@@ -111,23 +96,32 @@ export async function GET() {
       // Printers
       prisma.printer.count({ where: { userId: user.id } }),
 
-      // Materials (with supplier info for reorder suggestions)
-      prisma.material.findMany({
-        where: { userId: user.id },
-        include: {
-          supplierRef: { select: { name: true, email: true, website: true } },
-        },
-        orderBy: { stockQty: "asc" },
-      }),
+      // Low-stock materials (filter at DB level instead of fetching all)
+      prisma.$queryRaw<Array<{ id: string; type: string; materialType: string; brand: string; colour: string; stockQty: number; lowStockThreshold: number; price: number; supplierName: string | null; supplierEmail: string | null; supplierWebsite: string | null }>>`
+        SELECT m.id, m.type, m."materialType", m.brand, m.colour, m."stockQty", m."lowStockThreshold", m.price,
+               s.name as "supplierName", s.email as "supplierEmail", s.website as "supplierWebsite"
+        FROM "Material" m
+        LEFT JOIN "Supplier" s ON m."supplierId" = s.id
+        WHERE m."userId" = ${user.id} AND m."stockQty" <= m."lowStockThreshold"
+        ORDER BY m."stockQty" ASC
+      `,
+      // Total material stats
+      prisma.$queryRaw<[{ count: bigint; outOfStock: bigint; totalValue: number }]>`
+        SELECT COUNT(*)::bigint as count,
+               COUNT(*) FILTER (WHERE "stockQty" = 0)::bigint as "outOfStock",
+               COALESCE(SUM(price * "stockQty"), 0)::float as "totalValue"
+        FROM "Material" WHERE "userId" = ${user.id}
+      `,
 
-      // Consumables (all, filtered client-side like materials)
-      prisma.consumable.findMany({
-        where: { userId: user.id },
-        include: {
-          supplier: { select: { name: true, email: true, website: true } },
-        },
-        orderBy: { stockQty: "asc" },
-      }),
+      // Consumables (low-stock only, filtered at DB level)
+      prisma.$queryRaw<Array<{ id: string; name: string; category: string | null; stockQty: number; lowStockThreshold: number; supplierName: string | null; supplierEmail: string | null; supplierWebsite: string | null }>>`
+        SELECT c.id, c.name, c.category, c."stockQty", c."lowStockThreshold",
+               s.name as "supplierName", s.email as "supplierEmail", s.website as "supplierWebsite"
+        FROM "Consumable" c
+        LEFT JOIN "Supplier" s ON c."supplierId" = s.id
+        WHERE c."userId" = ${user.id} AND c."stockQty" <= c."lowStockThreshold"
+        ORDER BY c."stockQty" ASC
+      `,
 
       // Job revenue (jobs with price but no quote — e.g. Shopify imports)
       prisma.job.aggregate({
@@ -135,6 +129,18 @@ export async function GET() {
         _sum: { price: true },
       }),
     ]);
+
+    // Derive quote status counts from single groupBy
+    const quoteStatusMap: Record<string, number> = {};
+    for (const row of quotesByStatus) {
+      quoteStatusMap[row.status] = row._count;
+    }
+    const totalQuotes = Object.values(quoteStatusMap).reduce((a, b) => a + b, 0);
+    const draftQuotes = quoteStatusMap["DRAFT"] ?? 0;
+    const sentQuotes = quoteStatusMap["SENT"] ?? 0;
+    const acceptedQuotes = quoteStatusMap["ACCEPTED"] ?? 0;
+    const rejectedQuotes = quoteStatusMap["REJECTED"] ?? 0;
+    const expiredQuotes = quoteStatusMap["EXPIRED"] ?? 0;
 
     // Derive job status map
     const jobStatusMap: Record<string, number> = {};
@@ -147,35 +153,33 @@ export async function GET() {
       0
     );
 
-    // Stock calculations
-    const lowStockAlerts = allMaterials
-      .filter((m) => m.stockQty <= m.lowStockThreshold)
-      .map((m) => ({
-        id: m.id,
-        type: m.type,
-        materialType: m.materialType,
-        brand: m.brand,
-        colour: m.colour,
-        stockQty: m.stockQty,
-        lowStockThreshold: m.lowStockThreshold,
-        price: m.price,
-        supplier: m.supplierRef ? { name: m.supplierRef.name, email: m.supplierRef.email, website: m.supplierRef.website } : null,
-      }));
-    const outOfStockCount = allMaterials.filter((m) => m.stockQty === 0).length;
-    const totalStockValue = Math.round(
-      allMaterials.reduce((sum, m) => sum + m.price * m.stockQty, 0) * 100
-    ) / 100;
+    // Derive printers in use from activeJobs (no separate query needed)
+    const printersInUse = new Set(activeJobs.filter(j => j.printerId).map(j => j.printerId)).size;
 
-    // Consumable low-stock filtering
-    const lowStockConsumables = consumableAlerts.filter(
-      (c) => c.stockQty <= c.lowStockThreshold
-    ).map((c) => ({
+    // Map raw SQL results to response shape
+    const lowStockAlerts = lowStockMaterials.map((m) => ({
+      id: m.id,
+      type: m.type,
+      materialType: m.materialType,
+      brand: m.brand,
+      colour: m.colour,
+      stockQty: m.stockQty,
+      lowStockThreshold: m.lowStockThreshold,
+      price: m.price,
+      supplier: m.supplierName ? { name: m.supplierName, email: m.supplierEmail, website: m.supplierWebsite } : null,
+    }));
+
+    const totalMaterials = Number(materialStats[0]?.count ?? 0);
+    const outOfStockCount = Number(materialStats[0]?.outOfStock ?? 0);
+    const totalStockValue = Math.round((materialStats[0]?.totalValue ?? 0) * 100) / 100;
+
+    const lowStockConsumables = lowStockConsumableRows.map((c) => ({
       id: c.id,
       name: c.name,
       category: c.category,
       stockQty: c.stockQty,
       lowStockThreshold: c.lowStockThreshold,
-      supplier: c.supplier ? { name: c.supplier.name, email: c.supplier.email, website: c.supplier.website } : null,
+      supplier: c.supplierName ? { name: c.supplierName, email: c.supplierEmail, website: c.supplierWebsite } : null,
     }));
 
     return NextResponse.json({
@@ -193,8 +197,8 @@ export async function GET() {
         activeJobCount,
         totalClients,
         totalPrinters,
-        printersInUse: printersInActiveJobs.length,
-        totalMaterials: allMaterials.length,
+        printersInUse,
+        totalMaterials,
         totalStockValue,
         lowStockCount: lowStockAlerts.length,
         outOfStockCount,
