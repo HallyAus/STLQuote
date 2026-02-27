@@ -196,15 +196,20 @@ export async function GET() {
     }
 
     // Build 30-day daily arrays with zero-fill
+    function toDateKey(d: unknown): string {
+      if (d instanceof Date) return d.toISOString().split("T")[0];
+      const s = String(d);
+      return s.includes("T") ? s.split("T")[0] : s.slice(0, 10);
+    }
+
     const signupsMap = new Map<string, number>();
     for (const row of signupsByDay) {
-      const dateStr = typeof row.date === "string" ? row.date.split("T")[0] : String(row.date);
-      signupsMap.set(dateStr, Number(row.count));
+      signupsMap.set(toDateKey(row.date), Number(row.count));
     }
 
     const quotesMap = new Map<string, Record<string, number>>();
     for (const row of quotesByDay) {
-      const dateStr = typeof row.date === "string" ? row.date.split("T")[0] : String(row.date);
+      const dateStr = toDateKey(row.date);
       if (!quotesMap.has(dateStr)) quotesMap.set(dateStr, {});
       quotesMap.get(dateStr)![row.status] = Number(row.count);
     }
