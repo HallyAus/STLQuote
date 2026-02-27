@@ -5,7 +5,7 @@ import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { cn } from "@/lib/utils";
-import { FileText } from "lucide-react";
+import { FileText, Plus } from "lucide-react";
 
 interface CostBreakdownPanelProps {
   breakdown: CostBreakdown;
@@ -13,6 +13,7 @@ interface CostBreakdownPanelProps {
   onCreateQuote?: () => void;
   stlFilename?: string;
   fileCount?: number;
+  addToQuoteMode?: boolean;
 }
 
 function formatAUD(value: number): string {
@@ -52,6 +53,7 @@ export function CostBreakdownPanel({
   onCreateQuote,
   stlFilename,
   fileCount = 0,
+  addToQuoteMode = false,
 }: CostBreakdownPanelProps) {
   const {
     materialCost,
@@ -169,13 +171,26 @@ export function CostBreakdownPanel({
               size="lg"
               onClick={onCreateQuote}
             >
-              <FileText className="mr-2 h-4 w-4" />
-              Create Quote{fileCount > 1 ? ` (${fileCount} items)` : ""}
+              {addToQuoteMode ? (
+                <>
+                  <Plus className="mr-2 h-4 w-4" />
+                  Add to Quote{fileCount > 1 ? ` (${fileCount} items)` : ""}
+                </>
+              ) : (
+                <>
+                  <FileText className="mr-2 h-4 w-4" />
+                  Create Quote{fileCount > 1 ? ` (${fileCount} items)` : ""}
+                </>
+              )}
             </Button>
             <p className="text-center text-xs text-muted-foreground">
-              {fileCount > 1
-                ? `Generate a quote with ${fileCount} line items`
-                : "Generate a professional quote from this calculation"}
+              {addToQuoteMode
+                ? fileCount > 1
+                  ? `Add ${fileCount} calculated items to your quote`
+                  : "Add this calculated item to your quote"
+                : fileCount > 1
+                  ? `Generate a quote with ${fileCount} line items`
+                  : "Generate a professional quote from this calculation"}
             </p>
           </div>
         )}

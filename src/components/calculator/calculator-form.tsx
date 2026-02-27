@@ -265,7 +265,23 @@ function PresetBar({
 // Calculator Form
 // ---------------------------------------------------------------------------
 
-export function CalculatorForm() {
+export interface CalculatorLineItem {
+  description: string;
+  printWeightG: number;
+  printTimeMinutes: number;
+  materialCost: number;
+  machineCost: number;
+  labourCost: number;
+  overheadCost: number;
+  lineTotal: number;
+  quantity: number;
+}
+
+interface CalculatorFormProps {
+  onAddToQuote?: (items: CalculatorLineItem[]) => void;
+}
+
+export function CalculatorForm({ onAddToQuote }: CalculatorFormProps = {}) {
   const router = useRouter();
   const [input, setInput] = useState<CalculatorInput>(defaultInput);
   const [printers, setPrinters] = useState<PrinterOption[]>([]);
@@ -546,20 +562,13 @@ export function CalculatorForm() {
   // Create Quote handler
   // -----------------------------------------------------------------------
 
-  function handleCreateQuote() {
+  function buildLineItems(): CalculatorLineItem[] {
     if (fileEstimatesList.length > 1) {
-      // Multi-file: calculate costs per-file using each file's weight/time
-      const items = fileEstimatesList.map((fe) => {
+      return fileEstimatesList.map((fe) => {
         const perFileInput: CalculatorInput = {
           ...input,
-          material: {
-            ...input.material,
-            printWeightG: fe.weightG,
-          },
-          machine: {
-            ...input.machine,
-            printTimeMinutes: fe.printTimeMinutes,
-          },
+          material: { ...input.material, printWeightG: fe.weightG },
+          machine: { ...input.machine, printTimeMinutes: fe.printTimeMinutes },
         };
         const perFileCost = calculateTotalCost(perFileInput);
 
@@ -582,36 +591,44 @@ export function CalculatorForm() {
           quantity: perFileCost.quantity,
         };
       });
-
-      sessionStorage.setItem(
-        "calculatorToQuote",
-        JSON.stringify({ items })
-      );
-    } else {
-      // Single file or no file — legacy single item format
-      const fe = fileEstimatesList[0] ?? null;
-      let description = "Calculated print job";
-      if (fe?.type === "stl" && fe.dimensionsMm) {
-        description = `${fe.filename} (${fe.dimensionsMm.x.toFixed(0)}\u00d7${fe.dimensionsMm.y.toFixed(0)}\u00d7${fe.dimensionsMm.z.toFixed(0)}mm)`;
-      } else if (fe?.type === "gcode") {
-        description = `${fe.filename}${fe.materialType ? ` (${fe.materialType})` : ""}`;
-      }
-
-      const quoteData = {
-        description,
-        printWeightG: input.material.printWeightG,
-        printTimeMinutes: input.machine.printTimeMinutes,
-        materialCost: breakdown.materialCost,
-        machineCost: breakdown.machineCost,
-        labourCost: breakdown.labourCost,
-        overheadCost: breakdown.overheadCost,
-        lineTotal: breakdown.unitPrice,
-        quantity: breakdown.quantity,
-      };
-
-      sessionStorage.setItem("calculatorToQuote", JSON.stringify(quoteData));
     }
 
+    const fe = fileEstimatesList[0] ?? null;
+    let description = "Calculated print job";
+    if (fe?.type === "stl" && fe.dimensionsMm) {
+      description = `${fe.filename} (${fe.dimensionsMm.x.toFixed(0)}\u00d7${fe.dimensionsMm.y.toFixed(0)}\u00d7${fe.dimensionsMm.z.toFixed(0)}mm)`;
+    } else if (fe?.type === "gcode") {
+      description = `${fe.filename}${fe.materialType ? ` (${fe.materialType})` : ""}`;
+    }
+
+    return [{
+      description,
+      printWeightG: input.material.printWeightG,
+      printTimeMinutes: input.machine.printTimeMinutes,
+      materialCost: breakdown.materialCost,
+      machineCost: breakdown.machineCost,
+      labourCost: breakdown.labourCost,
+      overheadCost: breakdown.overheadCost,
+      lineTotal: breakdown.unitPrice,
+      quantity: breakdown.quantity,
+    }];
+  }
+
+  function handleCreateQuote() {
+    const items = buildLineItems();
+
+    // Embedded mode: pass items directly via callback
+    if (onAddToQuote) {
+      onAddToQuote(items);
+      return;
+    }
+
+    // Standalone mode: use sessionStorage + navigation
+    if (items.length > 1) {
+      sessionStorage.setItem("calculatorToQuote", JSON.stringify({ items }));
+    } else {
+      sessionStorage.setItem("calculatorToQuote", JSON.stringify(items[0]));
+    }
     router.push("/quotes/new?fromCalculator=true");
   }
 
@@ -869,6 +886,7 @@ export function CalculatorForm() {
                 : fileEstimatesList[0]?.filename
             }
             fileCount={fileEstimatesList.length}
+            addToQuoteMode={!!onAddToQuote}
           />
         </div>
       </div>

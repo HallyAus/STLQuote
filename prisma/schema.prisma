@@ -102,6 +102,8 @@ model User {
   quoteTemplates     QuoteTemplate[]
   stockTransactions  StockTransaction[]
   purchaseOrders     PurchaseOrder[]
+  uploadLinks        UploadLink[]
+  quoteRequests      QuoteRequest[]
 }
 
 model Settings {
@@ -703,4 +705,48 @@ model PurchaseOrderItem {
   receivedQty     Int            @default(0)
 
   @@index([purchaseOrderId])
+}
+
+// --- Customer Upload Links ---
+
+model UploadLink {
+  id          String    @id @default(cuid())
+  userId      String
+  user        User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  token       String    @unique
+  label       String    @default("Default")
+  active      Boolean   @default(true)
+  expiresAt   DateTime?
+  maxFileSize Int       @default(52428800) // 50MB in bytes
+  allowedTypes String   @default("stl,3mf,step,obj,gcode") // comma-separated
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+
+  quoteRequests QuoteRequest[]
+
+  @@index([userId])
+  @@index([token])
+}
+
+model QuoteRequest {
+  id           String    @id @default(cuid())
+  userId       String
+  user         User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  uploadLinkId String
+  uploadLink   UploadLink @relation(fields: [uploadLinkId], references: [id], onDelete: Cascade)
+  clientName   String
+  clientEmail  String?
+  description  String?   @db.Text
+  status       String    @default("PENDING") // PENDING | REVIEWED | QUOTED | DISMISSED
+  fileName     String
+  originalName String
+  filePath     String
+  fileSizeBytes Int
+  mimeType     String?
+  createdAt    DateTime  @default(now())
+  updatedAt    DateTime  @updatedAt
+
+  @@index([userId])
+  @@index([uploadLinkId])
+  @@index([status])
 }

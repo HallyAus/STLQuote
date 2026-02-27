@@ -25,6 +25,7 @@ import {
   BookTemplate,
   UserCircle,
   Map,
+  Inbox,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { getEffectiveTier } from "@/lib/tier";
@@ -58,6 +59,7 @@ const navGroups: NavGroup[] = [
       { href: "/quote-templates", label: "Templates", icon: BookTemplate },
       { href: "/invoices", label: "Invoices", icon: Receipt, proOnly: true },
       { href: "/clients", label: "Clients", icon: Users },
+      { href: "/quote-requests", label: "Requests", icon: Inbox },
       { href: "/jobs", label: "Jobs", icon: Briefcase },
     ],
   },
@@ -202,6 +204,21 @@ export function Sidebar({ open, onClose }: SidebarProps) {
     return () => { cancelled = true; };
   }, []);
 
+  // Fetch pending quote request count
+  const [pendingRequestCount, setPendingRequestCount] = useState(0);
+  useEffect(() => {
+    let cancelled = false;
+    fetch("/api/quote-requests")
+      .then((res) => (res.ok ? res.json() : []))
+      .then((data: { status?: string }[]) => {
+        if (!cancelled && Array.isArray(data)) {
+          setPendingRequestCount(data.filter((r) => r.status === "PENDING").length);
+        }
+      })
+      .catch(() => {});
+    return () => { cancelled = true; };
+  }, []);
+
   return (
     <>
       {/* Mobile overlay */}
@@ -261,7 +278,7 @@ export function Sidebar({ open, onClose }: SidebarProps) {
                     isActive={isRouteActive(item.href, pathname)}
                     onClose={onClose}
                     locked={item.proOnly && isFree}
-                    badge={item.href === "/jobs" ? queuedJobCount : undefined}
+                    badge={item.href === "/jobs" ? queuedJobCount : item.href === "/quote-requests" ? pendingRequestCount : undefined}
                   />
                 ))}
               </div>

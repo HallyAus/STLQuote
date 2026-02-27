@@ -137,6 +137,22 @@ export function stockStatus(qty: number, threshold: number): {
 }
 
 // ---------------------------------------------------------------------------
+// Quote request status
+// ---------------------------------------------------------------------------
+
+export type RequestStatus = "PENDING" | "REVIEWED" | "QUOTED" | "DISMISSED";
+
+export const REQUEST_STATUS: Record<
+  RequestStatus,
+  { label: string; variant: "default" | "info" | "success" | "warning" }
+> = {
+  PENDING:   { label: "Pending",   variant: "warning" },
+  REVIEWED:  { label: "Reviewed",  variant: "info" },
+  QUOTED:    { label: "Quoted",    variant: "success" },
+  DISMISSED: { label: "Dismissed", variant: "default" },
+};
+
+// ---------------------------------------------------------------------------
 // Client tag colours — theme-aware
 // ---------------------------------------------------------------------------
 

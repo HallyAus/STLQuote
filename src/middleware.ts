@@ -23,6 +23,8 @@ export default auth((req) => {
     "/api/invoices/portal",
     "/waitlist",
     "/api/waitlist",
+    "/upload",
+    "/api/upload",
     "/terms",
     "/privacy",
   ];

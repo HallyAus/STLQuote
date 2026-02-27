@@ -7,7 +7,8 @@ import { Input } from "@/components/ui/input";
 import { Select } from "@/components/ui/select";
 import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card";
 import { Textarea } from "@/components/ui/textarea";
-import { ArrowLeft, Loader2, Calculator, UserPlus, X, Sparkles } from "lucide-react";
+import { ArrowLeft, Loader2, Calculator, UserPlus, X, Sparkles, ChevronDown } from "lucide-react";
+import { CalculatorForm, type CalculatorLineItem as CalcItem } from "@/components/calculator/calculator-form";
 import { useSession } from "next-auth/react";
 import { getEffectiveTier, hasFeature } from "@/lib/tier";
 import { BANNER } from "@/lib/status-colours";
@@ -143,6 +144,8 @@ export function NewQuote() {
   const [calcLineItems, setCalcLineItems] = useState<CalculatorLineItem[]>([]);
 
   const [templates, setTemplates] = useState<TemplateOption[]>([]);
+
+  const [showCalculator, setShowCalculator] = useState(false);
 
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -332,8 +335,14 @@ export function NewQuote() {
     })),
   ];
 
+  function handleAddFromCalculator(items: CalcItem[]) {
+    setCalcLineItems((prev) => [...prev, ...items]);
+    setMarkupPct("0"); // Calculator already applied markup
+    setShowCalculator(false);
+  }
+
   return (
-    <div className="mx-auto max-w-xl space-y-6">
+    <div className={`mx-auto space-y-6 ${showCalculator ? "max-w-6xl" : "max-w-xl"}`}>
       {/* Back button */}
       <Button
         variant="ghost"
@@ -343,6 +352,34 @@ export function NewQuote() {
         <ArrowLeft className="mr-2 h-4 w-4" />
         Back to Quotes
       </Button>
+
+      {/* Inline Calculator (collapsible) */}
+      {showCalculator && (
+        <Card>
+          <CardHeader>
+            <div className="flex items-center justify-between">
+              <CardTitle className="flex items-center gap-2">
+                <Calculator className="h-5 w-5" />
+                Cost Calculator
+              </CardTitle>
+              <Button
+                variant="ghost"
+                size="sm"
+                onClick={() => setShowCalculator(false)}
+              >
+                <X className="mr-1 h-4 w-4" />
+                Close
+              </Button>
+            </div>
+            <p className="text-sm text-muted-foreground">
+              Calculate costs, then click &quot;Add to Quote&quot; to create line items.
+            </p>
+          </CardHeader>
+          <CardContent>
+            <CalculatorForm onAddToQuote={handleAddFromCalculator} />
+          </CardContent>
+        </Card>
+      )}
 
       <Card>
         <CardHeader>
@@ -357,11 +394,11 @@ export function NewQuote() {
               </div>
             )}
 
-            {/* ---- Template selector + AI Draft ---- */}
-            {calcLineItems.length === 0 && (
-              <div className="flex items-end gap-3">
+            {/* ---- Template selector + Calculator + AI Draft ---- */}
+            {calcLineItems.length === 0 && !showCalculator && (
+              <div className="flex flex-wrap items-end gap-3">
                 {templates.length > 0 && (
-                  <div className="flex-1">
+                  <div className="flex-1 min-w-[200px]">
                     <Select
                       label="Start from Template"
                       value=""
@@ -387,6 +424,16 @@ export function NewQuote() {
                     />
                   </div>
                 )}
+                <Button
+                  type="button"
+                  variant="secondary"
+                  size="sm"
+                  onClick={() => setShowCalculator(true)}
+                  className="mb-0.5 shrink-0"
+                >
+                  <Calculator className="mr-1.5 h-3.5 w-3.5" />
+                  Use Calculator
+                </Button>
                 {isPro && (
                   <Button
                     type="button"
@@ -400,6 +447,19 @@ export function NewQuote() {
                   </Button>
                 )}
               </div>
+            )}
+
+            {/* Show "Use Calculator" button when items already exist */}
+            {calcLineItems.length > 0 && !showCalculator && (
+              <Button
+                type="button"
+                variant="ghost"
+                size="sm"
+                onClick={() => setShowCalculator(true)}
+              >
+                <Calculator className="mr-1.5 h-3.5 w-3.5" />
+                Add more with Calculator
+              </Button>
             )}
 
             {/* ---- AI Draft dialog ---- */}
