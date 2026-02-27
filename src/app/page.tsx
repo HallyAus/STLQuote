@@ -313,7 +313,7 @@ const FAQ = [
   },
   {
     q: "Can multiple people use it?",
-    a: "Yes. Printforge supports multiple users with role-based access — User, Admin, and Super Admin. Each user sees only their own data.",
+    a: "Yes. Printforge supports multiple users with role-based access. Each user sees only their own data.",
   },
   {
     q: "How do customer upload links work?",
