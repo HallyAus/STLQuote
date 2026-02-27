@@ -53,6 +53,13 @@ export interface OverheadCostInput {
   estimatedMonthlyJobs: number;
 }
 
+export interface ShippingCostInput {
+  /** Flat shipping cost per unit */
+  shippingCostPerUnit: number;
+  /** Packaging material cost per unit (boxes, tape, bubble wrap, etc.) */
+  packagingCostPerUnit: number;
+}
+
 export interface PricingInput {
   /** Markup percentage (e.g., 50 = 50%) */
   markupPct: number;
@@ -70,6 +77,7 @@ export interface CalculatorInput {
   labour: LabourCostInput;
   overhead: OverheadCostInput;
   pricing: PricingInput;
+  shipping: ShippingCostInput;
 }
 
 // --- Output types ---
@@ -79,6 +87,8 @@ export interface CostBreakdown {
   machineCost: number;
   labourCost: number;
   overheadCost: number;
+  shippingCost: number;
+  packagingCost: number;
   subtotal: number;
   markup: number;
   rushSurcharge: number;
@@ -131,6 +141,10 @@ export function calculateTotalCost(
   const labourCost = calculateLabourCost(input.labour);
   const overheadCost = calculateOverheadCost(input.overhead);
 
+  // Shipping & packaging are per-unit flat costs (not subject to markup)
+  const shippingCost = roundCurrency(input.shipping.shippingCostPerUnit);
+  const packagingCost = roundCurrency(input.shipping.packagingCostPerUnit);
+
   const subtotal = materialCost + machineCost + labourCost + overheadCost;
   const markup = roundCurrency(subtotal * (input.pricing.markupPct / 100));
   const priceBeforeRush = subtotal + markup;
@@ -140,7 +154,8 @@ export function calculateTotalCost(
       ? roundCurrency(priceBeforeRush * (input.pricing.rushMultiplier - 1))
       : 0;
 
-  let unitPrice = roundCurrency(priceBeforeRush + rushSurcharge);
+  // Unit price = production costs + markup + rush, plus shipping & packaging
+  let unitPrice = roundCurrency(priceBeforeRush + rushSurcharge + shippingCost + packagingCost);
 
   // Apply minimum charge
   if (unitPrice < input.pricing.minimumCharge) {
@@ -158,6 +173,8 @@ export function calculateTotalCost(
     machineCost,
     labourCost,
     overheadCost,
+    shippingCost,
+    packagingCost,
     subtotal,
     markup,
     rushSurcharge,

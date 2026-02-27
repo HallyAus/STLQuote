@@ -269,7 +269,8 @@ describe("estimateFromSTL", () => {
 
     // effectiveFill = 0.25 + 0.75 * 0.20 = 0.40
     // Weight = 10 * 1.24 * 0.40 = 4.96
-    expect(estimates.weightG).toBeCloseTo(4.96, 2);
+    // Math.round(4.96 * 10) / 10 = 5.0 (rounds to 1 decimal place)
+    expect(estimates.weightG).toBe(5);
     // Time = round(10 * 0.75) = 8
     expect(estimates.printTimeMinutes).toBe(8);
     expect(estimates.volumeCm3).toBe(10);

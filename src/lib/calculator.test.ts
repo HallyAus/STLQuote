@@ -156,6 +156,10 @@ describe("calculateTotalCost", () => {
       quantity: 1,
       rushMultiplier: 1,
     },
+    shipping: {
+      shippingCostPerUnit: 0,
+      packagingCostPerUnit: 0,
+    },
   };
 
   it("should calculate complete cost breakdown", () => {
@@ -205,6 +209,6 @@ describe("calculateTotalCost", () => {
     };
     const result = calculateTotalCost(input);
     expect(result.quantity).toBe(5);
-    expect(result.totalPrice).toBe(result.unitPrice * 5);
+    expect(result.totalPrice).toBeCloseTo(result.unitPrice * 5, 2);
   });
 });

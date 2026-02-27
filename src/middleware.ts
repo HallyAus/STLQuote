@@ -27,6 +27,7 @@ export default auth((req) => {
     "/api/upload",
     "/terms",
     "/privacy",
+    "/blog",
   ];
   const isPublic = publicPaths.some((p) => pathname.startsWith(p));
 

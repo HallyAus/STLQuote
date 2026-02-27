@@ -85,6 +85,10 @@ const defaultInput: CalculatorInput = {
     quantity: 1,
     rushMultiplier: 1.0,
   },
+  shipping: {
+    shippingCostPerUnit: 0,
+    packagingCostPerUnit: 0,
+  },
 };
 
 // ---------------------------------------------------------------------------
@@ -833,6 +837,30 @@ export function CalculatorForm({ onAddToQuote }: CalculatorFormProps = {}) {
               step="1"
               value={input.overhead.estimatedMonthlyJobs}
               onChange={handleChange("overhead", "estimatedMonthlyJobs")}
+            />
+          </Section>
+
+          <Section
+            title="Shipping & Packaging"
+            description="Per-unit shipping and packaging costs"
+            accentColor="border-l-sky-500"
+            defaultOpen={false}
+          >
+            <Input
+              label="Shipping cost per unit ($)"
+              type="number"
+              step="0.50"
+              min="0"
+              value={input.shipping?.shippingCostPerUnit ?? 0}
+              onChange={handleChange("shipping", "shippingCostPerUnit")}
+            />
+            <Input
+              label="Packaging cost per unit ($)"
+              type="number"
+              step="0.50"
+              min="0"
+              value={input.shipping?.packagingCostPerUnit ?? 0}
+              onChange={handleChange("shipping", "packagingCostPerUnit")}
             />
           </Section>
 

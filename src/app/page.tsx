@@ -33,6 +33,7 @@ import {
   Minus,
   Link2,
 } from "lucide-react";
+import { CalculatorDemo } from "@/components/landing/calculator-demo";
 
 export const metadata: Metadata = {
   title: "Printforge — Stop Guessing Your 3D Print Costs",
@@ -362,6 +363,9 @@ export default function LandingPage() {
             <a href="#features" className="text-muted-foreground transition-colors hover:text-foreground">
               Features
             </a>
+            <a href="#demo" className="text-muted-foreground transition-colors hover:text-foreground">
+              Demo
+            </a>
             <a href="#integrations" className="text-muted-foreground transition-colors hover:text-foreground">
               Integrations
             </a>
@@ -371,6 +375,9 @@ export default function LandingPage() {
             <a href="#faq" className="text-muted-foreground transition-colors hover:text-foreground">
               FAQ
             </a>
+            <Link href="/blog" className="text-muted-foreground transition-colors hover:text-foreground">
+              Blog
+            </Link>
           </div>
           <div className="flex items-center gap-3">
             <Link
@@ -553,6 +560,15 @@ export default function LandingPage() {
               </div>
             ))}
           </div>
+        </div>
+      </section>
+
+      {/* ----------------------------------------------------------------- */}
+      {/* Calculator Demo */}
+      {/* ----------------------------------------------------------------- */}
+      <section id="demo" className="scroll-mt-16 border-t border-border/50 bg-muted/30">
+        <div className="mx-auto max-w-6xl px-6 py-24">
+          <CalculatorDemo />
         </div>
       </section>
 
@@ -873,6 +889,9 @@ export default function LandingPage() {
                 <a href="#faq" className="block text-sm text-muted-foreground hover:text-foreground transition-colors">
                   FAQ
                 </a>
+                <Link href="/blog" className="block text-sm text-muted-foreground hover:text-foreground transition-colors">
+                  Blog
+                </Link>
               </div>
             </div>
 

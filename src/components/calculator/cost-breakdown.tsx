@@ -60,6 +60,8 @@ export function CostBreakdownPanel({
     machineCost,
     labourCost,
     overheadCost,
+    shippingCost,
+    packagingCost,
     subtotal,
     markup,
     rushSurcharge,
@@ -105,6 +107,22 @@ export function CostBreakdownPanel({
             total={subtotal}
             colour="bg-chart-3"
           />
+          {shippingCost > 0 && (
+            <CostBar
+              label="Shipping"
+              value={shippingCost}
+              total={subtotal}
+              colour="bg-sky-500"
+            />
+          )}
+          {packagingCost > 0 && (
+            <CostBar
+              label="Packaging"
+              value={packagingCost}
+              total={subtotal}
+              colour="bg-orange-500"
+            />
+          )}
         </div>
 
         {/* Line items */}
@@ -113,6 +131,8 @@ export function CostBreakdownPanel({
           <LineItem label="Machine cost" value={machineCost} />
           <LineItem label="Labour cost" value={labourCost} />
           <LineItem label="Overhead cost" value={overheadCost} />
+          {shippingCost > 0 && <LineItem label="Shipping" value={shippingCost} />}
+          {packagingCost > 0 && <LineItem label="Packaging" value={packagingCost} />}
 
           <div className="flex items-center justify-between border-t border-border pt-2 font-semibold">
             <span>Subtotal</span>
