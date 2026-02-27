@@ -21,7 +21,8 @@ export type Feature =
   | "dashboard_analytics"
   | "xero_sync"
   | "ai_assistant"
-  | "shopify_sync";
+  | "shopify_sync"
+  | "design_studio";
 
 const PRO_FEATURES: Set<Feature> = new Set([
   "client_portal",
@@ -37,6 +38,7 @@ const PRO_FEATURES: Set<Feature> = new Set([
   "xero_sync",
   "ai_assistant",
   "shopify_sync",
+  "design_studio",
 ]);
 
 /** Check if a feature requires Pro */
@@ -106,4 +108,16 @@ export const PRO_FEATURE_LIST: { feature: Feature; label: string; description: s
   { feature: "xero_sync", label: "Xero Accounting Sync", description: "Sync invoices, contacts, and payments with Xero" },
   { feature: "ai_assistant", label: "AI Quote Assistant", description: "Describe a job in plain English and get a draft quote with line items" },
   { feature: "shopify_sync", label: "Shopify Integration", description: "Pull Shopify orders in as jobs automatically" },
+  { feature: "design_studio", label: "Design Studio", description: "AI-powered product design planning and brainstorming" },
 ];
+
+/** Check if user has access to a feature, considering per-user overrides */
+export function hasFeatureWithOverrides(
+  tier: Tier,
+  feature: Feature,
+  overrides?: Record<string, string>
+): boolean {
+  if (overrides?.[feature] === "enabled") return true;
+  if (overrides?.[feature] === "disabled") return false;
+  return hasFeature(tier, feature);
+}

@@ -156,6 +156,43 @@ export const REQUEST_STATUS: Record<
 // Client tag colours — theme-aware
 // ---------------------------------------------------------------------------
 
+// ---------------------------------------------------------------------------
+// Design status
+// ---------------------------------------------------------------------------
+
+export type DesignStatus =
+  | "IDEA"
+  | "RESEARCH"
+  | "DRAFTING"
+  | "PROTOTYPING"
+  | "PRODUCTION_READY"
+  | "ARCHIVED";
+
+export const DESIGN_STATUS: Record<
+  DesignStatus,
+  { label: string; variant: "default" | "info" | "success" | "warning" }
+> = {
+  IDEA:             { label: "Idea",             variant: "default" },
+  RESEARCH:         { label: "Research",         variant: "info" },
+  DRAFTING:         { label: "Drafting",         variant: "warning" },
+  PROTOTYPING:      { label: "Prototyping",      variant: "info" },
+  PRODUCTION_READY: { label: "Production Ready", variant: "success" },
+  ARCHIVED:         { label: "Archived",         variant: "default" },
+};
+
+export const DESIGN_STATUS_ORDER: DesignStatus[] = [
+  "IDEA",
+  "RESEARCH",
+  "DRAFTING",
+  "PROTOTYPING",
+  "PRODUCTION_READY",
+  "ARCHIVED",
+];
+
+// ---------------------------------------------------------------------------
+// Client tag colours — theme-aware
+// ---------------------------------------------------------------------------
+
 export function tagColour(tag: string): string {
   const lower = tag.toLowerCase();
   if (lower === "tradie")     return "bg-warning/15 text-warning-foreground";

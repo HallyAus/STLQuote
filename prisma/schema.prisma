@@ -109,6 +109,8 @@ model User {
   purchaseOrders     PurchaseOrder[]
   uploadLinks        UploadLink[]
   quoteRequests      QuoteRequest[]
+  designs            Design[]
+  modules            UserModule[]
 }
 
 model Settings {
@@ -227,6 +229,7 @@ model Client {
   invoices     Invoice[]
   jobs         Job[]
   interactions ClientInteraction[]
+  designs      Design[]
 
   @@index([userId])
 }
@@ -267,6 +270,7 @@ model Quote {
   jobs      Job[]
   events    QuoteEvent[]
   invoices  Invoice[]
+  designs   Design[]
 
   @@unique([userId, quoteNumber])
   @@index([userId])
@@ -343,6 +347,7 @@ model Job {
   events   JobEvent[]
   photos   JobPhoto[]
   invoices Invoice[]
+  designs  Design[]
 
   @@index([userId])
 }
@@ -754,4 +759,127 @@ model QuoteRequest {
   @@index([userId])
   @@index([uploadLinkId])
   @@index([status])
+}
+
+// --- User Module Overrides ---
+
+model UserModule {
+  id        String   @id @default(cuid())
+  userId    String
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  feature   String   // matches Feature type from tier.ts
+  override  String   // "enabled" | "disabled"
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@unique([userId, feature])
+  @@index([userId])
+}
+
+// --- Design Studio ---
+
+enum DesignStatus {
+  IDEA
+  RESEARCH
+  DRAFTING
+  PROTOTYPING
+  PRODUCTION_READY
+  ARCHIVED
+}
+
+model Design {
+  id              String       @id @default(cuid())
+  userId          String
+  user            User         @relation(fields: [userId], references: [id], onDelete: Cascade)
+  designNumber    String
+  name            String
+  description     String?      @db.Text
+  status          DesignStatus @default(IDEA)
+  category        String?
+  tags            String[]     @default([])
+
+  // Target specs
+  targetLengthMm  Float?
+  targetWidthMm   Float?
+  targetHeightMm  Float?
+  targetWeightG   Float?
+
+  // Print preferences
+  suggestedMaterial String?
+  suggestedColour   String?
+  suggestedInfill   Float?
+  printNotes        String?    @db.Text
+
+  // Feasibility
+  feasibilityScore  Int?       // 1-10
+  feasibilityNotes  String?    @db.Text
+  estimatedCost     Float?
+  estimatedTimeMin  Float?
+
+  // Links
+  clientId        String?
+  client          Client?      @relation(fields: [clientId], references: [id], onDelete: SetNull)
+  quoteId         String?
+  quote           Quote?       @relation(fields: [quoteId], references: [id], onDelete: SetNull)
+  jobId           String?
+  job             Job?         @relation(fields: [jobId], references: [id], onDelete: SetNull)
+
+  thumbnailUrl    String?      @db.Text
+
+  messages        DesignMessage[]
+  files           DesignFile[]
+  revisions       DesignRevision[]
+
+  createdAt       DateTime     @default(now())
+  updatedAt       DateTime     @updatedAt
+
+  @@unique([userId, designNumber])
+  @@index([userId])
+  @@index([status])
+}
+
+model DesignMessage {
+  id        String   @id @default(cuid())
+  designId  String
+  design    Design   @relation(fields: [designId], references: [id], onDelete: Cascade)
+  role      String   // "user" | "assistant"
+  content   String   @db.Text
+  imageData String?  @db.Text
+  metadata  String?  @db.Text
+  createdAt DateTime @default(now())
+
+  @@index([designId])
+}
+
+model DesignFile {
+  id           String          @id @default(cuid())
+  designId     String
+  design       Design          @relation(fields: [designId], references: [id], onDelete: Cascade)
+  userId       String
+  fileType     String          // reference_image | stl | 3mf | step | gcode | document | other
+  filename     String
+  originalName String
+  mimeType     String
+  sizeBytes    Int             @default(0)
+  isPrimary    Boolean         @default(false)
+  notes        String?         @db.Text
+  revisionId   String?
+  revision     DesignRevision? @relation(fields: [revisionId], references: [id], onDelete: SetNull)
+  createdAt    DateTime        @default(now())
+
+  @@index([designId])
+}
+
+model DesignRevision {
+  id          String       @id @default(cuid())
+  designId    String
+  design      Design       @relation(fields: [designId], references: [id], onDelete: Cascade)
+  version     Int
+  title       String
+  description String?      @db.Text
+  changes     String?      @db.Text
+  files       DesignFile[]
+  createdAt   DateTime     @default(now())
+
+  @@index([designId])
 }

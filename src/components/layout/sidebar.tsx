@@ -26,9 +26,10 @@ import {
   UserCircle,
   Map,
   Inbox,
+  Lightbulb,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
-import { getEffectiveTier } from "@/lib/tier";
+import { getEffectiveTier, hasFeatureWithOverrides, type Feature } from "@/lib/tier";
 import { OnboardingGuide } from "@/components/onboarding/onboarding-guide";
 import type { LucideIcon } from "lucide-react";
 
@@ -50,6 +51,7 @@ const navGroups: NavGroup[] = [
     items: [
       { href: "/dashboard", label: "Dashboard", icon: LayoutDashboard },
       { href: "/calculator", label: "Calculator", icon: Calculator },
+      { href: "/designs", label: "Design Studio", icon: Lightbulb, proOnly: true },
     ],
   },
   {
@@ -173,6 +175,41 @@ export function Sidebar({ open, onClose }: SidebarProps) {
   }) : "free";
   const isFree = effectiveTier === "free";
 
+  // Fetch module overrides for current user
+  const [moduleOverrides, setModuleOverrides] = useState<Record<string, string>>({});
+  useEffect(() => {
+    if (!session?.user) return;
+    let cancelled = false;
+    // Admin users manage their own overrides; for self, check via a lightweight endpoint
+    // We'll use the session approach — piggyback on the existing session data
+    // For now, fetch overrides from the modules endpoint for the logged-in user
+    fetch("/api/user/modules")
+      .then((res) => (res.ok ? res.json() : { overrides: {} }))
+      .then((data) => {
+        if (!cancelled && data.overrides) setModuleOverrides(data.overrides);
+      })
+      .catch(() => {});
+    return () => { cancelled = true; };
+  }, [session?.user]);
+
+  function isFeatureLocked(item: NavItem): boolean {
+    if (!item.proOnly) return false;
+    // Check module overrides first — map href to feature name
+    const featureMap: Record<string, Feature> = {
+      "/invoices": "invoicing",
+      "/suppliers": "suppliers",
+      "/consumables": "consumables",
+      "/purchase-orders": "suppliers",
+      "/integrations": "webhooks",
+      "/designs": "design_studio",
+    };
+    const feature = featureMap[item.href];
+    if (feature) {
+      return !hasFeatureWithOverrides(effectiveTier, feature, moduleOverrides);
+    }
+    return isFree;
+  }
+
   // Fetch pending waitlist count for admins
   const [waitlistCount, setWaitlistCount] = useState(0);
   useEffect(() => {
@@ -277,7 +314,7 @@ export function Sidebar({ open, onClose }: SidebarProps) {
                     item={item}
                     isActive={isRouteActive(item.href, pathname)}
                     onClose={onClose}
-                    locked={item.proOnly && isFree}
+                    locked={isFeatureLocked(item)}
                     badge={item.href === "/jobs" ? queuedJobCount : item.href === "/quote-requests" ? pendingRequestCount : undefined}
                   />
                 ))}

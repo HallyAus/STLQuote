@@ -1,7 +1,7 @@
 import { cookies } from "next/headers";
 import { auth } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
-import { getEffectiveTier, hasFeature, type Feature, type Tier } from "@/lib/tier";
+import { getEffectiveTier, hasFeatureWithOverrides, type Feature, type Tier } from "@/lib/tier";
 
 export interface SessionUser {
   id: string;
@@ -14,6 +14,7 @@ export interface SessionUser {
   subscriptionStatus: string;
   trialEndsAt: string | null;
   effectiveTier: Tier;
+  moduleOverrides: Record<string, string>;
 }
 
 /**
@@ -39,11 +40,13 @@ export async function getSessionUser(): Promise<SessionUser | null> {
     if (impersonateId && impersonateId !== realUserId) {
       const impersonatedUser = await prisma.user.findUnique({
         where: { id: impersonateId },
-        select: { id: true, email: true, name: true, role: true, subscriptionTier: true, subscriptionStatus: true, trialEndsAt: true },
+        select: { id: true, email: true, name: true, role: true, subscriptionTier: true, subscriptionStatus: true, trialEndsAt: true, modules: { select: { feature: true, override: true } } },
       });
 
       if (impersonatedUser) {
         const impTrialEndsAt = impersonatedUser.trialEndsAt?.toISOString() ?? null;
+        const overrides: Record<string, string> = {};
+        for (const m of impersonatedUser.modules) overrides[m.feature] = m.override;
         return {
           id: impersonatedUser.id,
           email: impersonatedUser.email,
@@ -55,10 +58,19 @@ export async function getSessionUser(): Promise<SessionUser | null> {
           subscriptionStatus: impersonatedUser.subscriptionStatus,
           trialEndsAt: impTrialEndsAt,
           effectiveTier: getEffectiveTier({ subscriptionTier: impersonatedUser.subscriptionTier, subscriptionStatus: impersonatedUser.subscriptionStatus, trialEndsAt: impTrialEndsAt, role: impersonatedUser.role }),
+          moduleOverrides: overrides,
         };
       }
     }
   }
+
+  // Fetch module overrides for the current user
+  const modules = await prisma.userModule.findMany({
+    where: { userId: realUserId },
+    select: { feature: true, override: true },
+  });
+  const moduleOverrides: Record<string, string> = {};
+  for (const m of modules) moduleOverrides[m.feature] = m.override;
 
   return {
     id: realUserId,
@@ -70,6 +82,7 @@ export async function getSessionUser(): Promise<SessionUser | null> {
     subscriptionStatus,
     trialEndsAt,
     effectiveTier: getEffectiveTier({ subscriptionTier, subscriptionStatus, trialEndsAt, role }),
+    moduleOverrides,
   };
 }
 
@@ -108,7 +121,7 @@ export async function requireFeature(feature: Feature): Promise<SessionUser> {
       headers: { "Content-Type": "application/json" },
     });
   }
-  if (!hasFeature(user.effectiveTier, feature)) {
+  if (!hasFeatureWithOverrides(user.effectiveTier, feature, user.moduleOverrides)) {
     throw new Response(
       JSON.stringify({ error: "This feature requires a Pro subscription", code: "PRO_REQUIRED", feature }),
       { status: 403, headers: { "Content-Type": "application/json" } }
@@ -147,6 +160,7 @@ export async function requireAdmin(): Promise<SessionUser> {
     subscriptionStatus: status,
     trialEndsAt: trial,
     effectiveTier: getEffectiveTier({ subscriptionTier: tier, subscriptionStatus: status, trialEndsAt: trial, role: session.user.role }),
+    moduleOverrides: {},
   };
 }
 
@@ -180,5 +194,6 @@ export async function requireSuperAdmin(): Promise<SessionUser> {
     subscriptionStatus: status,
     trialEndsAt: trial,
     effectiveTier: getEffectiveTier({ subscriptionTier: tier, subscriptionStatus: status, trialEndsAt: trial, role: session.user.role }),
+    moduleOverrides: {},
   };
 }
