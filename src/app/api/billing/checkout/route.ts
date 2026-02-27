@@ -51,7 +51,6 @@ export async function POST(request: NextRequest) {
       cancel_url: `${origin}/settings?billing=cancel`,
       metadata: { userId: user.id },
       allow_promotion_codes: true,
-      subscription_data: { trial_period_days: undefined },
     };
 
     if (dbUser?.stripeCustomerId) {
@@ -64,9 +63,16 @@ export async function POST(request: NextRequest) {
 
     return NextResponse.json({ url: session.url });
   } catch (error) {
-    console.error("Failed to create checkout session:", error);
+    const stripeMsg = error instanceof Stripe.errors.StripeError
+      ? error.message
+      : error instanceof Error ? error.message : String(error);
+    console.error("Failed to create checkout session:", stripeMsg, error);
     return NextResponse.json(
-      { error: "Failed to create checkout session" },
+      {
+        error: process.env.NODE_ENV === "development"
+          ? `Checkout failed: ${stripeMsg}`
+          : "Failed to create checkout session",
+      },
       { status: 500 }
     );
   }
