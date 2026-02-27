@@ -3,12 +3,22 @@
 import { useState, useEffect, useCallback } from "react";
 import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card";
 import {
+  BarChart,
+  Bar,
+  AreaChart,
+  Area,
+  XAxis,
+  YAxis,
+  CartesianGrid,
+  Tooltip,
+  ResponsiveContainer,
+} from "recharts";
+import {
   Users,
   FileText,
   Briefcase,
   Upload,
   TrendingUp,
-  TrendingDown,
   Loader2,
   HardDrive,
   Database,
@@ -18,6 +28,14 @@ import { cn } from "@/lib/utils";
 import { formatRelativeTime } from "@/lib/format";
 import type { AnalyticsData } from "./admin-types";
 
+const chartTooltipStyle = {
+  backgroundColor: "var(--color-popover)",
+  border: "1px solid var(--color-border)",
+  borderRadius: "8px",
+  fontSize: "12px",
+  color: "var(--color-popover-foreground)",
+};
+
 function formatBytes(bytes: number): string {
   if (bytes === 0) return "0 B";
   const k = 1024;
@@ -26,60 +44,9 @@ function formatBytes(bytes: number): string {
   return parseFloat((bytes / Math.pow(k, i)).toFixed(1)) + " " + sizes[i];
 }
 
-function MiniBarChart({ data, maxHeight = 40 }: { data: number[]; maxHeight?: number }) {
-  const max = Math.max(...data, 1);
-  return (
-    <div className="flex items-end gap-[2px]" style={{ height: maxHeight }}>
-      {data.map((value, i) => {
-        const height = Math.max(2, (value / max) * maxHeight);
-        return (
-          <div
-            key={i}
-            className="flex-1 rounded-t bg-primary/60 transition-all duration-300"
-            style={{ height }}
-            title={`${value}`}
-          />
-        );
-      })}
-    </div>
-  );
-}
-
-function StackedBarChart({
-  data,
-  maxHeight = 120,
-}: {
-  data: { draft: number; sent: number; accepted: number; other: number }[];
-  maxHeight?: number;
-}) {
-  const maxTotal = Math.max(...data.map((d) => d.draft + d.sent + d.accepted + d.other), 1);
-
-  return (
-    <div className="flex items-end gap-[3px]" style={{ height: maxHeight }}>
-      {data.map((day, i) => {
-        const total = day.draft + day.sent + day.accepted + day.other;
-        const h = Math.max(2, (total / maxTotal) * maxHeight);
-        const draftH = total > 0 ? (day.draft / total) * h : 0;
-        const sentH = total > 0 ? (day.sent / total) * h : 0;
-        const acceptedH = total > 0 ? (day.accepted / total) * h : 0;
-        const otherH = total > 0 ? (day.other / total) * h : 0;
-
-        return (
-          <div
-            key={i}
-            className="flex flex-1 flex-col-reverse rounded-t overflow-hidden"
-            style={{ height: h }}
-            title={`Draft: ${day.draft}, Sent: ${day.sent}, Accepted: ${day.accepted}`}
-          >
-            {draftH > 0 && <div className="bg-muted-foreground/30" style={{ height: draftH }} />}
-            {sentH > 0 && <div className="bg-blue-500/60" style={{ height: sentH }} />}
-            {acceptedH > 0 && <div className="bg-emerald-500/60" style={{ height: acceptedH }} />}
-            {otherH > 0 && <div className="bg-muted-foreground/15" style={{ height: otherH }} />}
-          </div>
-        );
-      })}
-    </div>
-  );
+function formatDateLabel(dateStr: string): string {
+  const d = new Date(dateStr + "T00:00:00");
+  return d.toLocaleDateString("en-AU", { day: "numeric", month: "short" });
 }
 
 export function AdminOverview() {
@@ -184,10 +151,40 @@ export function AdminOverview() {
             </CardTitle>
           </CardHeader>
           <CardContent>
-            <MiniBarChart data={charts.dailySignups.map((d) => d.count)} maxHeight={80} />
-            <div className="mt-2 flex justify-between text-[10px] text-muted-foreground/50">
-              <span>{charts.dailySignups[0]?.date?.slice(5)}</span>
-              <span>{charts.dailySignups[charts.dailySignups.length - 1]?.date?.slice(5)}</span>
+            <div className="h-52">
+              <ResponsiveContainer width="100%" height="100%">
+                <AreaChart data={charts.dailySignups}>
+                  <CartesianGrid strokeDasharray="3 3" stroke="var(--color-border)" vertical={false} />
+                  <XAxis
+                    dataKey="date"
+                    tickFormatter={formatDateLabel}
+                    tick={{ fontSize: 11, fill: "var(--color-muted-foreground)" }}
+                    tickLine={false}
+                    axisLine={false}
+                    interval={Math.floor(charts.dailySignups.length / 5)}
+                  />
+                  <YAxis
+                    tick={{ fontSize: 11, fill: "var(--color-muted-foreground)" }}
+                    tickLine={false}
+                    axisLine={false}
+                    allowDecimals={false}
+                    width={28}
+                  />
+                  <Tooltip
+                    contentStyle={chartTooltipStyle}
+                    labelFormatter={formatDateLabel}
+                    formatter={(value: number) => [value, "Signups"]}
+                  />
+                  <Area
+                    type="monotone"
+                    dataKey="count"
+                    stroke="var(--color-primary)"
+                    fill="var(--color-primary)"
+                    fillOpacity={0.15}
+                    strokeWidth={2}
+                  />
+                </AreaChart>
+              </ResponsiveContainer>
             </div>
           </CardContent>
         </Card>
@@ -200,17 +197,42 @@ export function AdminOverview() {
                 Quotes — Last 30 Days
               </CardTitle>
               <div className="flex items-center gap-3 text-[10px]">
-                <span className="flex items-center gap-1"><span className="h-2 w-2 rounded-full bg-emerald-500/60" />Accepted</span>
-                <span className="flex items-center gap-1"><span className="h-2 w-2 rounded-full bg-blue-500/60" />Sent</span>
-                <span className="flex items-center gap-1"><span className="h-2 w-2 rounded-full bg-muted-foreground/30" />Draft</span>
+                <span className="flex items-center gap-1"><span className="h-2 w-2 rounded-full bg-emerald-500" />Accepted</span>
+                <span className="flex items-center gap-1"><span className="h-2 w-2 rounded-full bg-blue-500" />Sent</span>
+                <span className="flex items-center gap-1"><span className="h-2 w-2 rounded-full bg-zinc-400" />Draft</span>
               </div>
             </div>
           </CardHeader>
           <CardContent>
-            <StackedBarChart data={charts.dailyQuotes} />
-            <div className="mt-2 flex justify-between text-[10px] text-muted-foreground/50">
-              <span>{charts.dailyQuotes[0]?.date?.slice(5)}</span>
-              <span>{charts.dailyQuotes[charts.dailyQuotes.length - 1]?.date?.slice(5)}</span>
+            <div className="h-52">
+              <ResponsiveContainer width="100%" height="100%">
+                <BarChart data={charts.dailyQuotes}>
+                  <CartesianGrid strokeDasharray="3 3" stroke="var(--color-border)" vertical={false} />
+                  <XAxis
+                    dataKey="date"
+                    tickFormatter={formatDateLabel}
+                    tick={{ fontSize: 11, fill: "var(--color-muted-foreground)" }}
+                    tickLine={false}
+                    axisLine={false}
+                    interval={Math.floor(charts.dailyQuotes.length / 5)}
+                  />
+                  <YAxis
+                    tick={{ fontSize: 11, fill: "var(--color-muted-foreground)" }}
+                    tickLine={false}
+                    axisLine={false}
+                    allowDecimals={false}
+                    width={28}
+                  />
+                  <Tooltip
+                    contentStyle={chartTooltipStyle}
+                    labelFormatter={formatDateLabel}
+                  />
+                  <Bar dataKey="accepted" name="Accepted" stackId="quotes" fill="#10b981" radius={[0, 0, 0, 0]} />
+                  <Bar dataKey="sent" name="Sent" stackId="quotes" fill="#3b82f6" radius={[0, 0, 0, 0]} />
+                  <Bar dataKey="draft" name="Draft" stackId="quotes" fill="#a1a1aa" radius={[4, 4, 0, 0]} />
+                  <Bar dataKey="other" name="Other" stackId="quotes" fill="#71717a" radius={[0, 0, 0, 0]} />
+                </BarChart>
+              </ResponsiveContainer>
             </div>
           </CardContent>
         </Card>
