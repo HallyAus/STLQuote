@@ -91,6 +91,52 @@ export const JOB_STATUS_ORDER: JobStatus[] = [
 ];
 
 // ---------------------------------------------------------------------------
+// Invoice status
+// ---------------------------------------------------------------------------
+
+export type InvoiceStatus = "DRAFT" | "SENT" | "PAID" | "OVERDUE" | "VOID";
+
+export const INVOICE_STATUS: Record<
+  InvoiceStatus,
+  { label: string; variant: "default" | "info" | "success" | "destructive" | "warning" }
+> = {
+  DRAFT:   { label: "Draft",   variant: "default" },
+  SENT:    { label: "Sent",    variant: "info" },
+  PAID:    { label: "Paid",    variant: "success" },
+  OVERDUE: { label: "Overdue", variant: "destructive" },
+  VOID:    { label: "Void",    variant: "warning" },
+};
+
+// ---------------------------------------------------------------------------
+// Purchase order status
+// ---------------------------------------------------------------------------
+
+export type POStatus = "DRAFT" | "ORDERED" | "RECEIVED" | "CANCELLED";
+
+export const PO_STATUS: Record<
+  POStatus,
+  { label: string; variant: "default" | "success" | "warning" | "destructive" }
+> = {
+  DRAFT:     { label: "Draft",     variant: "default" },
+  ORDERED:   { label: "Ordered",   variant: "warning" },
+  RECEIVED:  { label: "Received",  variant: "success" },
+  CANCELLED: { label: "Cancelled", variant: "destructive" },
+};
+
+// ---------------------------------------------------------------------------
+// Stock status helper
+// ---------------------------------------------------------------------------
+
+export function stockStatus(qty: number, threshold: number): {
+  label: string;
+  variant: "success" | "warning" | "destructive";
+} {
+  if (qty <= 0) return { label: "Out", variant: "destructive" };
+  if (qty <= threshold) return { label: "Low", variant: "warning" };
+  return { label: "OK", variant: "success" };
+}
+
+// ---------------------------------------------------------------------------
 // Client tag colours — theme-aware
 // ---------------------------------------------------------------------------
 

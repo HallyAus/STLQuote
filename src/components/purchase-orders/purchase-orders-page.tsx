@@ -162,8 +162,10 @@ function CreatePOModal({
       const data = JSON.parse(raw);
       sessionStorage.removeItem("invoiceToPurchaseOrder");
 
-      // Auto-match supplier by name
-      if (data.supplierName) {
+      // Auto-match supplier — use AI-matched supplierId first, then fuzzy name match
+      if (data.supplierId && suppliers.some((s) => s.id === data.supplierId)) {
+        setSupplierId(data.supplierId);
+      } else if (data.supplierName) {
         const match = suppliers.find(
           (s) =>
             s.name.toLowerCase().includes(data.supplierName.toLowerCase()) ||
@@ -802,13 +804,13 @@ export function PurchaseOrdersPage() {
               <table className="w-full text-sm">
                 <thead>
                   <tr className="border-b border-border text-left">
-                    <th className="px-4 py-3 font-medium text-muted-foreground">PO #</th>
-                    <th className="px-4 py-3 font-medium text-muted-foreground">Supplier</th>
-                    <th className="px-4 py-3 font-medium text-muted-foreground">Status</th>
-                    <th className="px-4 py-3 font-medium text-muted-foreground text-center">Items</th>
-                    <th className="px-4 py-3 font-medium text-muted-foreground text-right">Total</th>
-                    <th className="px-4 py-3 font-medium text-muted-foreground">Expected</th>
-                    <th className="px-4 py-3 font-medium text-muted-foreground">Created</th>
+                    <th className="px-4 py-2.5 font-medium text-muted-foreground">PO #</th>
+                    <th className="px-4 py-2.5 font-medium text-muted-foreground">Supplier</th>
+                    <th className="px-4 py-2.5 font-medium text-muted-foreground">Status</th>
+                    <th className="px-4 py-2.5 font-medium text-muted-foreground text-center">Items</th>
+                    <th className="px-4 py-2.5 font-medium text-muted-foreground text-right">Total</th>
+                    <th className="px-4 py-2.5 font-medium text-muted-foreground">Expected</th>
+                    <th className="px-4 py-2.5 font-medium text-muted-foreground">Created</th>
                   </tr>
                 </thead>
                 <tbody>
@@ -817,25 +819,25 @@ export function PurchaseOrdersPage() {
                       key={po.id}
                       className="border-b border-border last:border-0 hover:bg-muted/50 transition-colors cursor-pointer"
                     >
-                      <td className="px-4 py-3">
+                      <td className="px-4 py-2.5">
                         <Link href={`/purchase-orders/${po.id}`} className="font-medium text-primary hover:underline">
                           {po.poNumber}
                         </Link>
                       </td>
-                      <td className="px-4 py-3">{po.supplier.name}</td>
-                      <td className="px-4 py-3">
+                      <td className="px-4 py-2.5">{po.supplier.name}</td>
+                      <td className="px-4 py-2.5">
                         <Badge variant={STATUS_VARIANTS[po.status] ?? "default"}>
                           {po.status}
                         </Badge>
                       </td>
-                      <td className="px-4 py-3 text-center tabular-nums">{po.items.length}</td>
-                      <td className="px-4 py-3 text-right tabular-nums">${po.totalCost.toFixed(2)}</td>
-                      <td className="px-4 py-3 text-muted-foreground">
+                      <td className="px-4 py-2.5 text-center tabular-nums">{po.items.length}</td>
+                      <td className="px-4 py-2.5 text-right tabular-nums">${po.totalCost.toFixed(2)}</td>
+                      <td className="px-4 py-2.5 text-muted-foreground">
                         {po.expectedDelivery
                           ? new Date(po.expectedDelivery).toLocaleDateString("en-AU")
                           : "\u2014"}
                       </td>
-                      <td className="px-4 py-3 text-muted-foreground">
+                      <td className="px-4 py-2.5 text-muted-foreground">
                         {new Date(po.createdAt).toLocaleDateString("en-AU")}
                       </td>
                     </tr>

@@ -269,29 +269,29 @@ export function QuotesPage() {
               <table className="w-full text-sm">
                 <thead>
                   <tr className="border-b border-border text-left">
-                    <th className="w-10 px-4 py-3">
+                    <th className="w-10 px-4 py-2.5">
                       <Checkbox
                         checked={bulk.isAllSelected}
                         indeterminate={bulk.isIndeterminate}
                         onChange={bulk.toggleAll}
                       />
                     </th>
-                    <th className="px-4 py-3 font-medium text-muted-foreground">
+                    <th className="px-4 py-2.5 font-medium text-muted-foreground">
                       Quote #
                     </th>
-                    <th className="px-4 py-3 font-medium text-muted-foreground">
+                    <th className="px-4 py-2.5 font-medium text-muted-foreground">
                       Client
                     </th>
-                    <th className="px-4 py-3 font-medium text-muted-foreground">
+                    <th className="px-4 py-2.5 font-medium text-muted-foreground">
                       Status
                     </th>
-                    <th className="px-4 py-3 font-medium text-muted-foreground text-right">
+                    <th className="px-4 py-2.5 font-medium text-muted-foreground text-right">
                       Items
                     </th>
-                    <th className="px-4 py-3 font-medium text-muted-foreground text-right">
+                    <th className="px-4 py-2.5 font-medium text-muted-foreground text-right">
                       Total
                     </th>
-                    <th className="px-4 py-3 font-medium text-muted-foreground">
+                    <th className="px-4 py-2.5 font-medium text-muted-foreground">
                       Created
                     </th>
                   </tr>
@@ -304,30 +304,30 @@ export function QuotesPage() {
                         className="cursor-pointer border-b border-border last:border-0 transition-colors hover:bg-muted/50"
                         onClick={() => router.push(`/quotes/${quote.id}`)}
                       >
-                        <td className="px-4 py-3" onClick={(e) => e.stopPropagation()}>
+                        <td className="px-4 py-2.5" onClick={(e) => e.stopPropagation()}>
                           <Checkbox
                             checked={bulk.selectedIds.has(quote.id)}
                             onChange={() => bulk.toggleOne(quote.id)}
                           />
                         </td>
-                        <td className="px-4 py-3 font-medium">
+                        <td className="px-4 py-2.5 font-medium">
                           {quote.quoteNumber}
                         </td>
-                        <td className="px-4 py-3 text-muted-foreground">
+                        <td className="px-4 py-2.5 text-muted-foreground">
                           {quote.client?.name ?? "\u2014"}
                         </td>
-                        <td className="px-4 py-3">
+                        <td className="px-4 py-2.5">
                           <Badge variant={QUOTE_STATUS[quote.status].variant}>
                             {QUOTE_STATUS[quote.status].label}
                           </Badge>
                         </td>
-                        <td className="px-4 py-3 text-right tabular-nums">
+                        <td className="px-4 py-2.5 text-right tabular-nums">
                           {quote.lineItems.length}
                         </td>
-                        <td className="px-4 py-3 text-right tabular-nums">
+                        <td className="px-4 py-2.5 text-right tabular-nums">
                           {formatCurrency(quote.total)}
                         </td>
-                        <td className="px-4 py-3 text-muted-foreground">
+                        <td className="px-4 py-2.5 text-muted-foreground">
                           {formatDate(quote.createdAt)}
                         </td>
                       </tr>

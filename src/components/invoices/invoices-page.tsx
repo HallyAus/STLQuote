@@ -599,32 +599,32 @@ export function InvoicesPage() {
               <table className="w-full text-sm">
                 <thead>
                   <tr className="border-b border-border text-left">
-                    <th className="w-10 px-4 py-3">
+                    <th className="w-10 px-4 py-2.5">
                       <Checkbox
                         checked={bulk.isAllSelected}
                         indeterminate={bulk.isIndeterminate}
                         onChange={bulk.toggleAll}
                       />
                     </th>
-                    <th className="px-4 py-3 font-medium text-muted-foreground">
+                    <th className="px-4 py-2.5 font-medium text-muted-foreground">
                       Invoice #
                     </th>
-                    <th className="px-4 py-3 font-medium text-muted-foreground">
+                    <th className="px-4 py-2.5 font-medium text-muted-foreground">
                       Client
                     </th>
-                    <th className="px-4 py-3 font-medium text-muted-foreground">
+                    <th className="px-4 py-2.5 font-medium text-muted-foreground">
                       Status
                     </th>
-                    <th className="px-4 py-3 font-medium text-muted-foreground text-right">
+                    <th className="px-4 py-2.5 font-medium text-muted-foreground text-right">
                       Items
                     </th>
-                    <th className="px-4 py-3 font-medium text-muted-foreground text-right">
+                    <th className="px-4 py-2.5 font-medium text-muted-foreground text-right">
                       Total
                     </th>
-                    <th className="px-4 py-3 font-medium text-muted-foreground">
+                    <th className="px-4 py-2.5 font-medium text-muted-foreground">
                       Due Date
                     </th>
-                    <th className="px-4 py-3 font-medium text-muted-foreground">
+                    <th className="px-4 py-2.5 font-medium text-muted-foreground">
                       Created
                     </th>
                   </tr>
@@ -636,33 +636,33 @@ export function InvoicesPage() {
                       className="cursor-pointer border-b border-border last:border-0 transition-colors hover:bg-muted/50"
                       onClick={() => router.push(`/invoices/${invoice.id}`)}
                     >
-                      <td className="px-4 py-3" onClick={(e) => e.stopPropagation()}>
+                      <td className="px-4 py-2.5" onClick={(e) => e.stopPropagation()}>
                         <Checkbox
                           checked={bulk.selectedIds.has(invoice.id)}
                           onChange={() => bulk.toggleOne(invoice.id)}
                         />
                       </td>
-                      <td className="px-4 py-3 font-medium">
+                      <td className="px-4 py-2.5 font-medium">
                         {invoice.invoiceNumber}
                       </td>
-                      <td className="px-4 py-3 text-muted-foreground">
+                      <td className="px-4 py-2.5 text-muted-foreground">
                         {invoice.client?.name ?? "\u2014"}
                       </td>
-                      <td className="px-4 py-3">
+                      <td className="px-4 py-2.5">
                         <Badge variant={INVOICE_STATUS[invoice.status].variant}>
                           {INVOICE_STATUS[invoice.status].label}
                         </Badge>
                       </td>
-                      <td className="px-4 py-3 text-right tabular-nums">
+                      <td className="px-4 py-2.5 text-right tabular-nums">
                         {invoice.lineItems.length}
                       </td>
-                      <td className="px-4 py-3 text-right tabular-nums">
+                      <td className="px-4 py-2.5 text-right tabular-nums">
                         {formatCurrency(invoice.total)}
                       </td>
-                      <td className="px-4 py-3 text-muted-foreground">
+                      <td className="px-4 py-2.5 text-muted-foreground">
                         {formatDate(invoice.dueDate)}
                       </td>
-                      <td className="px-4 py-3 text-muted-foreground">
+                      <td className="px-4 py-2.5 text-muted-foreground">
                         {formatDate(invoice.createdAt)}
                       </td>
                     </tr>

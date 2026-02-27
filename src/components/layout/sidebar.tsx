@@ -122,26 +122,19 @@ function NavLink({
       href={locked ? "/settings" : item.href}
       onClick={onClose}
       className={cn(
-        "flex items-center gap-3 border-l-2 px-3 py-2 text-sm font-medium transition-colors",
-        compact && "text-[13px]",
-        locked && "opacity-60",
+        "flex items-center gap-3 border-l-3 px-3 py-2 text-[13px] font-medium transition-all duration-150",
+        locked && "opacity-50",
         isActive && !locked
-          ? "border-sidebar-primary bg-sidebar-accent/50 text-sidebar-primary"
-          : "border-transparent text-sidebar-foreground/80 hover:border-sidebar-accent hover:bg-sidebar-accent/30 hover:text-sidebar-foreground"
+          ? "border-sidebar-primary bg-sidebar-accent/60 text-sidebar-primary"
+          : "border-transparent text-sidebar-foreground/70 hover:border-sidebar-accent hover:bg-sidebar-accent/30 hover:text-sidebar-foreground"
       )}
     >
       {locked ? (
-        <Lock
-          className={cn(
-            "h-4 w-4 shrink-0 text-sidebar-foreground/40",
-            compact && "h-[14px] w-[14px]"
-          )}
-        />
+        <Lock className="h-4 w-4 shrink-0 text-sidebar-foreground/40" />
       ) : (
         <item.icon
           className={cn(
-            "h-4 w-4 shrink-0 transition-colors",
-            compact && "h-[14px] w-[14px]",
+            "h-4 w-4 shrink-0 transition-colors duration-150",
             isActive ? "text-sidebar-primary" : "text-sidebar-foreground/50"
           )}
         />
@@ -214,7 +207,7 @@ export function Sidebar({ open, onClose }: SidebarProps) {
       {/* Mobile overlay */}
       {open && (
         <div
-          className="fixed inset-0 z-40 bg-black/50 lg:hidden"
+          className="fixed inset-0 z-40 bg-black/50 lg:hidden animate-fade-in"
           onClick={onClose}
         />
       )}
@@ -227,23 +220,24 @@ export function Sidebar({ open, onClose }: SidebarProps) {
         )}
       >
         {/* Logo / App name */}
-        <div className="flex h-16 items-center justify-between border-b border-sidebar-border px-4">
+        <div className="flex h-14 items-center justify-between border-b border-sidebar-border px-4">
           <Link href="/dashboard" className="flex items-center gap-3">
-            <div className="flex h-9 w-9 items-center justify-center rounded-lg bg-sidebar-primary shadow-sm">
-              <Printer className="h-[18px] w-[18px] text-sidebar-primary-foreground" />
+            <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-sidebar-primary shadow-sm">
+              <Printer className="h-4 w-4 text-sidebar-primary-foreground" />
             </div>
             <div className="flex flex-col">
-              <span className="text-[15px] font-bold leading-tight tracking-tight">
+              <span className="text-sm font-bold leading-tight tracking-tight">
                 Printforge
               </span>
-              <span className="text-[11px] font-medium leading-tight text-sidebar-foreground/50">
+              <span className="text-[10px] font-medium leading-tight text-sidebar-foreground/40">
                 Quote Manager
               </span>
             </div>
           </Link>
           <button
             onClick={onClose}
-            className="rounded-md p-1.5 hover:bg-sidebar-accent lg:hidden"
+            className="rounded-md p-2 hover:bg-sidebar-accent transition-colors lg:hidden"
+            aria-label="Close sidebar"
           >
             <X className="h-5 w-5" />
           </button>
@@ -256,7 +250,7 @@ export function Sidebar({ open, onClose }: SidebarProps) {
         <nav className="flex-1 overflow-y-auto px-2 pb-2">
           {navGroups.map((group) => (
             <div key={group.label}>
-              <p className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground/60 px-3 pt-4 pb-1">
+              <p className="text-[11px] font-semibold uppercase tracking-wider text-muted-foreground/50 px-3 pt-4 pb-2">
                 {group.label}
               </p>
               <div className="space-y-0.5">
@@ -277,7 +271,7 @@ export function Sidebar({ open, onClose }: SidebarProps) {
           {/* Admin nav item — only for ADMIN role */}
           {isAdmin && (
             <div>
-              <p className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground/60 px-3 pt-4 pb-1">
+              <p className="text-[11px] font-semibold uppercase tracking-wider text-muted-foreground/50 px-3 pt-4 pb-2">
                 Admin
               </p>
               <div className="space-y-0.5">
@@ -315,22 +309,24 @@ export function Sidebar({ open, onClose }: SidebarProps) {
         </div>
 
         {/* Footer */}
-        <div className="border-t border-sidebar-border px-4 py-3">
+        <div className="border-t border-sidebar-border px-2 py-2">
           {session?.user && (
             <button
               onClick={() => signOut({ callbackUrl: "/login" })}
-              className="flex w-full items-center gap-3 border-l-2 border-transparent px-3 py-2 text-[13px] font-medium text-sidebar-foreground/80 hover:border-sidebar-accent hover:bg-sidebar-accent/30 hover:text-sidebar-foreground transition-colors"
+              className="flex w-full items-center gap-3 border-l-3 border-transparent px-3 py-2 text-[13px] font-medium text-sidebar-foreground/70 hover:border-sidebar-accent hover:bg-sidebar-accent/30 hover:text-sidebar-foreground transition-all duration-150"
             >
-              <LogOut className="h-[14px] w-[14px] shrink-0 text-sidebar-foreground/50" />
+              <LogOut className="h-4 w-4 shrink-0 text-sidebar-foreground/50" />
               Sign out
             </button>
           )}
-          <p className="px-3 mt-1 text-xs font-medium text-muted-foreground">
-            Printforge
-          </p>
-          <p className="px-3 mt-0.5 text-[10px] text-muted-foreground/50">
-            v{process.env.NEXT_PUBLIC_APP_VERSION}
-          </p>
+          <div className="flex items-center justify-between px-3 mt-1">
+            <p className="text-[11px] font-medium text-muted-foreground/50">
+              Printforge
+            </p>
+            <p className="text-[10px] text-muted-foreground/40 tabular-nums">
+              v{process.env.NEXT_PUBLIC_APP_VERSION}
+            </p>
+          </div>
         </div>
       </aside>
     </>

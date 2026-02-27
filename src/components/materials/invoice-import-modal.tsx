@@ -56,10 +56,14 @@ interface ParsedItem {
   isNew: boolean;
   suggestedName: string | null;
   suggestedCategory: "material" | "consumable" | null;
+  suggestedBrand: string | null;
+  suggestedColour: string | null;
+  suggestedMaterialType: string | null;
 }
 
 interface ParsedInvoice {
   supplierName: string | null;
+  supplierId: string | null;
   invoiceNumber: string | null;
   expectedDelivery: string | null;
   items: ParsedItem[];
@@ -140,14 +144,17 @@ function findSimilarConsumables(name: string, existing: Consumable[]): Consumabl
 function makeDefaultDecision(item: ParsedItem): NewItemDecision {
   const cat: NewItemCategory = item.suggestedCategory === "material" ? "material" : "consumable";
   const parsed = parseSuggestedMaterial(item.suggestedName || item.description);
+  // Use AI-extracted brand/colour/type when available, fall back to heuristic parsing
+  const materialType = item.suggestedMaterialType || parsed.materialType || "PLA";
+  const isResin = materialType.toUpperCase() === "RESIN" || (parsed.type === "resin");
   return {
     action: "create",
     category: cat,
     materialForm: {
-      type: parsed.type ?? "filament",
-      materialType: parsed.materialType ?? "PLA",
-      brand: "",
-      colour: "",
+      type: isResin ? "resin" : "filament",
+      materialType,
+      brand: item.suggestedBrand || "",
+      colour: item.suggestedColour || "",
       spoolWeightG: 1000,
       price: item.unitCost,
     },
@@ -395,6 +402,7 @@ export function InvoiceImportModal({
     // Build PO data with newly created/linked IDs
     const poData = {
       supplierName: parsed.supplierName,
+      supplierId: parsed.supplierId,
       invoiceNumber: parsed.invoiceNumber,
       expectedDelivery: parsed.expectedDelivery,
       notes: parsed.notes,

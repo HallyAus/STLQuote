@@ -627,31 +627,31 @@ export function ConsumablesPage() {
               <table className="w-full text-sm">
                 <thead>
                   <tr className="border-b border-border text-left">
-                    <th className="px-4 py-3 font-medium text-muted-foreground">
+                    <th className="px-4 py-2.5 font-medium text-muted-foreground">
                       Name
                     </th>
-                    <th className="px-4 py-3 font-medium text-muted-foreground">
+                    <th className="px-4 py-2.5 font-medium text-muted-foreground">
                       Category
                     </th>
-                    <th className="px-4 py-3 font-medium text-muted-foreground text-center">
+                    <th className="px-4 py-2.5 font-medium text-muted-foreground text-center">
                       Stock
                     </th>
-                    <th className="px-4 py-3 font-medium text-muted-foreground text-center">
+                    <th className="px-4 py-2.5 font-medium text-muted-foreground text-center">
                       Threshold
                     </th>
-                    <th className="px-4 py-3 font-medium text-muted-foreground text-right">
+                    <th className="px-4 py-2.5 font-medium text-muted-foreground text-right">
                       Unit Cost
                     </th>
-                    <th className="px-4 py-3 font-medium text-muted-foreground">
+                    <th className="px-4 py-2.5 font-medium text-muted-foreground">
                       Supplier
                     </th>
-                    <th className="px-4 py-3 font-medium text-muted-foreground">
+                    <th className="px-4 py-2.5 font-medium text-muted-foreground">
                       Printer
                     </th>
-                    <th className="px-4 py-3 font-medium text-muted-foreground">
+                    <th className="px-4 py-2.5 font-medium text-muted-foreground">
                       Status
                     </th>
-                    <th className="px-4 py-3 font-medium text-muted-foreground text-right">
+                    <th className="px-4 py-2.5 font-medium text-muted-foreground text-right">
                       Actions
                     </th>
                   </tr>
@@ -668,15 +668,15 @@ export function ConsumablesPage() {
                         key={consumable.id}
                         className="border-b border-border last:border-0 hover:bg-muted/50 transition-colors"
                       >
-                        <td className="px-4 py-3 font-medium">
+                        <td className="px-4 py-2.5 font-medium">
                           {consumable.name}
                         </td>
-                        <td className="px-4 py-3">
+                        <td className="px-4 py-2.5">
                           <Badge variant="default">
                             {categoryLabel(consumable.category)}
                           </Badge>
                         </td>
-                        <td className="px-4 py-3">
+                        <td className="px-4 py-2.5">
                           <div className="flex items-center justify-center gap-1">
                             <Button
                               variant="ghost"
@@ -701,26 +701,26 @@ export function ConsumablesPage() {
                             </Button>
                           </div>
                         </td>
-                        <td className="px-4 py-3 text-center tabular-nums">
+                        <td className="px-4 py-2.5 text-center tabular-nums">
                           {consumable.lowStockThreshold}
                         </td>
-                        <td className="px-4 py-3 text-right tabular-nums">
+                        <td className="px-4 py-2.5 text-right tabular-nums">
                           {consumable.unitCost != null
                             ? `$${consumable.unitCost.toFixed(2)}`
                             : "\u2014"}
                         </td>
-                        <td className="px-4 py-3 text-muted-foreground">
+                        <td className="px-4 py-2.5 text-muted-foreground">
                           {consumable.supplier?.name ?? "\u2014"}
                         </td>
-                        <td className="px-4 py-3 text-muted-foreground">
+                        <td className="px-4 py-2.5 text-muted-foreground">
                           {consumable.printer?.name ?? "\u2014"}
                         </td>
-                        <td className="px-4 py-3">
+                        <td className="px-4 py-2.5">
                           <Badge variant={status.variant}>
                             {status.label}
                           </Badge>
                         </td>
-                        <td className="px-4 py-3 text-right">
+                        <td className="px-4 py-2.5 text-right">
                           <div className="flex justify-end gap-1">
                             <Button
                               variant="ghost"

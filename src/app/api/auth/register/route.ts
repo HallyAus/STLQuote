@@ -76,9 +76,18 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    // Admin email bypasses waitlist — create account directly
+    // Determine if waitlist mode is active
+    // When registrationOpen is true (or unset), users get direct accounts.
+    // A separate "waitlistMode" config can force waitlisting even when registration is open.
+    const waitlistConfig = await prisma.systemConfig.findUnique({ where: { key: "waitlistMode" } }).catch(() => null);
+    const waitlistMode = waitlistConfig?.value === "true";
+
+    // Admin email always gets SUPER_ADMIN role
     const adminEmail = process.env.ADMIN_EMAIL?.toLowerCase();
-    if (adminEmail && email.toLowerCase() === adminEmail) {
+    const isAdmin = adminEmail && email.toLowerCase() === adminEmail;
+
+    // Direct account creation (open registration or admin email)
+    if (isAdmin || !waitlistMode) {
       const passwordHash = await bcrypt.hash(password, 12);
       const trialEndsAt = new Date(Date.now() + 14 * 24 * 60 * 60 * 1000);
 
@@ -87,7 +96,7 @@ export async function POST(request: NextRequest) {
           name,
           email,
           passwordHash,
-          role: "SUPER_ADMIN",
+          role: isAdmin ? "SUPER_ADMIN" : "USER",
           subscriptionTier: "free",
           subscriptionStatus: "trialing",
           trialEndsAt,
@@ -121,10 +130,38 @@ export async function POST(request: NextRequest) {
         console.error("Failed to send registration emails:", emailError);
       }
 
+      // Notify admin of new signup (non-blocking, skip if the admin is registering)
+      if (!isAdmin) {
+        const adminNotifyEmail = process.env.ADMIN_EMAIL;
+        if (adminNotifyEmail) {
+          const appUrl = process.env.NEXT_PUBLIC_APP_URL || "https://crm.printforge.com.au";
+          sendEmail({
+            to: adminNotifyEmail,
+            subject: `New signup: ${name}${businessName ? ` (${businessName})` : ""}`,
+            type: "admin_notification",
+            html: `<div style="font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; max-width: 600px; margin: 0 auto;">
+              <h2 style="color: #171717;">New User Signup</h2>
+              <table style="border-collapse: collapse; width: 100%; margin: 16px 0;">
+                <tr><td style="padding: 8px 0; color: #666; width: 120px;">Name</td><td style="padding: 8px 0; font-weight: 600;">${name}</td></tr>
+                <tr><td style="padding: 8px 0; color: #666;">Email</td><td style="padding: 8px 0;">${email}</td></tr>
+                ${businessName ? `<tr><td style="padding: 8px 0; color: #666;">Business</td><td style="padding: 8px 0;">${businessName}</td></tr>` : ""}
+              </table>
+              <p style="margin: 24px 0;">
+                <a href="${appUrl}/admin" style="background-color: #2563eb; color: white; padding: 12px 24px; border-radius: 6px; text-decoration: none; font-weight: 600;">
+                  View in Admin Portal
+                </a>
+              </p>
+              <hr style="border: none; border-top: 1px solid #e5e5e5; margin: 24px 0;" />
+              <p style="color: #999; font-size: 12px;">Printforge — Admin Notification</p>
+            </div>`,
+          }).catch(() => {});
+        }
+      }
+
       return NextResponse.json(user, { status: 201 });
     }
 
-    // Non-admin: add to waitlist instead of creating an account
+    // Waitlist mode is active — add to waitlist instead of creating an account
     const entry = await prisma.waitlist.create({
       data: {
         name,

@@ -91,12 +91,12 @@ export function Header({ title, breadcrumb, onMenuToggle }: HeaderProps) {
         </div>
       )}
 
-      <header className="sticky top-0 z-30 flex h-14 items-center gap-4 border-b border-border bg-background/95 px-4 shadow-sm backdrop-blur supports-[backdrop-filter]:bg-background/60">
-        {/* Mobile menu toggle */}
+      <header className="sticky top-0 z-30 flex h-14 items-center gap-3 border-b border-border bg-background/95 px-4 backdrop-blur supports-[backdrop-filter]:bg-background/60">
+        {/* Mobile menu toggle — 44px touch target */}
         <Button
           variant="ghost"
           size="icon"
-          className="lg:hidden"
+          className="h-10 w-10 lg:hidden"
           onClick={onMenuToggle}
         >
           <Menu className="h-5 w-5" />
@@ -104,7 +104,7 @@ export function Header({ title, breadcrumb, onMenuToggle }: HeaderProps) {
         </Button>
 
         {/* Page title with optional breadcrumb */}
-        <div className="flex flex-col justify-center">
+        <div className="flex flex-col justify-center min-w-0">
           {breadcrumb && (
             <Link
               href={breadcrumb.href}
@@ -113,7 +113,7 @@ export function Header({ title, breadcrumb, onMenuToggle }: HeaderProps) {
               {breadcrumb.label}
             </Link>
           )}
-          <h1 className={breadcrumb ? "text-base font-semibold leading-tight" : "text-lg font-semibold"}>
+          <h1 className={`truncate ${breadcrumb ? "text-base font-semibold leading-tight" : "text-lg font-semibold"}`}>
             {title}
           </h1>
         </div>
@@ -123,11 +123,6 @@ export function Header({ title, breadcrumb, onMenuToggle }: HeaderProps) {
 
         {/* Global search */}
         <GlobalSearch />
-
-        {/* Version */}
-        <span className="hidden text-[11px] text-muted-foreground/50 sm:inline">
-          v{process.env.NEXT_PUBLIC_APP_VERSION}
-        </span>
 
         {/* Quick action: New Quote (desktop only) */}
         <Link href="/quotes/new" className="hidden sm:flex">
@@ -141,6 +136,7 @@ export function Header({ title, breadcrumb, onMenuToggle }: HeaderProps) {
         <Button
           variant="ghost"
           size="icon"
+          className="h-9 w-9"
           onClick={() => setTheme(theme === "dark" ? "light" : "dark")}
         >
           <Sun className="h-4 w-4 rotate-0 scale-100 transition-all dark:-rotate-90 dark:scale-0" />
@@ -153,24 +149,24 @@ export function Header({ title, breadcrumb, onMenuToggle }: HeaderProps) {
           <div className="relative" ref={menuRef}>
             <button
               onClick={() => setMenuOpen(!menuOpen)}
-              className="flex items-center gap-2 rounded-lg px-2 py-1.5 text-sm hover:bg-accent"
+              className="flex items-center gap-2 rounded-lg px-2 py-1.5 text-sm transition-colors hover:bg-accent"
             >
               <div className="flex h-7 w-7 items-center justify-center rounded-full bg-primary text-xs font-medium text-primary-foreground">
                 {initials}
               </div>
-              <span className="hidden md:inline text-sm font-medium">
+              <span className="hidden md:inline text-sm font-medium max-w-[120px] truncate">
                 {session.user.name}
               </span>
-              <ChevronDown className="h-3 w-3 text-muted-foreground" />
+              <ChevronDown className={`h-3 w-3 text-muted-foreground transition-transform duration-150 ${menuOpen ? "rotate-180" : ""}`} />
             </button>
 
             {menuOpen && (
-              <div className="absolute right-0 mt-1 w-56 rounded-lg border border-border bg-popover p-1 shadow-lg">
-                <div className="px-3 py-2 border-b border-border mb-1">
-                  <div className="text-sm font-medium">
+              <div className="absolute right-0 mt-1.5 w-56 rounded-lg border border-border bg-popover p-1 shadow-lg animate-scale-in origin-top-right">
+                <div className="px-3 py-2.5 border-b border-border mb-1">
+                  <div className="text-sm font-medium truncate">
                     {session.user.name}
                   </div>
-                  <div className="text-xs text-muted-foreground">
+                  <div className="text-xs text-muted-foreground truncate">
                     {session.user.email}
                   </div>
                 </div>
@@ -179,9 +175,9 @@ export function Header({ title, breadcrumb, onMenuToggle }: HeaderProps) {
                   <Link
                     href="/admin"
                     onClick={() => setMenuOpen(false)}
-                    className="flex items-center gap-2 rounded-md px-3 py-2 text-sm hover:bg-accent"
+                    className="flex items-center gap-2.5 rounded-md px-3 py-2 text-sm transition-colors hover:bg-accent"
                   >
-                    <Shield className="h-4 w-4" />
+                    <Shield className="h-4 w-4 text-muted-foreground" />
                     Admin portal
                   </Link>
                 )}
@@ -189,22 +185,24 @@ export function Header({ title, breadcrumb, onMenuToggle }: HeaderProps) {
                 <Link
                   href="/settings"
                   onClick={() => setMenuOpen(false)}
-                  className="flex items-center gap-2 rounded-md px-3 py-2 text-sm hover:bg-accent"
+                  className="flex items-center gap-2.5 rounded-md px-3 py-2 text-sm transition-colors hover:bg-accent"
                 >
-                  <User className="h-4 w-4" />
+                  <User className="h-4 w-4 text-muted-foreground" />
                   Settings
                 </Link>
 
-                <button
-                  onClick={() => {
-                    setMenuOpen(false);
-                    signOut({ callbackUrl: "/login" });
-                  }}
-                  className="flex w-full items-center gap-2 rounded-md px-3 py-2 text-sm text-destructive-foreground hover:bg-accent"
-                >
-                  <LogOut className="h-4 w-4" />
-                  Sign out
-                </button>
+                <div className="border-t border-border mt-1 pt-1">
+                  <button
+                    onClick={() => {
+                      setMenuOpen(false);
+                      signOut({ callbackUrl: "/login" });
+                    }}
+                    className="flex w-full items-center gap-2.5 rounded-md px-3 py-2 text-sm text-destructive-foreground transition-colors hover:bg-accent"
+                  >
+                    <LogOut className="h-4 w-4" />
+                    Sign out
+                  </button>
+                </div>
               </div>
             )}
           </div>

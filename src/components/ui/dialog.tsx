@@ -90,7 +90,7 @@ function Dialog({ open, onClose, children, maxWidth = "max-w-lg" }: DialogProps)
 
   return createPortal(
     <div
-      className="fixed inset-0 z-50 flex items-center justify-center"
+      className="fixed inset-0 z-50 flex items-center justify-center p-4"
       role="dialog"
       aria-modal="true"
     >
@@ -105,7 +105,7 @@ function Dialog({ open, onClose, children, maxWidth = "max-w-lg" }: DialogProps)
       <div
         ref={contentRef}
         className={cn(
-          "relative z-10 mx-4 max-h-[90vh] w-full overflow-y-auto rounded-xl border border-border bg-card p-6 shadow-lg",
+          "relative z-10 mx-4 max-h-[85vh] w-full overflow-y-auto rounded-xl border border-border bg-card p-6 shadow-lg",
           open ? "animate-scale-in" : "animate-scale-out",
           maxWidth
         )}
@@ -132,7 +132,7 @@ function DialogHeader({
       {onClose && (
         <button
           onClick={onClose}
-          className="rounded-md p-1 text-muted-foreground transition-colors hover:bg-muted hover:text-foreground"
+          className="rounded-md p-1.5 text-muted-foreground transition-colors hover:bg-muted hover:text-foreground"
         >
           <X className="h-4 w-4" />
         </button>
@@ -163,7 +163,7 @@ function DialogFooter({
   className?: string;
 }) {
   return (
-    <div className={cn("mt-6 flex justify-end gap-3", className)}>
+    <div className={cn("mt-6 flex sticky bottom-0 justify-end gap-3 bg-card pt-4 -mb-6 pb-6 -mx-6 px-6 border-t border-border", className)}>
       {children}
     </div>
   );

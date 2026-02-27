@@ -89,7 +89,24 @@ export async function POST(request: Request) {
       `- ${c.name}${c.category ? ` [${c.category}]` : ""} [ID: ${c.id}]`
     ).join("\n");
 
+    // Fetch user's suppliers for matching
+    const suppliers = await prisma.supplier.findMany({
+      where: { userId: user.id },
+      select: { id: true, name: true },
+    });
+
+    const suppliersContext = suppliers.map((s) =>
+      `- ${s.name} [ID: ${s.id}]`
+    ).join("\n");
+
     const systemPrompt = `You are a purchase order assistant for a 3D printing business. Extract line items from supplier invoices.
+
+KNOWN 3D PRINTING SUPPLIERS:
+Bambu Lab, Elegoo, Jaycar, Kingroon, eSUN, Hatchbox, Polymaker, Prusament, Overture, Sunlu, Creality, Anycubic, Phrozen, Siraya Tech, FormLabs.
+These are common but the invoice may be from any supplier.
+
+EXISTING SUPPLIERS IN DATABASE:
+${suppliersContext || "None configured."}
 
 EXISTING MATERIALS IN INVENTORY:
 ${materialsContext || "None configured."}
@@ -98,18 +115,23 @@ EXISTING CONSUMABLES IN INVENTORY:
 ${consumablesContext || "None configured."}
 
 TASK:
-1. Extract the supplier name from the invoice
+1. Extract the supplier name from the invoice. If it matches an existing supplier in the database, include the supplierId. Otherwise set supplierId to null.
 2. Extract every line item: description, quantity, unit cost (before tax)
 3. For each item, determine if it matches an existing material or consumable:
    - If it matches a material → set type to "material" and include the materialId
    - If it matches a consumable → set type to "consumable" and include the consumableId
    - If no match → set type to "other" and set isNew=true with a suggested product name and category ("material" or "consumable")
-4. Extract the expected delivery date if mentioned
-5. Extract invoice/reference number if present
+4. For material items (filament, resin), extract:
+   - suggestedBrand: the manufacturer/brand (e.g. "Bambu Lab", "eSUN", "Elegoo")
+   - suggestedColour: the filament/resin colour (e.g. "Black", "White", "Matte Grey")
+   - suggestedMaterialType: the material type (e.g. "PLA", "PETG", "ABS", "TPU", "ASA", "Nylon", "Resin")
+5. Extract the expected delivery date if mentioned
+6. Extract invoice/reference number if present
 
 Return ONLY valid JSON (no markdown, no code fences):
 {
-  "supplierName": "Supplier Co Pty Ltd",
+  "supplierName": "Bambu Lab",
+  "supplierId": "existing_supplier_id_or_null",
   "invoiceNumber": "INV-12345 or null",
   "expectedDelivery": "2026-03-15 or null",
   "items": [
@@ -117,12 +139,15 @@ Return ONLY valid JSON (no markdown, no code fences):
       "type": "material",
       "materialId": "existing_material_id_or_null",
       "consumableId": null,
-      "description": "PLA Filament 1kg Black",
+      "description": "PLA Basic Filament 1kg Black",
       "quantity": 5,
       "unitCost": 25.00,
       "isNew": false,
       "suggestedName": null,
-      "suggestedCategory": null
+      "suggestedCategory": null,
+      "suggestedBrand": "Bambu Lab",
+      "suggestedColour": "Black",
+      "suggestedMaterialType": "PLA"
     },
     {
       "type": "other",
@@ -133,7 +158,10 @@ Return ONLY valid JSON (no markdown, no code fences):
       "unitCost": 12.50,
       "isNew": true,
       "suggestedName": "Hardened Steel 0.4mm Nozzle",
-      "suggestedCategory": "consumable"
+      "suggestedCategory": "consumable",
+      "suggestedBrand": null,
+      "suggestedColour": null,
+      "suggestedMaterialType": null
     }
   ],
   "notes": "Any relevant notes from the invoice (payment terms, etc.)"

@@ -845,34 +845,34 @@ export function MaterialsPage() {
               <table className="w-full text-sm">
                 <thead>
                   <tr className="border-b border-border text-left">
-                    <th className="px-4 py-3 font-medium text-muted-foreground">
+                    <th className="px-4 py-2.5 font-medium text-muted-foreground">
                       Material
                     </th>
-                    <th className="px-4 py-3 font-medium text-muted-foreground">
+                    <th className="px-4 py-2.5 font-medium text-muted-foreground">
                       Brand
                     </th>
-                    <th className="px-4 py-3 font-medium text-muted-foreground">
+                    <th className="px-4 py-2.5 font-medium text-muted-foreground">
                       Colour
                     </th>
-                    <th className="px-4 py-3 font-medium text-muted-foreground text-right">
+                    <th className="px-4 py-2.5 font-medium text-muted-foreground text-right">
                       Spool (g)
                     </th>
-                    <th className="px-4 py-3 font-medium text-muted-foreground text-right">
+                    <th className="px-4 py-2.5 font-medium text-muted-foreground text-right">
                       Price
                     </th>
-                    <th className="px-4 py-3 font-medium text-muted-foreground text-right">
+                    <th className="px-4 py-2.5 font-medium text-muted-foreground text-right">
                       $/g
                     </th>
-                    <th className="px-4 py-3 font-medium text-muted-foreground text-center">
+                    <th className="px-4 py-2.5 font-medium text-muted-foreground text-center">
                       Stock
                     </th>
-                    <th className="px-4 py-3 font-medium text-muted-foreground text-right">
+                    <th className="px-4 py-2.5 font-medium text-muted-foreground text-right">
                       Value
                     </th>
-                    <th className="px-4 py-3 font-medium text-muted-foreground">
+                    <th className="px-4 py-2.5 font-medium text-muted-foreground">
                       Status
                     </th>
-                    <th className="px-4 py-3 font-medium text-muted-foreground text-right">
+                    <th className="px-4 py-2.5 font-medium text-muted-foreground text-right">
                       Actions
                     </th>
                   </tr>
@@ -889,7 +889,7 @@ export function MaterialsPage() {
                         key={material.id}
                         className="border-b border-border last:border-0 hover:bg-muted/50 transition-colors"
                       >
-                        <td className="px-4 py-3">
+                        <td className="px-4 py-2.5">
                           <div className="font-medium">
                             {material.materialType}
                           </div>
@@ -897,10 +897,10 @@ export function MaterialsPage() {
                             {material.type}
                           </div>
                         </td>
-                        <td className="px-4 py-3 text-muted-foreground">
+                        <td className="px-4 py-2.5 text-muted-foreground">
                           {material.brand ?? "\u2014"}
                         </td>
-                        <td className="px-4 py-3">
+                        <td className="px-4 py-2.5">
                           {material.colour ? (
                             <span className="flex items-center gap-1.5">
                               {isHexColour(material.colour) && (
@@ -921,13 +921,13 @@ export function MaterialsPage() {
                             </span>
                           )}
                         </td>
-                        <td className="px-4 py-3 text-right tabular-nums">
+                        <td className="px-4 py-2.5 text-right tabular-nums">
                           {material.spoolWeightG.toLocaleString()}
                         </td>
-                        <td className="px-4 py-3 text-right tabular-nums">
+                        <td className="px-4 py-2.5 text-right tabular-nums">
                           ${material.price.toFixed(2)}
                         </td>
-                        <td className="px-4 py-3 text-right tabular-nums">
+                        <td className="px-4 py-2.5 text-right tabular-nums">
                           $
                           {pricePerGram(
                             material.price,
@@ -935,7 +935,7 @@ export function MaterialsPage() {
                           )}
                           /g
                         </td>
-                        <td className="px-4 py-3">
+                        <td className="px-4 py-2.5">
                           <div className="flex items-center justify-center gap-1">
                             <Button
                               variant="ghost"
@@ -960,15 +960,15 @@ export function MaterialsPage() {
                             </Button>
                           </div>
                         </td>
-                        <td className="px-4 py-3 text-right tabular-nums">
+                        <td className="px-4 py-2.5 text-right tabular-nums">
                           ${(material.price * material.stockQty).toFixed(2)}
                         </td>
-                        <td className="px-4 py-3">
+                        <td className="px-4 py-2.5">
                           <Badge variant={status.variant}>
                             {status.label}
                           </Badge>
                         </td>
-                        <td className="px-4 py-3 text-right">
+                        <td className="px-4 py-2.5 text-right">
                           <div className="flex justify-end gap-1">
                             <Button
                               variant="ghost"

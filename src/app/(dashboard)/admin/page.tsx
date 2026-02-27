@@ -1450,6 +1450,34 @@ export default function AdminPage() {
                     />
                   </button>
                 </div>
+
+                <div className="flex items-center justify-between rounded-lg border border-border p-4">
+                  <div>
+                    <p className="font-medium">Waitlist Mode</p>
+                    <p className="text-sm text-muted-foreground">
+                      Require admin approval for new signups. When off, new users get accounts immediately.
+                    </p>
+                  </div>
+                  <button
+                    onClick={() => toggleConfig("waitlistMode", sysConfig.waitlistMode ?? "false")}
+                    disabled={configSaving === "waitlistMode"}
+                    className={cn(
+                      "relative inline-flex h-6 w-11 shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring disabled:opacity-50",
+                      (sysConfig.waitlistMode ?? "false") === "true"
+                        ? "bg-primary"
+                        : "bg-muted"
+                    )}
+                  >
+                    <span
+                      className={cn(
+                        "pointer-events-none inline-block h-5 w-5 rounded-full bg-white shadow-lg ring-0 transition-transform",
+                        (sysConfig.waitlistMode ?? "false") === "true"
+                          ? "translate-x-5"
+                          : "translate-x-0"
+                      )}
+                    />
+                  </button>
+                </div>
               </div>
             )}
           </CardContent>

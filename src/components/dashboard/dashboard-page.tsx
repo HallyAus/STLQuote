@@ -18,6 +18,7 @@ import {
   Sparkles,
   ShoppingCart,
   ExternalLink,
+  ArrowRight,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card";
@@ -120,6 +121,16 @@ const JOB_PIPELINE = JOB_STATUS_ORDER.map((status) => ({
   colour: JOB_STATUS[status].dotColour,
 }));
 
+// Gradient accent configs per stat card type
+const STAT_STYLES: Record<string, { gradient: string; iconBg: string; iconColour: string }> = {
+  quotes:   { gradient: "from-primary/8 to-transparent",  iconBg: "bg-primary/12",  iconColour: "text-primary" },
+  revenue:  { gradient: "from-success/8 to-transparent",  iconBg: "bg-success/12",  iconColour: "text-success-foreground" },
+  month:    { gradient: "from-info/8 to-transparent",     iconBg: "bg-info/12",     iconColour: "text-info-foreground" },
+  jobs:     { gradient: "from-warning/8 to-transparent",   iconBg: "bg-warning/12",  iconColour: "text-warning-foreground" },
+  clients:  { gradient: "from-primary/8 to-transparent",  iconBg: "bg-primary/12",  iconColour: "text-primary" },
+  stock:    { gradient: "from-success/8 to-transparent",  iconBg: "bg-success/12",  iconColour: "text-success-foreground" },
+};
+
 // ---------------------------------------------------------------------------
 // Helpers
 // ---------------------------------------------------------------------------
@@ -141,26 +152,37 @@ function StatCard({
   value,
   sub,
   href,
+  style = "quotes",
 }: {
   icon: React.ElementType;
   label: string;
   value: string;
   sub?: string;
   href?: string;
+  style?: string;
 }) {
+  const s = STAT_STYLES[style] ?? STAT_STYLES.quotes;
   const content = (
-    <Card className={cn("transition-colors", href && "hover:bg-accent/50")}>
-      <CardContent className="flex items-center gap-4 p-4">
-        <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg bg-primary/10">
-          <Icon className="h-5 w-5 text-primary" />
+    <Card className={cn(
+      "group relative overflow-hidden transition-all duration-200",
+      href && "hover:shadow-md hover:border-border/80 cursor-pointer"
+    )}>
+      {/* Subtle gradient background */}
+      <div className={cn("absolute inset-0 bg-gradient-to-br pointer-events-none", s.gradient)} />
+      <CardContent className="relative flex items-center gap-3.5 p-4">
+        <div className={cn("flex h-10 w-10 shrink-0 items-center justify-center rounded-xl", s.iconBg)}>
+          <Icon className={cn("h-5 w-5", s.iconColour)} />
         </div>
         <div className="min-w-0">
-          <p className="text-xs text-muted-foreground">{label}</p>
-          <p className="text-xl font-bold tracking-tight">{value}</p>
+          <p className="text-[11px] font-medium uppercase tracking-wider text-muted-foreground">{label}</p>
+          <p className="text-2xl font-bold tracking-tight tabular-nums leading-tight">{value}</p>
           {sub && (
-            <p className="text-[11px] text-muted-foreground">{sub}</p>
+            <p className="text-[11px] text-muted-foreground leading-tight mt-0.5">{sub}</p>
           )}
         </div>
+        {href && (
+          <ArrowRight className="ml-auto h-4 w-4 text-muted-foreground/40 transition-transform duration-200 group-hover:translate-x-0.5 group-hover:text-muted-foreground/70" />
+        )}
       </CardContent>
     </Card>
   );
@@ -172,9 +194,9 @@ function StatCard({
 function StatusBar({ count, max, colour }: { count: number; max: number; colour: string }) {
   const pct = max > 0 ? Math.round((count / max) * 100) : 0;
   return (
-    <div className="h-2 w-full rounded-full bg-muted">
+    <div className="h-1.5 w-full rounded-full bg-muted">
       <div
-        className={cn("h-2 rounded-full transition-all", colour)}
+        className={cn("h-1.5 rounded-full transition-all duration-500", colour)}
         style={{ width: `${Math.max(pct, count > 0 ? 4 : 0)}%` }}
       />
     </div>
@@ -185,7 +207,12 @@ function QuoteBreakdownCard({ stats }: { stats: DashboardStats }) {
   return (
     <Card>
       <CardHeader className="pb-3">
-        <CardTitle className="text-base font-semibold">Quote Breakdown</CardTitle>
+        <div className="flex items-center justify-between">
+          <CardTitle className="text-sm font-semibold">Quote Breakdown</CardTitle>
+          <Link href="/quotes" className="text-xs text-muted-foreground hover:text-foreground transition-colors">
+            View all
+          </Link>
+        </div>
       </CardHeader>
       <CardContent className="space-y-3">
         {QUOTE_BREAKDOWN.map((row) => {
@@ -206,21 +233,45 @@ function QuoteBreakdownCard({ stats }: { stats: DashboardStats }) {
 }
 
 function JobPipelineCard({ stats }: { stats: DashboardStats }) {
+  // Compact stacked bar at the top
+  const total = stats.totalJobs || 1;
   return (
     <Card>
       <CardHeader className="pb-3">
-        <CardTitle className="text-base font-semibold">Job Pipeline</CardTitle>
+        <div className="flex items-center justify-between">
+          <CardTitle className="text-sm font-semibold">Job Pipeline</CardTitle>
+          <Link href="/jobs" className="text-xs text-muted-foreground hover:text-foreground transition-colors">
+            View all
+          </Link>
+        </div>
       </CardHeader>
       <CardContent className="space-y-3">
+        {/* Mini stacked bar */}
+        <div className="flex h-2.5 w-full overflow-hidden rounded-full bg-muted">
+          {JOB_PIPELINE.map((row) => {
+            const count = stats.jobStatusMap[row.status] ?? 0;
+            const pct = (count / total) * 100;
+            if (pct === 0) return null;
+            return (
+              <div
+                key={row.status}
+                className={cn("h-full transition-all duration-500 first:rounded-l-full last:rounded-r-full", row.colour)}
+                style={{ width: `${pct}%` }}
+                title={`${row.label}: ${count}`}
+              />
+            );
+          })}
+        </div>
+        {/* Legend rows */}
         {JOB_PIPELINE.map((row) => {
           const count = stats.jobStatusMap[row.status] ?? 0;
           return (
-            <div key={row.status} className="space-y-1">
-              <div className="flex items-center justify-between text-sm">
-                <span className="text-muted-foreground">{row.label}</span>
-                <span className="font-medium tabular-nums">{count}</span>
-              </div>
-              <StatusBar count={count} max={stats.totalJobs} colour={row.colour} />
+            <div key={row.status} className="flex items-center justify-between text-sm">
+              <span className="flex items-center gap-2 text-muted-foreground">
+                <span className={cn("inline-block h-2 w-2 rounded-full", row.colour)} />
+                {row.label}
+              </span>
+              <span className="font-medium tabular-nums">{count}</span>
             </div>
           );
         })}
@@ -230,32 +281,61 @@ function JobPipelineCard({ stats }: { stats: DashboardStats }) {
 }
 
 function StockHealthCard({ stats }: { stats: DashboardStats }) {
+  const healthy = stats.totalMaterials - stats.lowStockCount - stats.outOfStockCount;
+  const total = stats.totalMaterials || 1;
   return (
     <Card>
       <CardHeader className="pb-3">
-        <CardTitle className="text-base font-semibold">Stock Health</CardTitle>
+        <div className="flex items-center justify-between">
+          <CardTitle className="text-sm font-semibold">Stock Health</CardTitle>
+          <Link href="/materials" className="text-xs text-muted-foreground hover:text-foreground transition-colors">
+            View all
+          </Link>
+        </div>
       </CardHeader>
       <CardContent className="space-y-3">
-        <div className="flex items-center justify-between text-sm">
-          <span className="text-muted-foreground">Total materials</span>
-          <span className="font-medium tabular-nums">{stats.totalMaterials}</span>
+        {/* Stacked bar for stock health */}
+        <div className="flex h-2.5 w-full overflow-hidden rounded-full bg-muted">
+          {healthy > 0 && (
+            <div className="h-full bg-success rounded-l-full" style={{ width: `${(healthy / total) * 100}%` }} />
+          )}
+          {stats.lowStockCount > 0 && (
+            <div className="h-full bg-warning" style={{ width: `${(stats.lowStockCount / total) * 100}%` }} />
+          )}
+          {stats.outOfStockCount > 0 && (
+            <div className="h-full bg-destructive rounded-r-full" style={{ width: `${(stats.outOfStockCount / total) * 100}%` }} />
+          )}
         </div>
+
         <div className="flex items-center justify-between text-sm">
-          <span className="text-muted-foreground">Printers</span>
-          <span className="font-medium tabular-nums">
-            {stats.printersInUse} active / {stats.totalPrinters} total
+          <span className="flex items-center gap-2 text-muted-foreground">
+            <span className="inline-block h-2 w-2 rounded-full bg-success" />
+            In stock
           </span>
+          <span className="font-medium tabular-nums">{healthy}</span>
         </div>
         <div className="flex items-center justify-between text-sm">
-          <span className="text-muted-foreground">Low stock</span>
+          <span className="flex items-center gap-2 text-muted-foreground">
+            <span className="inline-block h-2 w-2 rounded-full bg-warning" />
+            Low stock
+          </span>
           <span className={cn("font-medium tabular-nums", stats.lowStockCount > 0 && STATUS_TEXT.warning)}>
             {stats.lowStockCount}
           </span>
         </div>
         <div className="flex items-center justify-between text-sm">
-          <span className="text-muted-foreground">Out of stock</span>
+          <span className="flex items-center gap-2 text-muted-foreground">
+            <span className="inline-block h-2 w-2 rounded-full bg-destructive" />
+            Out of stock
+          </span>
           <span className={cn("font-medium tabular-nums", stats.outOfStockCount > 0 && STATUS_TEXT.danger)}>
             {stats.outOfStockCount}
+          </span>
+        </div>
+        <div className="flex items-center justify-between text-sm">
+          <span className="text-muted-foreground">Printers</span>
+          <span className="font-medium tabular-nums">
+            {stats.printersInUse} active / {stats.totalPrinters}
           </span>
         </div>
         <div className="border-t border-border pt-3">
@@ -275,47 +355,54 @@ function RecentQuotesList({ quotes }: { quotes: DashboardQuote[] }) {
   return (
     <Card>
       <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-3">
-        <CardTitle className="text-base font-semibold">Recent Quotes</CardTitle>
-        <Link href="/quotes" className="text-sm text-muted-foreground hover:text-foreground">
+        <CardTitle className="text-sm font-semibold">Recent Quotes</CardTitle>
+        <Link href="/quotes" className="text-xs text-muted-foreground hover:text-foreground transition-colors">
           View all
         </Link>
       </CardHeader>
       <CardContent>
         {quotes.length === 0 ? (
           <div className="flex flex-col items-center gap-3 py-6 text-center">
-            <FileText className="h-8 w-8 text-muted-foreground/50" />
-            <p className="text-sm text-muted-foreground">No quotes yet</p>
+            <div className="flex h-12 w-12 items-center justify-center rounded-full bg-muted">
+              <FileText className="h-6 w-6 text-muted-foreground/50" />
+            </div>
+            <div>
+              <p className="text-sm font-medium">No quotes yet</p>
+              <p className="text-xs text-muted-foreground mt-0.5">Create your first quote to get started</p>
+            </div>
             <Link href="/quotes/new">
-              <Button size="sm">
-                <Plus className="mr-1 h-4 w-4" />
-                Create your first quote
+              <Button size="sm" className="gap-1.5">
+                <Plus className="h-3.5 w-3.5" />
+                New Quote
               </Button>
             </Link>
           </div>
         ) : (
-          <div className="space-y-2">
-            {quotes.map((quote) => (
-              <Link
-                key={quote.id}
-                href={`/quotes/${quote.id}`}
-                className="flex items-center justify-between rounded-lg border border-border p-3 transition-colors hover:bg-accent/50"
-              >
-                <div className="min-w-0">
-                  <div className="flex items-center gap-2">
-                    <span className="text-sm font-medium">{quote.quoteNumber}</span>
-                    <Badge variant={QUOTE_STATUS[quote.status].variant}>
-                      {QUOTE_STATUS[quote.status].label}
-                    </Badge>
+          <div className="space-y-1">
+            {quotes.map((quote) => {
+              const statusConf = QUOTE_STATUS[quote.status];
+              return (
+                <Link
+                  key={quote.id}
+                  href={`/quotes/${quote.id}`}
+                  className="flex items-center gap-3 rounded-md px-2.5 py-2 transition-colors hover:bg-accent/50"
+                >
+                  {/* Status dot */}
+                  <span className={cn("h-2 w-2 shrink-0 rounded-full", statusConf.barColour)} />
+                  <div className="min-w-0 flex-1">
+                    <div className="flex items-center gap-2">
+                      <span className="text-sm font-medium">{quote.quoteNumber}</span>
+                      <span className="truncate text-xs text-muted-foreground">
+                        {quote.client?.name ?? "No client"}
+                      </span>
+                    </div>
                   </div>
-                  <p className="mt-0.5 truncate text-sm text-muted-foreground">
-                    {quote.client?.name ?? "No client"}
-                  </p>
-                </div>
-                <span className="shrink-0 text-sm font-medium tabular-nums">
-                  {formatCurrency(quote.total)}
-                </span>
-              </Link>
-            ))}
+                  <span className="shrink-0 text-sm font-medium tabular-nums">
+                    {formatCurrency(quote.total)}
+                  </span>
+                </Link>
+              );
+            })}
           </div>
         )}
       </CardContent>
@@ -327,38 +414,47 @@ function ActiveJobsList({ jobs }: { jobs: DashboardJob[] }) {
   return (
     <Card>
       <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-3">
-        <CardTitle className="text-base font-semibold">Active Jobs</CardTitle>
-        <Link href="/jobs" className="text-sm text-muted-foreground hover:text-foreground">
+        <CardTitle className="text-sm font-semibold">Active Jobs</CardTitle>
+        <Link href="/jobs" className="text-xs text-muted-foreground hover:text-foreground transition-colors">
           View all
         </Link>
       </CardHeader>
       <CardContent>
         {jobs.length === 0 ? (
           <div className="flex flex-col items-center gap-3 py-6 text-center">
-            <Briefcase className="h-8 w-8 text-muted-foreground/50" />
-            <p className="text-sm text-muted-foreground">No active jobs</p>
+            <div className="flex h-12 w-12 items-center justify-center rounded-full bg-muted">
+              <Briefcase className="h-6 w-6 text-muted-foreground/50" />
+            </div>
+            <div>
+              <p className="text-sm font-medium">No active jobs</p>
+              <p className="text-xs text-muted-foreground mt-0.5">Jobs will appear here when in progress</p>
+            </div>
           </div>
         ) : (
-          <div className="space-y-2">
-            {jobs.map((job) => (
-              <Link
-                key={job.id}
-                href="/jobs"
-                className="flex items-center justify-between rounded-lg border border-border p-3 transition-colors hover:bg-accent/50"
-              >
-                <div className="min-w-0">
-                  <p className="text-sm font-medium">
-                    {job.quote?.quoteNumber ?? "Unlinked job"}
-                  </p>
-                  <p className="text-xs text-muted-foreground">
-                    {job.printer?.name ?? "No printer"}
-                  </p>
-                </div>
-                <Badge variant={JOB_STATUS[job.status as keyof typeof JOB_STATUS]?.variant ?? "default"}>
-                  {JOB_STATUS[job.status as keyof typeof JOB_STATUS]?.label ?? job.status}
-                </Badge>
-              </Link>
-            ))}
+          <div className="space-y-1">
+            {jobs.map((job) => {
+              const statusConf = JOB_STATUS[job.status as keyof typeof JOB_STATUS];
+              return (
+                <Link
+                  key={job.id}
+                  href="/jobs"
+                  className="flex items-center gap-3 rounded-md px-2.5 py-2 transition-colors hover:bg-accent/50"
+                >
+                  <span className={cn("h-2 w-2 shrink-0 rounded-full", statusConf?.dotColour ?? "bg-muted-foreground")} />
+                  <div className="min-w-0 flex-1">
+                    <p className="text-sm font-medium">
+                      {job.quote?.quoteNumber ?? "Unlinked job"}
+                    </p>
+                    <p className="text-xs text-muted-foreground">
+                      {job.printer?.name ?? "No printer"}
+                    </p>
+                  </div>
+                  <span className="text-xs text-muted-foreground">
+                    {statusConf?.label ?? job.status}
+                  </span>
+                </Link>
+              );
+            })}
           </div>
         )}
       </CardContent>
@@ -370,7 +466,7 @@ function LowStockAlertsList({ alerts }: { alerts: LowStockMaterial[] }) {
   return (
     <Card>
       <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-3">
-        <CardTitle className="text-base font-semibold">
+        <CardTitle className="text-sm font-semibold">
           <span className="flex items-center gap-2">
             <AlertTriangle className={cn("h-4 w-4", STATUS_TEXT.warning)} />
             Low Stock
@@ -386,32 +482,32 @@ function LowStockAlertsList({ alerts }: { alerts: LowStockMaterial[] }) {
             All stock levels OK
           </div>
         ) : (
-          <div className="space-y-2">
+          <div className="space-y-1">
             {alerts.map((material) => (
               <div
                 key={material.id}
-                className="flex items-center justify-between rounded-lg border border-border p-3 text-sm"
+                className="flex items-center justify-between rounded-md px-2.5 py-2 text-sm"
               >
                 <div className="min-w-0">
-                  <p className="font-medium">
+                  <p className="font-medium text-sm">
                     {material.materialType}
                     {material.brand ? ` — ${material.brand}` : ""}
                   </p>
-                  <p className="text-muted-foreground">
+                  <p className="text-xs text-muted-foreground">
                     {material.colour ?? "No colour"}
                   </p>
                 </div>
                 <div className="shrink-0 text-right">
                   <p
                     className={cn(
-                      "font-medium tabular-nums",
+                      "font-medium tabular-nums text-sm",
                       material.stockQty === 0 ? STATUS_TEXT.danger : STATUS_TEXT.warning
                     )}
                   >
-                    {material.stockQty} in stock
+                    {material.stockQty}
                   </p>
-                  <p className="text-xs text-muted-foreground">
-                    Threshold: {material.lowStockThreshold}
+                  <p className="text-[11px] text-muted-foreground">
+                    / {material.lowStockThreshold}
                   </p>
                 </div>
               </div>
@@ -427,7 +523,7 @@ function ConsumableAlertsList({ alerts }: { alerts: ConsumableAlert[] }) {
   return (
     <Card>
       <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-3">
-        <CardTitle className="text-base font-semibold">
+        <CardTitle className="text-sm font-semibold">
           <span className="flex items-center gap-2">
             <AlertTriangle className={cn("h-4 w-4", STATUS_TEXT.warning)} />
             Consumable Alerts
@@ -443,37 +539,35 @@ function ConsumableAlertsList({ alerts }: { alerts: ConsumableAlert[] }) {
             All stocked
           </div>
         ) : (
-          <div className="space-y-2">
+          <div className="space-y-1">
             {alerts.map((consumable) => (
               <div
                 key={consumable.id}
-                className="flex items-center justify-between rounded-lg border border-border p-3 text-sm"
+                className="flex items-center justify-between rounded-md px-2.5 py-2 text-sm"
               >
                 <div className="min-w-0">
                   <p className="font-medium">{consumable.name}</p>
-                  <Badge variant="default" className="mt-1 text-[10px]">
-                    {consumable.category}
-                  </Badge>
+                  <span className="text-[11px] text-muted-foreground">{consumable.category}</span>
                 </div>
-                <div className="shrink-0 text-right">
-                  <p
-                    className={cn(
-                      "font-medium tabular-nums",
-                      consumable.stockQty === 0 ? STATUS_TEXT.danger : STATUS_TEXT.warning
-                    )}
-                  >
-                    {consumable.stockQty} / {consumable.lowStockThreshold}
-                  </p>
-                  {consumable.supplier?.email ? (
+                <div className="shrink-0 text-right flex items-center gap-2">
+                  <div>
+                    <p
+                      className={cn(
+                        "font-medium tabular-nums",
+                        consumable.stockQty === 0 ? STATUS_TEXT.danger : STATUS_TEXT.warning
+                      )}
+                    >
+                      {consumable.stockQty} / {consumable.lowStockThreshold}
+                    </p>
+                  </div>
+                  {consumable.supplier?.email && (
                     <a
                       href={`mailto:${consumable.supplier.email}?subject=${encodeURIComponent(`Reorder: ${consumable.name}`)}&body=${encodeURIComponent(`Hi, I'd like to reorder ${consumable.name}.`)}`}
-                      className="mt-1 inline-flex items-center gap-1 rounded-md bg-primary/10 px-2 py-0.5 text-xs font-medium text-primary hover:bg-primary/20 transition-colors"
+                      className="inline-flex h-7 w-7 items-center justify-center rounded-md hover:bg-muted transition-colors"
+                      title={`Email ${consumable.supplier.name}`}
                     >
-                      <Mail className="h-3 w-3" />
-                      Reorder
+                      <Mail className="h-3.5 w-3.5 text-muted-foreground" />
                     </a>
-                  ) : (
-                    <p className="mt-1 text-xs text-muted-foreground">No supplier</p>
                   )}
                 </div>
               </div>
@@ -482,6 +576,37 @@ function ConsumableAlertsList({ alerts }: { alerts: ConsumableAlert[] }) {
         )}
       </CardContent>
     </Card>
+  );
+}
+
+// ---------------------------------------------------------------------------
+// Quick Actions
+// ---------------------------------------------------------------------------
+
+function QuickActionsRow() {
+  const actions = [
+    { href: "/quotes/new", icon: Plus, label: "New Quote", primary: true },
+    { href: "/calculator", icon: Calculator, label: "Calculator" },
+    { href: "/clients", icon: Users, label: "Clients" },
+    { href: "/jobs", icon: Briefcase, label: "Jobs" },
+    { href: "/purchase-orders", icon: ShoppingCart, label: "Orders" },
+  ];
+
+  return (
+    <div className="flex flex-wrap gap-2">
+      {actions.map((a) => (
+        <Link key={a.href} href={a.href}>
+          <Button
+            size="sm"
+            variant={a.primary ? "primary" : "secondary"}
+            className="gap-1.5"
+          >
+            <a.icon className="h-3.5 w-3.5" />
+            {a.label}
+          </Button>
+        </Link>
+      ))}
+    </div>
   );
 }
 
@@ -522,7 +647,7 @@ function ReorderSuggestions({
   return (
     <Card className="lg:col-span-2">
       <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-3">
-        <CardTitle className="text-base font-semibold">
+        <CardTitle className="text-sm font-semibold">
           <span className="flex items-center gap-2">
             <ShoppingCart className="h-4 w-4 text-primary" />
             Reorder Suggestions
@@ -535,11 +660,11 @@ function ReorderSuggestions({
         </Link>
       </CardHeader>
       <CardContent>
-        <div className="space-y-2">
+        <div className="space-y-1">
           {items.map((item) => (
             <div
               key={`${item.type}-${item.id}`}
-              className="flex items-center justify-between rounded-lg border border-border p-3 text-sm"
+              className="flex items-center justify-between rounded-md px-2.5 py-2 text-sm hover:bg-accent/30 transition-colors"
             >
               <div className="min-w-0 flex-1">
                 <p className="font-medium">{item.name}</p>
@@ -555,13 +680,13 @@ function ReorderSuggestions({
               <div className="shrink-0 text-right flex items-center gap-3">
                 <div>
                   <p className="text-xs text-muted-foreground">
-                    Suggest order: <span className="font-semibold text-foreground">{item.suggestedQty}</span>
+                    Suggest: <span className="font-semibold text-foreground tabular-nums">{item.suggestedQty}</span>
                   </p>
                   <p className={cn(
                     "text-xs tabular-nums",
                     item.stockQty === 0 ? STATUS_TEXT.danger : STATUS_TEXT.warning
                   )}>
-                    {item.stockQty} / {item.threshold} in stock
+                    {item.stockQty} / {item.threshold}
                   </p>
                 </div>
                 {item.supplier?.website && (
@@ -600,26 +725,32 @@ function ReorderSuggestions({
 function LoadingSkeleton() {
   return (
     <div className="space-y-6">
-      <div className="grid grid-cols-2 gap-4 md:grid-cols-3 lg:grid-cols-6">
+      {/* Stat cards skeleton */}
+      <div className="grid grid-cols-2 gap-3 md:grid-cols-3 lg:grid-cols-6">
         {Array.from({ length: 6 }).map((_, i) => (
-          <Card key={i}>
-            <CardContent className="flex items-center gap-4 p-4">
-              <div className="h-10 w-10 animate-pulse rounded-lg bg-muted" />
-              <div className="space-y-2">
-                <div className="h-3 w-14 animate-pulse rounded bg-muted" />
-                <div className="h-5 w-10 animate-pulse rounded bg-muted" />
+          <Card key={i} className="overflow-hidden">
+            <CardContent className="flex items-center gap-3.5 p-4">
+              <div className="h-10 w-10 animate-pulse rounded-xl bg-muted" />
+              <div className="space-y-2 flex-1">
+                <div className="h-2.5 w-16 animate-pulse rounded bg-muted" />
+                <div className="h-6 w-12 animate-pulse rounded bg-muted" />
               </div>
             </CardContent>
           </Card>
         ))}
       </div>
-      <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
+      {/* Middle cards skeleton */}
+      <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
         {Array.from({ length: 3 }).map((_, i) => (
           <Card key={i}>
-            <CardContent className="p-6">
+            <CardContent className="p-5">
+              <div className="h-4 w-28 animate-pulse rounded bg-muted mb-4" />
               <div className="space-y-3">
                 {Array.from({ length: 4 }).map((_, j) => (
-                  <div key={j} className="h-6 animate-pulse rounded bg-muted" />
+                  <div key={j} className="flex items-center justify-between">
+                    <div className="h-3 w-20 animate-pulse rounded bg-muted" />
+                    <div className="h-3 w-8 animate-pulse rounded bg-muted" />
+                  </div>
                 ))}
               </div>
             </CardContent>
@@ -711,7 +842,7 @@ export function DashboardPage() {
       <div className="space-y-6">
         <div>
           <h1 className="text-2xl font-bold tracking-tight">Dashboard</h1>
-          <p className="text-muted-foreground">Overview of your 3D printing business</p>
+          <p className="text-sm text-muted-foreground">Overview of your 3D printing business</p>
         </div>
         <LoadingSkeleton />
       </div>
@@ -721,7 +852,9 @@ export function DashboardPage() {
   if (error || !data) {
     return (
       <div className="flex flex-col items-center justify-center gap-4 py-12">
-        <AlertTriangle className="h-10 w-10 text-destructive" />
+        <div className="flex h-12 w-12 items-center justify-center rounded-full bg-destructive/10">
+          <AlertTriangle className="h-6 w-6 text-destructive-foreground" />
+        </div>
         <p className="text-lg font-medium">Failed to load dashboard</p>
         <p className="text-sm text-muted-foreground">{error}</p>
         <Button onClick={() => window.location.reload()}>Retry</Button>
@@ -737,57 +870,35 @@ export function DashboardPage() {
       <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
         <div>
           <h1 className="text-2xl font-bold tracking-tight">Dashboard</h1>
-          <p className="text-muted-foreground">Overview of your 3D printing business</p>
+          <p className="text-sm text-muted-foreground">Overview of your 3D printing business</p>
         </div>
-        <div className="flex flex-wrap gap-2">
-          <Link href="/quotes/new">
-            <Button size="sm" className="gap-1.5">
-              <Plus className="h-3.5 w-3.5" />
-              New Quote
-            </Button>
-          </Link>
-          <Link href="/calculator">
-            <Button variant="secondary" size="sm" className="gap-1.5">
-              <Calculator className="h-3.5 w-3.5" />
-              Calculator
-            </Button>
-          </Link>
-          <Link href="/clients">
-            <Button variant="secondary" size="sm" className="gap-1.5">
-              <Users className="h-3.5 w-3.5" />
-              Clients
-            </Button>
-          </Link>
-          <Link href="/jobs">
-            <Button variant="secondary" size="sm" className="gap-1.5">
-              <Briefcase className="h-3.5 w-3.5" />
-              Jobs
-            </Button>
-          </Link>
-        </div>
+        <QuickActionsRow />
       </div>
 
       {/* Trial / Free banner */}
       <TrialBanner />
 
-      {/* Top row: 6 stat cards */}
-      <div className="grid grid-cols-2 gap-4 md:grid-cols-3 lg:grid-cols-6">
+      {/* Top row: 6 stat cards — 2x3 on mobile, 3x2 on tablet, 6 across on desktop */}
+      <div className="grid grid-cols-2 gap-3 md:grid-cols-3 lg:grid-cols-6">
         <StatCard
           icon={FileText}
-          label="Total Quotes"
+          label="Quotes"
           value={String(stats.totalQuotes)}
           href="/quotes"
+          style="quotes"
         />
         <StatCard
           icon={DollarSign}
           label="Revenue"
           value={formatCurrency(stats.totalRevenue)}
+          style="revenue"
         />
         <StatCard
           icon={CalendarDays}
           label="This Month"
           value={String(stats.quotesThisMonth)}
           sub="new quotes"
+          style="month"
         />
         <StatCard
           icon={Briefcase}
@@ -795,12 +906,14 @@ export function DashboardPage() {
           value={String(stats.activeJobCount)}
           sub={`${stats.totalJobs} total`}
           href="/jobs"
+          style="jobs"
         />
         <StatCard
           icon={Users}
           label="Clients"
           value={String(stats.totalClients)}
           href="/clients"
+          style="clients"
         />
         <StatCard
           icon={Palette}
@@ -808,18 +921,19 @@ export function DashboardPage() {
           value={formatCurrency(stats.totalStockValue)}
           sub={`${stats.totalMaterials} materials`}
           href="/materials"
+          style="stock"
         />
       </div>
 
       {/* Middle row: Breakdown cards */}
-      <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
+      <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
         <QuoteBreakdownCard stats={stats} />
         <JobPipelineCard stats={stats} />
         <StockHealthCard stats={stats} />
       </div>
 
       {/* Bottom row: Lists */}
-      <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-4">
+      <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
         <RecentQuotesList quotes={recentQuotes} />
         <ActiveJobsList jobs={activeJobs} />
         <LowStockAlertsList alerts={lowStockAlerts} />
