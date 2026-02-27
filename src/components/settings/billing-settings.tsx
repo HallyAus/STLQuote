@@ -76,7 +76,6 @@ function BillingSettingsInner() {
   if (!session?.user) return null;
 
   const user = session.user;
-  const isAdmin = user.role === "ADMIN" || user.role === "SUPER_ADMIN";
   const effectiveTier = getEffectiveTier({
     subscriptionTier: user.subscriptionTier,
     subscriptionStatus: user.subscriptionStatus,
@@ -94,8 +93,6 @@ function BillingSettingsInner() {
   // User has been through Stripe if they have an active/past_due/cancelled status
   const hasStripeCustomer = isActive || isPastDue || isCancelled;
 
-  // Only admins can self-serve billing for now
-  const canSelfServeBilling = isAdmin;
 
   // ---- Handlers ----
 
@@ -208,8 +205,8 @@ function BillingSettingsInner() {
           </div>
         )}
 
-        {/* Pricing toggle + upgrade (only show if not active Pro) */}
-        {!isActive && canSelfServeBilling && (
+        {/* Pricing toggle + upgrade (show if not already active Pro) */}
+        {!isActive && (
           <div className="space-y-4">
             {/* Monthly / Annual toggle */}
             <div className="flex items-center gap-1 rounded-lg bg-muted p-1">
@@ -269,17 +266,8 @@ function BillingSettingsInner() {
           </div>
         )}
 
-        {/* Non-admin users see contact message */}
-        {!isActive && !canSelfServeBilling && (
-          <div className="rounded-lg border border-border bg-muted/50 p-4 text-center">
-            <p className="text-sm text-muted-foreground">
-              Self-serve billing is coming soon. Contact your admin to upgrade to Pro.
-            </p>
-          </div>
-        )}
-
-        {/* Manage subscription (only if user has been through Stripe and is admin) */}
-        {hasStripeCustomer && canSelfServeBilling && (
+        {/* Manage subscription (if user has been through Stripe) */}
+        {hasStripeCustomer && (
           <Button
             variant="secondary"
             className="w-full"
