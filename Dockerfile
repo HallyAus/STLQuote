@@ -34,14 +34,15 @@ RUN addgroup --system --gid 1001 nodejs && \
 # Install prisma CLI for migrations (lightweight, no dev deps)
 RUN npm install -g prisma@6
 
-# Create uploads directory for job photos
-RUN mkdir -p /app/uploads && chown nextjs:nodejs /app/uploads
-
 # Standalone output already bundles the Prisma client + all deps
 COPY --from=builder /app/public ./public
 COPY --from=builder /app/.next/standalone ./
 COPY --from=builder /app/.next/static ./.next/static
 COPY --from=builder /app/prisma ./prisma
+
+# Create uploads directory AFTER all COPY commands so ownership isn't overwritten
+RUN mkdir -p /app/uploads/quote-requests /app/uploads/job-photos && \
+    chown -R nextjs:nodejs /app/uploads
 
 USER nextjs
 
