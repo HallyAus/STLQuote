@@ -14,7 +14,7 @@ import {
   DialogTitle,
   DialogFooter,
 } from "@/components/ui/dialog";
-import { Plus, Loader2, ShoppingCart, Trash2, X } from "lucide-react";
+import { Plus, Loader2, ShoppingCart, Trash2, X, UserPlus } from "lucide-react";
 
 // ---------------------------------------------------------------------------
 // Types
@@ -101,18 +101,55 @@ function CreatePOModal({
   suppliers,
   materials,
   consumables,
+  onSuppliersChanged,
 }: {
   onClose: () => void;
   onCreated: () => void;
   suppliers: Supplier[];
   materials: Material[];
   consumables: Consumable[];
+  onSuppliersChanged: (suppliers: Supplier[]) => void;
 }) {
   const [supplierId, setSupplierId] = useState("");
   const [expectedDelivery, setExpectedDelivery] = useState("");
   const [notes, setNotes] = useState("");
   const [items, setItems] = useState<NewItemForm[]>([{ ...EMPTY_ITEM }]);
   const [saving, setSaving] = useState(false);
+
+  // Inline supplier creation
+  const [showNewSupplier, setShowNewSupplier] = useState(false);
+  const [newSupplierName, setNewSupplierName] = useState("");
+  const [newSupplierEmail, setNewSupplierEmail] = useState("");
+  const [newSupplierPhone, setNewSupplierPhone] = useState("");
+  const [creatingSupplier, setCreatingSupplier] = useState(false);
+
+  async function handleQuickCreateSupplier() {
+    if (!newSupplierName.trim()) return;
+    setCreatingSupplier(true);
+    try {
+      const res = await fetch("/api/suppliers", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          name: newSupplierName.trim(),
+          email: newSupplierEmail.trim() || null,
+          phone: newSupplierPhone.trim() || null,
+        }),
+      });
+      if (!res.ok) return;
+      const created = await res.json();
+      onSuppliersChanged([...suppliers, { id: created.id, name: created.name }]);
+      setSupplierId(created.id);
+      setShowNewSupplier(false);
+      setNewSupplierName("");
+      setNewSupplierEmail("");
+      setNewSupplierPhone("");
+    } catch {
+      // ignore
+    } finally {
+      setCreatingSupplier(false);
+    }
+  }
 
   function addItem() {
     setItems((prev) => [...prev, { ...EMPTY_ITEM }]);
@@ -192,15 +229,72 @@ function CreatePOModal({
       </DialogHeader>
       <div className="space-y-4">
         <div className="grid gap-4 sm:grid-cols-2">
-          <Select
-            label="Supplier"
-            value={supplierId}
-            onChange={(e) => setSupplierId(e.target.value)}
-            options={[
-              { value: "", label: "Select supplier..." },
-              ...suppliers.map((s) => ({ value: s.id, label: s.name })),
-            ]}
-          />
+          <div className="space-y-2">
+            <Select
+              label="Supplier"
+              value={supplierId}
+              onChange={(e) => setSupplierId(e.target.value)}
+              options={[
+                { value: "", label: "Select supplier..." },
+                ...suppliers.map((s) => ({ value: s.id, label: s.name })),
+              ]}
+            />
+            {!showNewSupplier ? (
+              <button
+                type="button"
+                onClick={() => setShowNewSupplier(true)}
+                className="flex items-center gap-1.5 text-xs text-primary hover:underline"
+              >
+                <UserPlus className="h-3 w-3" />
+                Create new supplier
+              </button>
+            ) : (
+              <div className="rounded-md border border-border bg-muted/30 p-3 space-y-3">
+                <div className="flex items-center justify-between">
+                  <span className="text-sm font-medium text-foreground">New Supplier</span>
+                  <button
+                    type="button"
+                    onClick={() => { setShowNewSupplier(false); setNewSupplierName(""); setNewSupplierEmail(""); setNewSupplierPhone(""); }}
+                    className="rounded p-1 text-muted-foreground hover:text-foreground"
+                  >
+                    <X className="h-3.5 w-3.5" />
+                  </button>
+                </div>
+                <Input
+                  label="Name *"
+                  value={newSupplierName}
+                  onChange={(e) => setNewSupplierName(e.target.value)}
+                  placeholder="Supplier name"
+                />
+                <div className="grid grid-cols-2 gap-3">
+                  <Input
+                    label="Email"
+                    type="email"
+                    value={newSupplierEmail}
+                    onChange={(e) => setNewSupplierEmail(e.target.value)}
+                    placeholder="Optional"
+                  />
+                  <Input
+                    label="Phone"
+                    value={newSupplierPhone}
+                    onChange={(e) => setNewSupplierPhone(e.target.value)}
+                    placeholder="Optional"
+                  />
+                </div>
+                <Button
+                  size="sm"
+                  onClick={handleQuickCreateSupplier}
+                  disabled={creatingSupplier || !newSupplierName.trim()}
+                >
+                  {creatingSupplier ? (
+                    <><Loader2 className="mr-2 h-3 w-3 animate-spin" />Creating...</>
+                  ) : (
+                    "Create Supplier"
+                  )}
+                </Button>
+              </div>
+            )}
+          </div>
           <Input
             label="Expected delivery"
             type="date"
@@ -523,6 +617,7 @@ export function PurchaseOrdersPage() {
           suppliers={suppliers}
           materials={materials}
           consumables={consumables}
+          onSuppliersChanged={setSuppliers}
         />
       )}
     </div>
