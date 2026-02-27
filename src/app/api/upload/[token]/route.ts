@@ -14,17 +14,18 @@ function validateFileContent(buffer: Buffer, ext: string): string | null {
 
   switch (ext) {
     case "stl": {
-      // ASCII STL starts with "solid"
-      const head = buffer.subarray(0, 80).toString("ascii").trimStart();
-      if (head.startsWith("solid")) return null; // ASCII STL
       // Binary STL: 80-byte header + 4-byte triangle count, then 50 bytes per triangle
       if (buffer.length >= 84) {
         const numTriangles = buffer.readUInt32LE(80);
         const expectedSize = 80 + 4 + numTriangles * 50;
-        if (buffer.length === expectedSize) return null;
-        // Some exporters pad the file — allow if reasonably close
-        if (buffer.length >= expectedSize && buffer.length <= expectedSize + 2) return null;
+        if (numTriangles > 0 && buffer.length >= expectedSize && buffer.length <= expectedSize + 2) {
+          return null;
+        }
       }
+      // ASCII STL: must have "solid" header AND "endsolid" footer
+      const text = buffer.toString("ascii");
+      const trimmed = text.trimStart();
+      if (trimmed.startsWith("solid") && /endsolid/i.test(text)) return null;
       return "File content does not match STL format";
     }
 
@@ -51,8 +52,11 @@ function validateFileContent(buffer: Buffer, ext: string): string | null {
     case "gcode":
     case "gco":
     case "g": {
-      const gcodeHead = buffer.subarray(0, 1024).toString("ascii");
-      if (/G[01]\s|M10[49]|M140|;/.test(gcodeHead)) return null;
+      const gcodeHead = buffer.subarray(0, 2048).toString("ascii");
+      // Require actual G-code commands — not just a semicolon comment
+      if (/G[0-2]\d?\s|M[01]\d{2}\s|M140|M190|G28|G29/.test(gcodeHead)) return null;
+      // Also accept files where most lines are comments (slicer headers) followed by commands
+      if (/^;/m.test(gcodeHead) && /\n[GM]\d/m.test(gcodeHead)) return null;
       return "File content does not match G-code format";
     }
 
