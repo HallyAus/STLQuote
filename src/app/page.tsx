@@ -31,6 +31,7 @@ import {
   Globe,
   X,
   Minus,
+  Link2,
 } from "lucide-react";
 
 export const metadata: Metadata = {
@@ -111,6 +112,13 @@ const FEATURES = [
     title: "Client Management",
     description:
       "Full client database with tags, payment terms, and interaction timeline (calls, emails, meetings). Auto-created from Shopify orders.",
+    badge: null,
+  },
+  {
+    icon: Link2,
+    title: "Customer Upload Links",
+    description:
+      "Create shareable links for customers to upload 3D files directly. Uploaded files land in your quote request queue with customer details — ready to review and quote.",
     badge: null,
   },
   {
@@ -218,6 +226,7 @@ const COMPARISON = [
   { feature: "Inventory & stock alerts", spreadsheet: false, printforge: true },
   { feature: "Invoicing with email", spreadsheet: false, printforge: true },
   { feature: "Shopify / Xero sync", spreadsheet: false, printforge: true },
+  { feature: "Customer upload links", spreadsheet: false, printforge: true },
   { feature: "AI quote drafting", spreadsheet: false, printforge: true },
   { feature: "Multi-user with roles", spreadsheet: false, printforge: true },
 ];
@@ -228,6 +237,7 @@ const FREE_FEATURES = [
   "Printers & materials library",
   "Client management",
   "Job tracking (kanban + calendar)",
+  "Customer upload links",
   "STL & G-code upload",
   "Quote templates",
   "Dark mode",
@@ -263,6 +273,7 @@ const PRICING_COMPARE: PricingFeature[] = [
   { name: "Client management", free: true, pro: true },
   { name: "Job tracking", free: true, pro: true },
   { name: "STL & G-code upload", free: true, pro: true },
+  { name: "Customer upload links", free: true, pro: true },
   { name: "Quote templates", free: true, pro: true },
   { name: "AI Quote Assistant", free: false, pro: true },
   { name: "Invoicing", free: false, pro: true },
@@ -303,6 +314,10 @@ const FAQ = [
   {
     q: "Can multiple people use it?",
     a: "Yes. Printforge supports multiple users with role-based access — User, Admin, and Super Admin. Each user sees only their own data.",
+  },
+  {
+    q: "How do customer upload links work?",
+    a: "Create a shareable link from the Requests page and send it to customers via email, your website, or social media. They can upload 3D files (STL, 3MF, STEP, OBJ, G-code) with their name and details. Files appear in your quote request queue — review, quote, or dismiss. Each link is rate-limited and revocable.",
   },
   {
     q: "What currencies are supported?",
