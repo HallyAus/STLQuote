@@ -5,30 +5,28 @@
 
 ## Last Updated
 
-- **Date:** 2026-02-27 17:55
+- **Date:** 2026-02-27 21:05
 - **Branch:** main
-- **Focus:** v4.14.0 — Admin Portal Redo + Landing Page Calculator Demo + Blog + Shipping Costs
+- **Focus:** v4.15.0 — Mobile Nav Fix + Admin Seed Data + 2FA + Upload Error Handling
 
 ## Accomplished
 
-- **This session — v4.14.0**:
-  - **Admin portal redo**: Split monolithic 2,245-line admin page into 6 focused sub-components:
-    - `admin-overview.tsx` — Key metric cards, signup/quote bar charts (pure CSS), top users table, system health, recent activity
-    - `admin-users.tsx` — User table with search/filter, all modals (create/edit/delete)
-    - `admin-waitlist.tsx` — Waitlist management with approve/reject
-    - `admin-system.tsx` — Merged Deploys + Config + Logs into 4 collapsible sections
-    - `admin-email.tsx` — Merged Email + Newsletter into 3 cards
-    - `admin-billing.tsx` — Stripe config, subscribers, events (already existed, minor fix)
-    - `admin-types.ts` — Shared TypeScript interfaces
-    - Admin page.tsx rewritten as thin shell with 6-tab navigation
-  - **Admin analytics API**: New `GET /api/admin/analytics` endpoint — 13 parallel Prisma queries for signups, quotes by status, conversion rate, weekly revenue, top users, per-user storage, system health
-  - **Landing page calculator demo**: Interactive `CalculatorDemo` component with 8 range sliders (weight, time, material cost, labour, shipping, packaging, markup, quantity), real-time cost breakdown with stacked bar chart, CTA to register. Uses `calculateTotalCost()` directly — no API calls.
-  - **Shipping & packaging costs**: Added `ShippingCostInput` interface to calculator lib, new "Shipping & Packaging" section in calculator form, per-unit flat costs added after markup but before minimum charge, displayed in cost breakdown.
-  - **Blog**: 20 SEO-focused blog posts in `src/lib/blog-posts.ts` (static data, no CMS), listing page at `/blog` with featured hero + grid, detail pages at `/blog/[slug]` with prose typography and related posts. Backdated weekly from 2026-02-25 to 2025-10-15. `@tailwindcss/typography` plugin added. Middleware updated for public `/blog` path.
-  - **Test fixes**: Fixed floating point precision in calculator and STL parser tests
-  - **Version bump**: 4.13.0 → 4.14.0
-- **Prior session — v4.13.0**: Settings redesign, sticky headers, calculator embed on new quote, customer upload links
-- **Prior**: v4.11.0 (UI polish), v4.7.0 (Multi-Region Tax), v4.6.0 (Inventory), v4.2.0 (AI Quote), v4.1.0 (calendar, bulk, templates), v4.0.0 SaaS, v3.0.0 features
+- **This session — v4.15.0**:
+  - **Mobile nav fix**: Changed landing, blog listing, and blog post pages from `sticky top-0` to `fixed top-0 left-0 right-0` for reliable mobile scrolling. Added top padding to content below.
+  - **Admin seed script**: Created `prisma/seed.ts` — generates 8 demo users, 30 quotes with line items, ~12 jobs, 25 system logs, 5 clients across last 30-45 days. Idempotent (checks for `demo+` prefix emails). Run with `pnpm db:seed`.
+  - **Optional 2FA (TOTP)**: Full implementation:
+    - Prisma schema: `totpSecret`, `totpEnabled`, `totpBackupCodes` on User model
+    - Migration: `0025_user_totp`
+    - 5 API routes: `/api/auth/2fa/{setup,enable,disable,verify,backup-codes}`
+    - Verify page: `/verify-2fa` — 6-digit PIN entry with paste support, backup code fallback
+    - Account page: "Two-Factor Authentication" card with enable/disable/setup/backup code UI
+    - Auth integration: `requiresTwoFactor` flag in JWT token, middleware redirects to `/verify-2fa`
+    - Cookie-based verification: `__2fa_verified` HttpOnly cookie signals completion to middleware
+    - Dependencies: `otpauth`, `qrcode`, `@types/qrcode`
+  - **Upload error handling**: Improved `/api/upload/[token]` with specific error messages for mkdir failure, permission issues, file read errors, and write failures (was generic "Failed to process upload")
+  - **Version bump**: 4.14.0 → 4.15.0
+- **Prior session — v4.14.0**: Admin portal redo (6 sub-components), analytics API, landing calculator demo, shipping costs, blog (20 posts), test fixes
+- **Prior**: v4.13.0 (settings redesign, sticky headers, calculator embed, upload links), v4.11.0 (UI polish), earlier versions
 
 ## In Progress
 
@@ -36,25 +34,28 @@
 
 ## Pending User Requests
 
-1. **Roadmap filter**: Make status counts clickable to filter roadmap items
-2. **Shopify email**: Custom Liquid email template for CRM launch announcement
-3. **Stripe admin portal**: Fix Stripe for subscription collection in admin panel
-4. **Landing page improvements**: User liked 3dprintdesk.com — consider further landing page polish
+1. **Upload error investigation**: User got "Failed to process upload" on production — improved error handling deployed but root cause may be Docker filesystem permissions. Check server logs after deploy.
+2. **Roadmap filter**: Make status counts clickable to filter roadmap items
+3. **Shopify email**: Custom Liquid email template for CRM launch announcement
+4. **Stripe admin portal**: Fix Stripe for subscription collection in admin panel
+5. **Landing page improvements**: User liked 3dprintdesk.com — consider further polish
 
 ## Next Steps
 
 1. Commit and push all changes
-2. Deploy
-3. Test admin portal tabs, analytics charts, blog pages
-4. Address pending user requests
+2. Deploy — migration 0025 will add TOTP fields to User table
+3. Run `pnpm db:seed` on production to populate admin dashboard charts
+4. Check server logs for upload error details after deploy
+5. Test 2FA flow end-to-end (enable, login, disable)
 
 ## Context
 
-- Version: 4.14.0
+- Version: 4.15.0
 - App URL: crm.printforge.com.au
 - Tiers: Free / Pro ($29/mo, $290/yr), 14-day trial; admins always Pro
-- Registration: `waitlistMode` SystemConfig key controls waitlist vs direct signup (default: off = direct)
+- 2FA: TOTP via `otpauth` library, QR via `qrcode`, cookie-based verification gate
 - Upload links: public pages at `/upload/[token]`, files stored at `uploads/quote-requests/{userId}/`
 - Blog: static data in `src/lib/blog-posts.ts`, public at `/blog` and `/blog/[slug]`
 - Admin tabs: Overview, Users, Waitlist, System, Email, Billing
+- Seed script: `prisma/seed.ts` — creates demo data for admin dashboard charts
 - Env vars needed: `ANTHROPIC_API_KEY`, Xero/Stripe env vars on production

@@ -20,6 +20,11 @@ import {
   Lock,
   Check,
   KeyRound,
+  ShieldCheck,
+  ShieldOff,
+  Copy,
+  RefreshCw,
+  Smartphone,
 } from "lucide-react";
 
 interface Profile {
@@ -32,6 +37,7 @@ interface Profile {
   subscriptionTier: string;
   subscriptionStatus: string;
   trialEndsAt: string | null;
+  totpEnabled?: boolean;
 }
 
 function formatDate(dateStr: string): string {
@@ -117,6 +123,17 @@ export function AccountPage() {
   const [passwordSaving, setPasswordSaving] = useState(false);
   const [passwordMsg, setPasswordMsg] = useState<{ type: "success" | "error"; text: string } | null>(null);
 
+  // 2FA state
+  const [twoFaEnabled, setTwoFaEnabled] = useState(false);
+  const [twoFaStep, setTwoFaStep] = useState<"idle" | "setup" | "verify" | "backup" | "disable">("idle");
+  const [twoFaQr, setTwoFaQr] = useState("");
+  const [twoFaSecret, setTwoFaSecret] = useState("");
+  const [twoFaCode, setTwoFaCode] = useState("");
+  const [twoFaPassword, setTwoFaPassword] = useState("");
+  const [twoFaBackupCodes, setTwoFaBackupCodes] = useState<string[]>([]);
+  const [twoFaLoading, setTwoFaLoading] = useState(false);
+  const [twoFaMsg, setTwoFaMsg] = useState<{ type: "success" | "error"; text: string } | null>(null);
+
   const fetchProfile = useCallback(async () => {
     try {
       const res = await fetch("/api/account");
@@ -125,6 +142,7 @@ export function AccountPage() {
         setProfile(data);
         setName(data.name || "");
         setEmail(data.email || "");
+        setTwoFaEnabled(data.totpEnabled ?? false);
       }
     } catch {
       // ignore
@@ -231,6 +249,126 @@ export function AccountPage() {
     } finally {
       setPasswordSaving(false);
     }
+  }
+
+  // 2FA: auto-clear messages
+  useEffect(() => {
+    if (!twoFaMsg || twoFaMsg.type !== "success") return;
+    const t = setTimeout(() => setTwoFaMsg(null), 4000);
+    return () => clearTimeout(t);
+  }, [twoFaMsg]);
+
+  async function handleTwoFaSetup() {
+    setTwoFaLoading(true);
+    setTwoFaMsg(null);
+    try {
+      const res = await fetch("/api/auth/2fa/setup", { method: "POST" });
+      const data = await res.json();
+      if (!res.ok) {
+        setTwoFaMsg({ type: "error", text: data.error || "Failed to generate 2FA secret" });
+        return;
+      }
+      setTwoFaQr(data.qrCode);
+      setTwoFaSecret(data.secret);
+      setTwoFaStep("setup");
+    } catch {
+      setTwoFaMsg({ type: "error", text: "Something went wrong" });
+    } finally {
+      setTwoFaLoading(false);
+    }
+  }
+
+  async function handleTwoFaVerify() {
+    if (twoFaCode.length !== 6) {
+      setTwoFaMsg({ type: "error", text: "Enter a 6-digit code" });
+      return;
+    }
+    setTwoFaLoading(true);
+    setTwoFaMsg(null);
+    try {
+      const res = await fetch("/api/auth/2fa/enable", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ secret: twoFaSecret, code: twoFaCode }),
+      });
+      const data = await res.json();
+      if (!res.ok) {
+        setTwoFaMsg({ type: "error", text: data.error || "Invalid code" });
+        return;
+      }
+      setTwoFaBackupCodes(data.backupCodes);
+      setTwoFaEnabled(true);
+      setTwoFaStep("backup");
+      setTwoFaCode("");
+    } catch {
+      setTwoFaMsg({ type: "error", text: "Something went wrong" });
+    } finally {
+      setTwoFaLoading(false);
+    }
+  }
+
+  async function handleTwoFaDisable() {
+    if (!twoFaPassword || twoFaCode.length !== 6) {
+      setTwoFaMsg({ type: "error", text: "Enter your password and a 6-digit code" });
+      return;
+    }
+    setTwoFaLoading(true);
+    setTwoFaMsg(null);
+    try {
+      const res = await fetch("/api/auth/2fa/disable", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ password: twoFaPassword, code: twoFaCode }),
+      });
+      const data = await res.json();
+      if (!res.ok) {
+        setTwoFaMsg({ type: "error", text: data.error || "Failed to disable 2FA" });
+        return;
+      }
+      setTwoFaEnabled(false);
+      setTwoFaStep("idle");
+      setTwoFaCode("");
+      setTwoFaPassword("");
+      setTwoFaMsg({ type: "success", text: "Two-factor authentication disabled" });
+    } catch {
+      setTwoFaMsg({ type: "error", text: "Something went wrong" });
+    } finally {
+      setTwoFaLoading(false);
+    }
+  }
+
+  async function handleRegenerateBackupCodes() {
+    if (!twoFaPassword) {
+      setTwoFaMsg({ type: "error", text: "Enter your password to regenerate codes" });
+      return;
+    }
+    setTwoFaLoading(true);
+    setTwoFaMsg(null);
+    try {
+      const res = await fetch("/api/auth/2fa/backup-codes", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ password: twoFaPassword }),
+      });
+      const data = await res.json();
+      if (!res.ok) {
+        setTwoFaMsg({ type: "error", text: data.error || "Failed to regenerate codes" });
+        return;
+      }
+      setTwoFaBackupCodes(data.backupCodes);
+      setTwoFaPassword("");
+      setTwoFaMsg({ type: "success", text: "Backup codes regenerated" });
+    } catch {
+      setTwoFaMsg({ type: "error", text: "Something went wrong" });
+    } finally {
+      setTwoFaLoading(false);
+    }
+  }
+
+  function copyBackupCodes() {
+    navigator.clipboard.writeText(twoFaBackupCodes.join("\n")).then(() => {
+      setTwoFaMsg({ type: "success", text: "Backup codes copied to clipboard" });
+    });
   }
 
   if (loading) {
@@ -442,6 +580,231 @@ export function AccountPage() {
           </CardContent>
         </Card>
       </div>
+
+      {/* Two-Factor Authentication */}
+      <Card>
+        <CardHeader>
+          <div className="flex items-center gap-2">
+            <ShieldCheck className="h-4 w-4 text-muted-foreground" />
+            <CardTitle>Two-Factor Authentication</CardTitle>
+            {twoFaEnabled && (
+              <Badge variant="success">Enabled</Badge>
+            )}
+          </div>
+        </CardHeader>
+        <CardContent>
+          {twoFaMsg && (
+            <div className={`mb-4 ${twoFaMsg.type === "success" ? BANNER.success : BANNER.error}`}>
+              {twoFaMsg.type === "success" && <Check className="mr-1.5 inline h-4 w-4" />}
+              {twoFaMsg.text}
+            </div>
+          )}
+
+          {/* Idle — not enabled */}
+          {twoFaStep === "idle" && !twoFaEnabled && (
+            <div className="space-y-4">
+              <p className="text-sm text-muted-foreground">
+                Add an extra layer of security to your account by enabling two-factor authentication
+                with an authenticator app like Google Authenticator or Authy.
+              </p>
+              <Button onClick={handleTwoFaSetup} disabled={twoFaLoading}>
+                {twoFaLoading ? (
+                  <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                ) : (
+                  <Smartphone className="mr-2 h-4 w-4" />
+                )}
+                Enable 2FA
+              </Button>
+            </div>
+          )}
+
+          {/* Idle — enabled */}
+          {twoFaStep === "idle" && twoFaEnabled && (
+            <div className="space-y-4">
+              <p className="text-sm text-muted-foreground">
+                Two-factor authentication is active. You&apos;ll be asked for a code from your
+                authenticator app when you sign in.
+              </p>
+              <div className="flex flex-wrap gap-3">
+                <Button
+                  variant="secondary"
+                  onClick={() => { setTwoFaStep("disable"); setTwoFaCode(""); setTwoFaPassword(""); }}
+                >
+                  <ShieldOff className="mr-2 h-4 w-4" />
+                  Disable 2FA
+                </Button>
+                <Button
+                  variant="secondary"
+                  onClick={() => { setTwoFaStep("backup"); setTwoFaPassword(""); setTwoFaBackupCodes([]); }}
+                >
+                  <RefreshCw className="mr-2 h-4 w-4" />
+                  Regenerate Backup Codes
+                </Button>
+              </div>
+            </div>
+          )}
+
+          {/* Setup — show QR code */}
+          {twoFaStep === "setup" && (
+            <div className="space-y-4">
+              <p className="text-sm text-muted-foreground">
+                Scan this QR code with your authenticator app, then enter the 6-digit code below to verify.
+              </p>
+              <div className="flex justify-center rounded-lg border border-border bg-white p-4">
+                {twoFaQr && (
+                  <img src={twoFaQr} alt="2FA QR Code" className="h-48 w-48" />
+                )}
+              </div>
+              <div className="rounded-lg border border-border bg-muted/50 p-3">
+                <p className="mb-1 text-xs font-medium text-muted-foreground">
+                  Can&apos;t scan? Enter this code manually:
+                </p>
+                <code className="text-sm font-mono tracking-wider text-foreground break-all">
+                  {twoFaSecret}
+                </code>
+              </div>
+              <div className="flex items-end gap-3">
+                <Input
+                  label="Verification code"
+                  value={twoFaCode}
+                  onChange={(e) => setTwoFaCode(e.target.value.replace(/\D/g, "").slice(0, 6))}
+                  placeholder="000000"
+                  className="max-w-[180px] font-mono text-lg tracking-[0.3em]"
+                  autoComplete="one-time-code"
+                />
+                <Button onClick={handleTwoFaVerify} disabled={twoFaLoading || twoFaCode.length !== 6}>
+                  {twoFaLoading ? (
+                    <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                  ) : (
+                    <Check className="mr-2 h-4 w-4" />
+                  )}
+                  Verify &amp; Enable
+                </Button>
+              </div>
+              <button
+                type="button"
+                className="text-sm text-muted-foreground hover:text-foreground"
+                onClick={() => { setTwoFaStep("idle"); setTwoFaCode(""); }}
+              >
+                Cancel
+              </button>
+            </div>
+          )}
+
+          {/* Backup codes — shown after enable or regenerate */}
+          {twoFaStep === "backup" && (
+            <div className="space-y-4">
+              {twoFaBackupCodes.length > 0 ? (
+                <>
+                  <p className="text-sm text-muted-foreground">
+                    Save these backup codes in a safe place. Each code can only be used once.
+                    If you lose access to your authenticator app, you can use a backup code to sign in.
+                  </p>
+                  <div className="rounded-lg border border-border bg-muted/50 p-4">
+                    <div className="grid grid-cols-2 gap-2 font-mono text-sm">
+                      {twoFaBackupCodes.map((code, i) => (
+                        <div key={i} className="rounded bg-background px-3 py-1.5 text-center">
+                          {code}
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                  <div className="flex flex-wrap gap-3">
+                    <Button variant="secondary" onClick={copyBackupCodes}>
+                      <Copy className="mr-2 h-4 w-4" />
+                      Copy codes
+                    </Button>
+                    <Button onClick={() => { setTwoFaStep("idle"); setTwoFaBackupCodes([]); }}>
+                      Done
+                    </Button>
+                  </div>
+                </>
+              ) : (
+                <>
+                  <p className="text-sm text-muted-foreground">
+                    Enter your password to generate new backup codes. This will invalidate any
+                    previously generated codes.
+                  </p>
+                  <div className="flex items-end gap-3">
+                    <Input
+                      label="Password"
+                      type="password"
+                      value={twoFaPassword}
+                      onChange={(e) => setTwoFaPassword(e.target.value)}
+                      placeholder="Enter your password"
+                      className="max-w-[280px]"
+                      autoComplete="current-password"
+                    />
+                    <Button onClick={handleRegenerateBackupCodes} disabled={twoFaLoading || !twoFaPassword}>
+                      {twoFaLoading ? (
+                        <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                      ) : (
+                        <RefreshCw className="mr-2 h-4 w-4" />
+                      )}
+                      Generate
+                    </Button>
+                  </div>
+                  <button
+                    type="button"
+                    className="text-sm text-muted-foreground hover:text-foreground"
+                    onClick={() => { setTwoFaStep("idle"); setTwoFaPassword(""); }}
+                  >
+                    Cancel
+                  </button>
+                </>
+              )}
+            </div>
+          )}
+
+          {/* Disable flow */}
+          {twoFaStep === "disable" && (
+            <div className="space-y-4">
+              <p className="text-sm text-muted-foreground">
+                To disable two-factor authentication, enter your password and a code from your
+                authenticator app.
+              </p>
+              <div className="grid gap-4 sm:grid-cols-2">
+                <Input
+                  label="Password"
+                  type="password"
+                  value={twoFaPassword}
+                  onChange={(e) => setTwoFaPassword(e.target.value)}
+                  placeholder="Enter your password"
+                  autoComplete="current-password"
+                />
+                <Input
+                  label="Authenticator code"
+                  value={twoFaCode}
+                  onChange={(e) => setTwoFaCode(e.target.value.replace(/\D/g, "").slice(0, 6))}
+                  placeholder="000000"
+                  className="font-mono text-lg tracking-[0.3em]"
+                  autoComplete="one-time-code"
+                />
+              </div>
+              <div className="flex gap-3">
+                <Button
+                  variant="destructive"
+                  onClick={handleTwoFaDisable}
+                  disabled={twoFaLoading || !twoFaPassword || twoFaCode.length !== 6}
+                >
+                  {twoFaLoading ? (
+                    <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                  ) : (
+                    <ShieldOff className="mr-2 h-4 w-4" />
+                  )}
+                  Disable 2FA
+                </Button>
+                <Button
+                  variant="secondary"
+                  onClick={() => { setTwoFaStep("idle"); setTwoFaCode(""); setTwoFaPassword(""); }}
+                >
+                  Cancel
+                </Button>
+              </div>
+            </div>
+          )}
+        </CardContent>
+      </Card>
 
       {/* Subscription info */}
       <Card>

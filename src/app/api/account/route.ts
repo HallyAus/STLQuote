@@ -21,6 +21,7 @@ export async function GET() {
         subscriptionTier: true,
         subscriptionStatus: true,
         trialEndsAt: true,
+        totpEnabled: true,
       },
     });
 

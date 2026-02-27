@@ -70,6 +70,8 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
           role: user.role,
           mustChangePassword: user.mustChangePassword,
           createdAt: user.createdAt,
+          requiresTwoFactor: user.totpEnabled ?? false,
+          totpEnabled: user.totpEnabled ?? false,
         };
       },
     }),

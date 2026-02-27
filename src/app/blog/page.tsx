@@ -18,7 +18,7 @@ export default function BlogPage() {
   return (
     <div className="min-h-screen bg-background text-foreground">
       {/* Nav — same as landing page */}
-      <nav className="sticky top-0 z-50 border-b border-border/50 bg-background/80 backdrop-blur-lg">
+      <nav className="fixed top-0 left-0 right-0 z-50 border-b border-border/50 bg-background/80 backdrop-blur-lg">
         <div className="mx-auto flex max-w-6xl items-center justify-between px-6 py-3">
           <Link href="/" className="flex items-center gap-3">
             <div className="flex h-9 w-9 items-center justify-center rounded-lg bg-primary shadow-sm">
@@ -58,7 +58,7 @@ export default function BlogPage() {
       </nav>
 
       {/* Hero */}
-      <section className="border-b border-border/50 bg-card/30">
+      <section className="border-b border-border/50 bg-card/30 pt-[57px]">
         <div className="mx-auto max-w-6xl px-6 py-16 text-center">
           <h1 className="text-4xl font-extrabold tracking-tight sm:text-5xl">
             The Printforge Blog

@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
-import { writeFile, mkdir } from "fs/promises";
+import { writeFile, mkdir, access } from "fs/promises";
+import { constants } from "fs";
 import path from "path";
 import crypto from "crypto";
 
@@ -126,11 +127,49 @@ export async function POST(
     const safeFilename = `${timestamp}-${uuid}.${ext}`;
     const relDir = `uploads/quote-requests/${link.userId}`;
     const absoluteDir = path.join(process.cwd(), relDir);
-    await mkdir(absoluteDir, { recursive: true });
+
+    try {
+      await mkdir(absoluteDir, { recursive: true });
+    } catch (mkdirErr) {
+      console.error("Failed to create upload directory:", absoluteDir, mkdirErr);
+      return NextResponse.json(
+        { error: "Server storage error — unable to create upload directory" },
+        { status: 500 }
+      );
+    }
+
+    // Verify directory is writable
+    try {
+      await access(absoluteDir, constants.W_OK);
+    } catch {
+      console.error("Upload directory not writable:", absoluteDir);
+      return NextResponse.json(
+        { error: "Server storage error — upload directory not writable" },
+        { status: 500 }
+      );
+    }
 
     const absolutePath = path.join(absoluteDir, safeFilename);
-    const buffer = Buffer.from(await file.arrayBuffer());
-    await writeFile(absolutePath, buffer);
+    let buffer: Buffer;
+    try {
+      buffer = Buffer.from(await file.arrayBuffer());
+    } catch (bufErr) {
+      console.error("Failed to read file buffer:", bufErr);
+      return NextResponse.json(
+        { error: "Failed to read uploaded file" },
+        { status: 400 }
+      );
+    }
+
+    try {
+      await writeFile(absolutePath, buffer);
+    } catch (writeErr) {
+      console.error("Failed to write file:", absolutePath, writeErr);
+      return NextResponse.json(
+        { error: "Server storage error — unable to save file" },
+        { status: 500 }
+      );
+    }
 
     // Create quote request record
     const quoteRequest = await prisma.quoteRequest.create({

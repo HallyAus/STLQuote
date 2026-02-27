@@ -28,6 +28,8 @@ export default auth((req) => {
     "/terms",
     "/privacy",
     "/blog",
+    "/verify-2fa",
+    "/api/auth/2fa/verify",
   ];
   const isPublic = publicPaths.some((p) => pathname.startsWith(p));
 
@@ -61,6 +63,21 @@ export default auth((req) => {
     const allowed = ["/change-password", "/api/auth/change-password", "/api/auth"];
     if (!allowed.some((p) => pathname.startsWith(p))) {
       return NextResponse.redirect(new URL("/change-password", req.url));
+    }
+  }
+
+  // Two-factor authentication gate
+  const requiresTwoFactor = (req.auth as any)?.token?.requiresTwoFactor;
+  if (requiresTwoFactor) {
+    const twoFaVerifiedCookie = req.cookies.get("__2fa_verified")?.value;
+    const userId = req.auth?.user?.id;
+    const isVerified = twoFaVerifiedCookie?.startsWith(`${userId}:`);
+
+    if (!isVerified) {
+      const twoFaAllowed = ["/verify-2fa", "/api/auth/2fa/verify", "/api/auth"];
+      if (!twoFaAllowed.some((p) => pathname.startsWith(p))) {
+        return NextResponse.redirect(new URL("/verify-2fa", req.url));
+      }
     }
   }
 

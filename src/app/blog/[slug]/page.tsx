@@ -44,7 +44,7 @@ export default async function BlogPostPage({ params }: PageProps) {
   return (
     <div className="min-h-screen bg-background text-foreground">
       {/* Nav */}
-      <nav className="sticky top-0 z-50 border-b border-border/50 bg-background/80 backdrop-blur-lg">
+      <nav className="fixed top-0 left-0 right-0 z-50 border-b border-border/50 bg-background/80 backdrop-blur-lg">
         <div className="mx-auto flex max-w-6xl items-center justify-between px-6 py-3">
           <Link href="/" className="flex items-center gap-3">
             <div className="flex h-9 w-9 items-center justify-center rounded-lg bg-primary shadow-sm">
@@ -81,7 +81,7 @@ export default async function BlogPostPage({ params }: PageProps) {
       </nav>
 
       {/* Breadcrumb */}
-      <div className="mx-auto max-w-3xl px-6 pt-8">
+      <div className="mx-auto max-w-3xl px-6 pt-[calc(57px+2rem)]">
         <Link
           href="/blog"
           className="inline-flex items-center gap-1.5 text-sm text-muted-foreground transition-colors hover:text-foreground"

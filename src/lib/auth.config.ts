@@ -14,6 +14,8 @@ declare module "next-auth" {
       subscriptionStatus: string;
       trialEndsAt: string | null;
       createdAt: string | null;
+      requiresTwoFactor?: boolean;
+      totpEnabled?: boolean;
     };
   }
 
@@ -24,6 +26,8 @@ declare module "next-auth" {
     subscriptionStatus?: string;
     trialEndsAt?: Date | null;
     createdAt?: Date | null;
+    requiresTwoFactor?: boolean;
+    totpEnabled?: boolean;
   }
 }
 
@@ -49,6 +53,8 @@ export const authConfig = {
         token.subscriptionStatus = (user as any).subscriptionStatus ?? "trialing";
         token.trialEndsAt = (user as any).trialEndsAt?.toISOString() ?? null;
         token.createdAt = (user as any).createdAt?.toISOString() ?? null;
+        token.requiresTwoFactor = (user as any).requiresTwoFactor ?? false;
+        token.totpEnabled = (user as any).totpEnabled ?? false;
         token.lastTouched = Date.now();
       }
 
@@ -88,6 +94,8 @@ export const authConfig = {
       (session.user as any).trialEndsAt = (token.trialEndsAt as string) ?? null;
       (session.user as any).createdAt = (token.createdAt as string) ?? null;
       (session.user as any).mustChangePassword = token.mustChangePassword ?? false;
+      (session.user as any).requiresTwoFactor = token.requiresTwoFactor ?? false;
+      (session.user as any).totpEnabled = token.totpEnabled ?? false;
       return session;
     },
   },

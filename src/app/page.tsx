@@ -351,7 +351,7 @@ export default function LandingPage() {
       {/* ----------------------------------------------------------------- */}
       {/* Nav */}
       {/* ----------------------------------------------------------------- */}
-      <nav className="sticky top-0 z-50 border-b border-border/50 bg-background/80 backdrop-blur-lg">
+      <nav className="fixed top-0 left-0 right-0 z-50 border-b border-border/50 bg-background/80 backdrop-blur-lg">
         <div className="mx-auto flex max-w-6xl items-center justify-between px-6 py-3">
           <div className="flex items-center gap-3">
             <div className="flex h-9 w-9 items-center justify-center rounded-lg bg-primary shadow-sm">
@@ -399,7 +399,7 @@ export default function LandingPage() {
       {/* ----------------------------------------------------------------- */}
       {/* Hero */}
       {/* ----------------------------------------------------------------- */}
-      <section className="relative overflow-hidden">
+      <section className="relative overflow-hidden pt-[57px]">
         {/* Gradient background */}
         <div className="pointer-events-none absolute inset-0 -z-10">
           <div className="absolute -top-48 left-1/2 h-[600px] w-[900px] -translate-x-1/2 rounded-full bg-primary/8 blur-3xl" />
