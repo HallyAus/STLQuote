@@ -34,7 +34,7 @@ export function IntegrationsPage() {
   return (
     <div className="space-y-6">
       {/* Header */}
-      <div>
+      <div className="sticky top-0 z-10 -mx-4 md:-mx-6 px-4 md:px-6 pb-4 bg-background">
         <h2 className="text-lg font-semibold text-foreground">Integrations</h2>
         <p className="text-sm text-muted-foreground">
           Connect your favourite tools

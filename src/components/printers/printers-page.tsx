@@ -262,7 +262,7 @@ export function PrintersPage() {
   return (
     <div className="space-y-6">
       {/* Header */}
-      <div className="flex items-center justify-between">
+      <div className="sticky top-0 z-10 -mx-4 md:-mx-6 px-4 md:px-6 pb-4 bg-background flex items-center justify-between">
         <div>
           <h2 className="text-lg font-semibold text-foreground">Your Printers</h2>
           <p className="text-sm text-muted-foreground">
