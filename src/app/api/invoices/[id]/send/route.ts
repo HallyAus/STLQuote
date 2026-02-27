@@ -8,6 +8,7 @@ import { renderToBuffer, type DocumentProps } from "@react-pdf/renderer";
 import { InvoiceDocument } from "@/lib/pdf/invoice-document";
 import { pushInvoiceToXero, pushContactToXero } from "@/lib/xero";
 import { log } from "@/lib/logger";
+import { getTaxDefaults, type TaxRegion } from "@/lib/tax-regions";
 import React, { type ReactElement, type JSXElementConstructor } from "react";
 
 type RouteContext = { params: Promise<{ id: string }> };
@@ -75,6 +76,9 @@ export async function POST(
         bankBsb: true,
         bankAccountNumber: true,
         bankAccountName: true,
+        taxRegion: true,
+        taxLabel: true,
+        taxIdNumber: true,
       },
     });
 
@@ -90,7 +94,11 @@ export async function POST(
         currency: invoice.currency,
         subtotal: invoice.subtotal,
         taxPct: invoice.taxPct,
+        taxLabel: invoice.taxLabel || settings?.taxLabel || "GST",
         tax: invoice.tax,
+        taxInclusive: invoice.taxInclusive || false,
+        invoiceTitle: getTaxDefaults((settings?.taxRegion || "AU") as TaxRegion).invoiceTitle,
+        taxIdLabel: getTaxDefaults((settings?.taxRegion || "AU") as TaxRegion).taxIdLabel,
         total: invoice.total,
         status: invoice.status,
         notes: invoice.notes,

@@ -19,11 +19,19 @@ export async function POST(
     const quote = await prisma.quote.findUnique({
       where: { portalToken: token },
       include: {
-        client: { select: { name: true } },
+        client: { select: { name: true, email: true, phone: true, company: true } },
+        lineItems: { select: { description: true, lineTotal: true, quantity: true } },
         user: {
           select: {
             email: true,
-            settings: { select: { businessName: true } },
+            settings: {
+              select: {
+                businessName: true,
+                businessEmail: true,
+                businessPhone: true,
+                businessAddress: true,
+              },
+            },
           },
         },
       },
@@ -74,21 +82,97 @@ export async function POST(
       },
     }).catch((err) => console.error("Failed to log quote event:", err));
 
-    // Notify quote owner
+    const businessName = quote.user?.settings?.businessName || "Printforge";
+    const businessEmail = quote.user?.settings?.businessEmail || quote.user?.email;
+    const businessPhone = quote.user?.settings?.businessPhone;
+    const clientName = quote.client?.name || "A client";
+    const actionText = parsed.data.action === "accept" ? "accepted" : "rejected";
+    const appUrl = process.env.NEXT_PUBLIC_APP_URL || "http://localhost:3000";
+
+    // Enhanced owner notification
     if (quote.user?.email) {
-      const clientName = quote.client?.name || "A client";
-      const actionText = parsed.data.action === "accept" ? "accepted" : "rejected";
+      const lineItemSummary = quote.lineItems
+        .map((li) => `${li.description} (x${li.quantity}) — $${li.lineTotal.toFixed(2)}`)
+        .join("<br />");
+
       try {
         await sendEmail({
           to: quote.user.email,
-          subject: `Quote ${quote.quoteNumber} ${actionText}`,
+          subject: `Quote ${quote.quoteNumber} ${actionText} by ${clientName}`,
           type: "notification",
           html: `
             <div style="font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; max-width: 600px; margin: 0 auto;">
-              <h2 style="color: #171717;">Quote ${quote.quoteNumber} ${actionText}</h2>
-              <p><strong>${clientName}</strong> has ${actionText} quote <strong>${quote.quoteNumber}</strong> ($${quote.total.toFixed(2)} ${quote.currency}).</p>
-              <hr style="border: none; border-top: 1px solid #e5e5e5; margin: 24px 0;" />
-              <p style="color: #999; font-size: 12px;">Printforge Quote Notification</p>
+              <div style="background: #2563eb; padding: 20px 24px; border-radius: 8px 8px 0 0;">
+                <h2 style="color: white; margin: 0; font-size: 18px;">${businessName}</h2>
+              </div>
+              <div style="border: 1px solid #e5e5e5; border-top: none; border-radius: 0 0 8px 8px; padding: 24px;">
+                <h3 style="color: #171717; margin: 0 0 8px;">Quote ${quote.quoteNumber} ${actionText}</h3>
+                <p style="color: #555;"><strong>${clientName}</strong> has ${actionText} this quote.</p>
+
+                <div style="background: #f5f5f5; border-radius: 8px; padding: 16px; margin: 16px 0;">
+                  <p style="margin: 0 0 4px; font-size: 13px; color: #666;">Total</p>
+                  <p style="margin: 0; font-size: 22px; font-weight: bold; color: #171717;">$${quote.total.toFixed(2)} ${quote.currency}</p>
+                </div>
+
+                ${quote.lineItems.length > 0 ? `
+                <div style="margin: 16px 0;">
+                  <p style="font-size: 12px; font-weight: 600; color: #888; text-transform: uppercase; margin-bottom: 8px;">Line Items</p>
+                  <p style="font-size: 13px; color: #555; line-height: 1.6;">${lineItemSummary}</p>
+                </div>` : ""}
+
+                <div style="margin: 16px 0; padding: 12px; background: #f9fafb; border-radius: 6px;">
+                  <p style="font-size: 12px; font-weight: 600; color: #888; text-transform: uppercase; margin: 0 0 6px;">Client Contact</p>
+                  <p style="font-size: 13px; color: #333; margin: 0;">${clientName}${quote.client?.company ? ` — ${quote.client.company}` : ""}</p>
+                  ${quote.client?.email ? `<p style="font-size: 13px; color: #555; margin: 2px 0;">${quote.client.email}</p>` : ""}
+                  ${quote.client?.phone ? `<p style="font-size: 13px; color: #555; margin: 2px 0;">${quote.client.phone}</p>` : ""}
+                </div>
+
+                <p style="margin: 24px 0 16px;">
+                  <a href="${appUrl}/quotes/${quote.id}" style="background-color: #2563eb; color: white; padding: 12px 24px; border-radius: 6px; text-decoration: none; font-weight: 600;">
+                    View Quote
+                  </a>
+                </p>
+
+                ${parsed.data.action === "reject" ? `<p style="color: #666; font-size: 13px;">Consider revising and resending the quote — clients often reconsider with an adjusted offer.</p>` : ""}
+              </div>
+              <p style="color: #999; font-size: 12px; text-align: center; margin-top: 16px;">${businessName} — Powered by Printforge</p>
+            </div>
+          `,
+        });
+      } catch {
+        // Non-blocking
+      }
+    }
+
+    // Win-back email to client on rejection
+    if (parsed.data.action === "reject" && quote.client?.email) {
+      const contactLines = [
+        businessEmail ? `Email: ${businessEmail}` : null,
+        businessPhone ? `Phone: ${businessPhone}` : null,
+      ].filter(Boolean).join(" | ");
+
+      try {
+        await sendEmail({
+          to: quote.client.email,
+          subject: `Thank you for considering ${businessName}`,
+          type: "quote",
+          html: `
+            <div style="font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; max-width: 600px; margin: 0 auto;">
+              <div style="background: #2563eb; padding: 20px 24px; border-radius: 8px 8px 0 0;">
+                <h2 style="color: white; margin: 0; font-size: 18px;">${businessName}</h2>
+              </div>
+              <div style="border: 1px solid #e5e5e5; border-top: none; border-radius: 0 0 8px 8px; padding: 24px;">
+                <p style="color: #333; font-size: 15px;">Hi ${clientName},</p>
+                <p style="color: #555;">Thank you for taking the time to review our quote <strong>${quote.quoteNumber}</strong>. We understand it wasn't the right fit this time.</p>
+                <p style="color: #555;">If anything changes or you'd like us to revise the quote, we'd love the chance to work together. Just reply to this email or get in touch — no pressure at all.</p>
+                ${contactLines ? `
+                <div style="background: #f9fafb; border-radius: 6px; padding: 14px; margin: 20px 0;">
+                  <p style="font-size: 12px; font-weight: 600; color: #888; text-transform: uppercase; margin: 0 0 6px;">Get in Touch</p>
+                  <p style="font-size: 13px; color: #555; margin: 0;">${contactLines}</p>
+                </div>` : ""}
+                <p style="color: #555;">All the best,<br /><strong>${businessName}</strong></p>
+              </div>
+              <p style="color: #999; font-size: 12px; text-align: center; margin-top: 16px;">${businessName} — Powered by Printforge</p>
             </div>
           `,
         });

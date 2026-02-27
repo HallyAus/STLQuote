@@ -74,13 +74,13 @@ export async function POST(
         ) * 100
       ) / 100;
 
-      const total = Math.round(
-        subtotal * (1 + quote.markupPct / 100) * 100
-      ) / 100;
+      const subtotalWithMarkup = Math.round(subtotal * (1 + quote.markupPct / 100) * 100) / 100;
+      const tax = Math.round(subtotalWithMarkup * quote.taxPct / 100 * 100) / 100;
+      const total = quote.taxInclusive ? subtotalWithMarkup : Math.round((subtotalWithMarkup + tax) * 100) / 100;
 
       await tx.quote.update({
         where: { id: quoteId },
-        data: { subtotal, total },
+        data: { subtotal, tax, total },
       });
 
       await tx.quoteEvent.create({

@@ -14,6 +14,10 @@ const updateClientSchema = z.object({
   tags: z.array(z.string()).optional(),
   notes: z.string().optional().nullable(),
   paymentTermsDays: z.number().int().min(0).optional(),
+  country: z.string().optional().nullable(),
+  stateProvince: z.string().optional().nullable(),
+  taxExempt: z.boolean().optional(),
+  taxIdNumber: z.string().optional().nullable(),
 });
 
 export async function GET(
@@ -105,6 +109,9 @@ export async function PUT(
     if (data.tags !== undefined) {
       data.tags = (data.tags as string[]).filter((t) => t.trim().length > 0);
     }
+    if (data.country !== undefined) data.country = (data.country as string)?.trim() || null;
+    if (data.stateProvince !== undefined) data.stateProvince = (data.stateProvince as string)?.trim() || null;
+    if (data.taxIdNumber !== undefined) data.taxIdNumber = (data.taxIdNumber as string)?.trim() || null;
 
     const client = await prisma.client.update({
       where: { id },

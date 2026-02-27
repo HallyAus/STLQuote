@@ -14,6 +14,10 @@ const createClientSchema = z.object({
   tags: z.array(z.string()).default([]),
   notes: z.string().optional().nullable(),
   paymentTermsDays: z.number().int().min(0).default(14),
+  country: z.string().optional().nullable(),
+  stateProvince: z.string().optional().nullable(),
+  taxExempt: z.boolean().default(false),
+  taxIdNumber: z.string().optional().nullable(),
 });
 
 export async function GET() {
@@ -67,6 +71,10 @@ export async function POST(request: NextRequest) {
         : (parsed.data.shippingAddress?.trim() || null),
       notes: parsed.data.notes?.trim() || null,
       tags: parsed.data.tags.filter((t) => t.trim().length > 0),
+      country: parsed.data.country?.trim() || null,
+      stateProvince: parsed.data.stateProvince?.trim() || null,
+      taxExempt: parsed.data.taxExempt,
+      taxIdNumber: parsed.data.taxIdNumber?.trim() || null,
     };
 
     const client = await prisma.client.create({

@@ -3,6 +3,7 @@ import { prisma } from "@/lib/prisma";
 import { requireFeature } from "@/lib/auth-helpers";
 import { renderToBuffer, type DocumentProps } from "@react-pdf/renderer";
 import { InvoiceDocument } from "@/lib/pdf/invoice-document";
+import { getTaxDefaults, type TaxRegion } from "@/lib/tax-regions";
 import React, { type ReactElement, type JSXElementConstructor } from "react";
 
 type RouteContext = { params: Promise<{ id: string }> };
@@ -49,8 +50,12 @@ export async function GET(
         bankBsb: true,
         bankAccountNumber: true,
         bankAccountName: true,
+        taxRegion: true,
+        taxLabel: true,
       },
     });
+
+    const regionDefaults = getTaxDefaults((settings?.taxRegion || "AU") as TaxRegion);
 
     const pdfData = {
       invoiceNumber: invoice.invoiceNumber,
@@ -59,7 +64,11 @@ export async function GET(
       currency: invoice.currency,
       subtotal: invoice.subtotal,
       taxPct: invoice.taxPct,
+      taxLabel: invoice.taxLabel || settings?.taxLabel || "GST",
       tax: invoice.tax,
+      taxInclusive: invoice.taxInclusive || false,
+      invoiceTitle: regionDefaults.invoiceTitle,
+      taxIdLabel: regionDefaults.taxIdLabel,
       total: invoice.total,
       status: invoice.status,
       notes: invoice.notes,

@@ -19,6 +19,8 @@ const createInvoiceSchema = z.object({
   notes: z.string().optional().nullable(),
   terms: z.string().optional().nullable(),
   taxPct: z.number().min(0).default(10),
+  taxLabel: z.string().default("GST"),
+  taxInclusive: z.boolean().default(false),
   dueDate: z.string().datetime().optional().nullable(),
   currency: z.string().default("AUD"),
   lineItems: z.array(invoiceLineItemSchema).default([]),
@@ -166,7 +168,9 @@ export async function POST(request: NextRequest) {
       lineItems.reduce((sum, item) => sum + item.lineTotal, 0)
     );
     const tax = roundCurrency(subtotal * invoiceData.taxPct / 100);
-    const total = roundCurrency(subtotal + tax);
+    const total = invoiceData.taxInclusive
+      ? subtotal
+      : roundCurrency(subtotal + tax);
 
     const invoiceNumber = await generateInvoiceNumber(user.id);
 

@@ -3,6 +3,7 @@ import { prisma } from "@/lib/prisma";
 import { getSessionUser } from "@/lib/auth-helpers";
 import { renderToBuffer, type DocumentProps } from "@react-pdf/renderer";
 import { QuoteDocument } from "@/lib/pdf/quote-document";
+import { getTaxDefaults, type TaxRegion } from "@/lib/tax-regions";
 import React, { type ReactElement, type JSXElementConstructor } from "react";
 
 type RouteContext = { params: Promise<{ id: string }> };
@@ -46,8 +47,12 @@ export async function GET(
         businessPhone: true,
         businessEmail: true,
         businessLogoUrl: true,
+        taxRegion: true,
+        taxLabel: true,
       },
     });
+
+    const regionDefaults = getTaxDefaults((settings?.taxRegion || "AU") as TaxRegion);
 
     const pdfData = {
       quoteNumber: quote.quoteNumber,
@@ -56,6 +61,11 @@ export async function GET(
       currency: quote.currency,
       subtotal: quote.subtotal,
       markupPct: quote.markupPct,
+      taxPct: quote.taxPct || 0,
+      taxLabel: quote.taxLabel || settings?.taxLabel || "GST",
+      tax: quote.tax || 0,
+      taxInclusive: quote.taxInclusive || false,
+      taxIdLabel: regionDefaults.taxIdLabel,
       total: quote.total,
       notes: quote.notes,
       terms: quote.terms,

@@ -13,6 +13,7 @@ import { Dialog, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui
 import { TagInput } from "@/components/ui/tag-input";
 import { tagColour, BANNER } from "@/lib/status-colours";
 import { Download } from "lucide-react";
+import { COUNTRY_OPTIONS } from "@/lib/tax-regions";
 
 // ---------- Types ----------
 
@@ -28,6 +29,10 @@ interface Client {
   tags: string[];
   notes: string | null;
   paymentTermsDays: number;
+  country: string | null;
+  stateProvince: string | null;
+  taxExempt: boolean;
+  taxIdNumber: string | null;
   createdAt: string;
   updatedAt: string;
   _count: { quotes: number };
@@ -44,6 +49,10 @@ interface ClientFormData {
   tags: string[];
   notes: string;
   paymentTermsDays: number;
+  country: string;
+  stateProvince: string;
+  taxExempt: boolean;
+  taxIdNumber: string;
 }
 
 const PAYMENT_TERMS_OPTIONS = [
@@ -70,6 +79,10 @@ const emptyForm: ClientFormData = {
   tags: [],
   notes: "",
   paymentTermsDays: 14,
+  country: "",
+  stateProvince: "",
+  taxExempt: false,
+  taxIdNumber: "",
 };
 
 const SUGGESTED_TAGS = ["Tradie", "EV Owner", "Maker", "Commercial"];
@@ -88,6 +101,10 @@ function clientToFormData(client: Client): ClientFormData {
     tags: [...client.tags],
     notes: client.notes ?? "",
     paymentTermsDays: client.paymentTermsDays ?? 14,
+    country: client.country ?? "",
+    stateProvince: client.stateProvince ?? "",
+    taxExempt: client.taxExempt ?? false,
+    taxIdNumber: client.taxIdNumber ?? "",
   };
 }
 
@@ -105,6 +122,10 @@ function formDataToPayload(form: ClientFormData) {
     tags: form.tags.map((t) => t.trim()).filter((t) => t.length > 0),
     notes: form.notes.trim() || null,
     paymentTermsDays: form.paymentTermsDays,
+    country: form.country.trim() || null,
+    stateProvince: form.stateProvince.trim() || null,
+    taxExempt: form.taxExempt,
+    taxIdNumber: form.taxIdNumber.trim() || null,
   };
 }
 
@@ -590,6 +611,45 @@ function ClientModal({
             label: opt.label,
           }))}
         />
+
+        {/* Country */}
+        <Select
+          label="Country"
+          value={form.country}
+          onChange={(e) => onFieldChange("country", e.target.value)}
+          options={COUNTRY_OPTIONS}
+        />
+
+        {/* State / Province */}
+        {form.country && (
+          <Input
+            label="State / Province"
+            value={form.stateProvince}
+            onChange={(e) => onFieldChange("stateProvince", e.target.value)}
+            placeholder="e.g. NSW, CA, ON"
+          />
+        )}
+
+        {/* Tax Exempt */}
+        <label className="flex items-center gap-2 cursor-pointer">
+          <input
+            type="checkbox"
+            checked={form.taxExempt}
+            onChange={(e) => onFieldChange("taxExempt", e.target.checked)}
+            className="h-4 w-4 rounded border-input accent-primary"
+          />
+          <span className="text-sm text-foreground">Tax exempt</span>
+        </label>
+
+        {/* Client Tax ID */}
+        {form.taxExempt && (
+          <Input
+            label="Tax ID Number"
+            value={form.taxIdNumber}
+            onChange={(e) => onFieldChange("taxIdNumber", e.target.value)}
+            placeholder="Client's ABN/VAT/EIN"
+          />
+        )}
 
         {/* Notes */}
         <Textarea

@@ -43,6 +43,14 @@ const updateSettingsSchema = z.object({
   bankAccountName: z.string().nullable().optional(),
   quoteTermsText: z.string().nullable().optional(),
   batchPricingTiers: z.string().nullable().optional(),
+  // Tax & Region
+  taxRegion: z.enum(["AU", "EU", "UK", "US", "CA"]).optional(),
+  taxSubRegion: z.string().nullable().optional(),
+  defaultTaxPct: z.number().min(0).optional(),
+  taxLabel: z.string().min(1).optional(),
+  taxIdNumber: z.string().nullable().optional(),
+  taxInclusive: z.boolean().optional(),
+  showTaxOnQuotes: z.boolean().optional(),
 });
 
 export async function GET() {

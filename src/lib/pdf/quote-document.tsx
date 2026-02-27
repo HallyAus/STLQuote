@@ -318,6 +318,11 @@ export interface QuotePDFData {
   currency: string;
   subtotal: number;
   markupPct: number;
+  taxPct?: number;
+  taxLabel?: string;
+  tax?: number;
+  taxInclusive?: boolean;
+  taxIdLabel?: string;
   total: number;
   notes: string | null;
   terms: string | null;
@@ -375,7 +380,7 @@ export function QuoteDocument({ data }: { data: QuotePDFData }) {
               <View style={s.businessDetails}>
                 {biz.phone && <Text style={s.businessLine}>{biz.phone}</Text>}
                 {biz.email && <Text style={s.businessLine}>{biz.email}</Text>}
-                {biz.abn && <Text style={s.businessLine}>ABN {biz.abn}</Text>}
+                {biz.abn && <Text style={s.businessLine}>{data.taxIdLabel || "ABN"} {biz.abn}</Text>}
               </View>
             </View>
             <View style={s.headerRight}>
@@ -464,8 +469,20 @@ export function QuoteDocument({ data }: { data: QuotePDFData }) {
                 <Text style={s.totalsLabel}>Subtotal</Text>
                 <Text style={s.totalsValue}>{fmt(data.subtotal, cur)}</Text>
               </View>
+              {(data.taxPct ?? 0) > 0 && (data.tax ?? 0) > 0 && (
+                <View style={s.totalsRow}>
+                  <Text style={s.totalsLabel}>
+                    {data.taxLabel || "GST"} ({data.taxPct}%){data.taxInclusive ? " (incl.)" : ""}
+                  </Text>
+                  <Text style={s.totalsValue}>{fmt(data.tax ?? 0, cur)}</Text>
+                </View>
+              )}
               <View style={s.totalFinalRow}>
-                <Text style={s.totalFinalLabel}>Total Due</Text>
+                <Text style={s.totalFinalLabel}>
+                  {data.taxInclusive && (data.taxPct ?? 0) > 0
+                    ? `Total (incl. ${fmt(data.tax ?? 0, cur)} ${data.taxLabel || "GST"})`
+                    : "Total Due"}
+                </Text>
                 <Text style={s.totalFinalValue}>
                   {fmt(data.total, cur)} {cur}
                 </Text>

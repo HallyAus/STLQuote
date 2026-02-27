@@ -129,6 +129,14 @@ model Settings {
   bankAccountNumber     String?
   bankAccountName       String?
   stripeConnectAccountId String?
+  // Tax & Region
+  taxRegion             String  @default("AU")       // AU | EU | UK | US | CA
+  taxSubRegion          String?                      // state/province code
+  defaultTaxPct         Float   @default(10)
+  taxLabel              String  @default("GST")      // GST | VAT | Sales Tax | HST
+  taxIdNumber           String?                      // ABN/VAT/EIN — label from region
+  taxInclusive          Boolean @default(true)
+  showTaxOnQuotes       Boolean @default(false)
   createdAt             DateTime @default(now())
   updatedAt             DateTime @updatedAt
 }
@@ -201,6 +209,10 @@ model Client {
   tags                  String[] @default([])
   notes                 String?  @db.Text
   paymentTermsDays      Int      @default(14)
+  country               String?          // AU, US, UK, DE, FR, etc.
+  stateProvince         String?          // CA, NSW, ON, QC, etc.
+  taxExempt             Boolean  @default(false)
+  taxIdNumber           String?          // Client's ABN/VAT/EIN
   createdAt             DateTime @default(now())
   updatedAt             DateTime @updatedAt
 
@@ -231,6 +243,10 @@ model Quote {
   portalToken String?     @unique
   subtotal    Float       @default(0)
   markupPct   Float       @default(0)
+  taxPct      Float       @default(0)
+  taxLabel    String      @default("GST")
+  tax         Float       @default(0)
+  taxInclusive Boolean    @default(false)
   total       Float       @default(0)
   currency    String      @default("AUD")
   notes       String?     @db.Text
@@ -514,7 +530,9 @@ model Invoice {
   portalToken   String?       @unique
   subtotal      Float         @default(0)
   taxPct        Float         @default(10) // GST
+  taxLabel      String        @default("GST")
   tax           Float         @default(0)
+  taxInclusive  Boolean       @default(false)
   total         Float         @default(0)
   currency      String        @default("AUD")
   dueDate       DateTime?
@@ -596,6 +614,8 @@ model QuoteTemplate {
   description String?  @db.Text
   lineItems   String?  @db.Text // JSON array of line item templates
   markupPct   Float    @default(0)
+  taxPct      Float    @default(0)
+  taxLabel    String   @default("GST")
   terms       String?  @db.Text
   notes       String?  @db.Text
   createdAt   DateTime @default(now())

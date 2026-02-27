@@ -51,6 +51,10 @@ interface Quote {
   clientId: string | null;
   subtotal: number;
   markupPct: number;
+  taxPct: number;
+  taxLabel: string;
+  tax: number;
+  taxInclusive: boolean;
   total: number;
   currency: string;
   notes: string | null;
@@ -279,6 +283,9 @@ export function QuoteDetail() {
 
   // Editable fields
   const [markupPct, setMarkupPct] = useState("0");
+  const [taxPct, setTaxPct] = useState("0");
+  const [taxLabel, setTaxLabel] = useState("GST");
+  const [taxInclusive, setTaxInclusive] = useState(false);
   const [notes, setNotes] = useState("");
   const [terms, setTerms] = useState("");
 
@@ -326,6 +333,9 @@ export function QuoteDetail() {
       const data: Quote = await res.json();
       setQuote(data);
       setMarkupPct(String(data.markupPct));
+      setTaxPct(String(data.taxPct ?? 0));
+      setTaxLabel(data.taxLabel ?? "GST");
+      setTaxInclusive(data.taxInclusive ?? false);
       setNotes(data.notes ?? "");
       setTerms(data.terms ?? "");
       setSelectedClientId(data.clientId ?? "");
@@ -443,6 +453,9 @@ export function QuoteDetail() {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           markupPct: parseFloat(markupPct) || 0,
+          taxPct: parseFloat(taxPct) || 0,
+          taxLabel: taxLabel.trim() || "GST",
+          taxInclusive,
           notes: notes.trim() || null,
           terms: terms.trim() || null,
         }),
@@ -657,7 +670,10 @@ export function QuoteDetail() {
       )
     : 0;
   const markup = parseFloat(markupPct) || 0;
-  const total = roundCurrency(subtotal * (1 + markup / 100));
+  const currentTaxPct = parseFloat(taxPct) || 0;
+  const subtotalWithMarkup = roundCurrency(subtotal * (1 + markup / 100));
+  const tax = roundCurrency(subtotalWithMarkup * currentTaxPct / 100);
+  const total = taxInclusive ? subtotalWithMarkup : roundCurrency(subtotalWithMarkup + tax);
 
   // ---- Client options ----
   const clientOptions = [
@@ -1140,11 +1156,48 @@ export function QuoteDetail() {
                 className="w-24 text-right"
               />
             </div>
+            <div className="flex items-center justify-between gap-4 text-sm">
+              <span className="text-muted-foreground">{taxLabel} %</span>
+              <Input
+                type="number"
+                min="0"
+                step="0.1"
+                value={taxPct}
+                onChange={(e) => setTaxPct(e.target.value)}
+                className="w-24 text-right"
+              />
+            </div>
+            {currentTaxPct > 0 && (
+              <div className="flex items-center justify-between text-sm">
+                <span className="text-muted-foreground">
+                  {taxLabel} ({currentTaxPct}%){taxInclusive ? " (incl.)" : ""}
+                </span>
+                <span className="tabular-nums font-medium">
+                  {formatCurrency(tax)}
+                </span>
+              </div>
+            )}
+            {currentTaxPct > 0 && (
+              <label className="flex items-center gap-2 cursor-pointer">
+                <input
+                  type="checkbox"
+                  checked={taxInclusive}
+                  onChange={(e) => setTaxInclusive(e.target.checked)}
+                  className="h-4 w-4 rounded border-input accent-primary"
+                />
+                <span className="text-xs text-muted-foreground">Tax inclusive</span>
+              </label>
+            )}
             <div className="border-t border-border pt-4">
               <div className="flex items-center justify-between">
                 <span className="text-lg font-semibold">Total</span>
                 <span className="text-2xl font-bold text-primary tabular-nums">
                   {formatCurrency(total)}
+                  {taxInclusive && currentTaxPct > 0 && (
+                    <span className="block text-xs font-normal text-muted-foreground">
+                      incl. {formatCurrency(tax)} {taxLabel}
+                    </span>
+                  )}
                 </span>
               </div>
             </div>

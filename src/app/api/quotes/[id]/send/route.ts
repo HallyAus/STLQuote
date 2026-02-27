@@ -6,6 +6,7 @@ import { generateToken } from "@/lib/tokens";
 import { rateLimit } from "@/lib/rate-limit";
 import { renderToBuffer, type DocumentProps } from "@react-pdf/renderer";
 import { QuoteDocument } from "@/lib/pdf/quote-document";
+import { getTaxDefaults, type TaxRegion } from "@/lib/tax-regions";
 import React, { type ReactElement, type JSXElementConstructor } from "react";
 
 type RouteContext = { params: Promise<{ id: string }> };
@@ -69,6 +70,8 @@ export async function POST(
         businessPhone: true,
         businessEmail: true,
         businessLogoUrl: true,
+        taxRegion: true,
+        taxLabel: true,
       },
     });
 
@@ -82,6 +85,11 @@ export async function POST(
         currency: quote.currency,
         subtotal: quote.subtotal,
         markupPct: quote.markupPct,
+        taxPct: quote.taxPct || 0,
+        taxLabel: quote.taxLabel || settings?.taxLabel || "GST",
+        tax: quote.tax || 0,
+        taxInclusive: quote.taxInclusive || false,
+        taxIdLabel: getTaxDefaults((settings?.taxRegion || "AU") as TaxRegion).taxIdLabel,
         total: quote.total,
         notes: quote.notes,
         terms: quote.terms,

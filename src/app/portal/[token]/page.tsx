@@ -9,6 +9,10 @@ interface PortalQuote {
   status: string;
   subtotal: number;
   markupPct: number;
+  taxPct: number;
+  taxLabel: string;
+  tax: number;
+  taxInclusive: boolean;
   total: number;
   currency: string;
   notes: string | null;
@@ -215,10 +219,23 @@ export default function PortalPage() {
                   <span className="text-gray-500">Subtotal</span>
                   <span className="text-gray-900">{formatCurrency(quote.subtotal)}</span>
                 </div>
+                {(quote.taxPct ?? 0) > 0 && (
+                  <div className="flex justify-between text-sm">
+                    <span className="text-gray-500">
+                      {quote.taxLabel || "GST"} ({quote.taxPct}%){quote.taxInclusive ? " (incl.)" : ""}
+                    </span>
+                    <span className="text-gray-900">{formatCurrency(quote.tax ?? 0)}</span>
+                  </div>
+                )}
                 <div className="flex justify-between border-t-2 border-blue-600 pt-3">
                   <span className="text-lg font-bold text-gray-900">Total</span>
                   <span className="text-lg font-bold text-blue-600">
                     {formatCurrency(quote.total)} {quote.currency}
+                    {quote.taxInclusive && (quote.taxPct ?? 0) > 0 && (
+                      <span className="block text-xs font-normal text-gray-400">
+                        incl. {formatCurrency(quote.tax ?? 0)} {quote.taxLabel || "GST"}
+                      </span>
+                    )}
                   </span>
                 </div>
               </div>

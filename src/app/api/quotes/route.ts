@@ -25,6 +25,9 @@ const createQuoteSchema = z.object({
   terms: z.string().optional().nullable(),
   expiryDate: z.string().datetime().optional().nullable(),
   markupPct: z.number().min(0).default(0),
+  taxPct: z.number().min(0).default(0),
+  taxLabel: z.string().default("GST"),
+  taxInclusive: z.boolean().default(false),
   lineItems: z.array(lineItemSchema).default([]),
 });
 
@@ -98,9 +101,15 @@ export async function POST(request: NextRequest) {
       lineItems.reduce((sum, item) => sum + item.lineTotal * item.quantity, 0) * 100
     ) / 100;
 
-    const total = Math.round(
+    const subtotalWithMarkup = Math.round(
       subtotal * (1 + quoteData.markupPct / 100) * 100
     ) / 100;
+
+    const tax = Math.round(subtotalWithMarkup * quoteData.taxPct / 100 * 100) / 100;
+
+    const total = quoteData.taxInclusive
+      ? subtotalWithMarkup
+      : Math.round((subtotalWithMarkup + tax) * 100) / 100;
 
     const quoteNumber = await generateQuoteNumber(user.id);
 
@@ -114,6 +123,7 @@ export async function POST(request: NextRequest) {
           userId: user.id,
           quoteNumber,
           subtotal,
+          tax,
           total,
           lineItems: {
             create: lineItems,

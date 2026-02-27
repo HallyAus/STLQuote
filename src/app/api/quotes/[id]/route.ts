@@ -11,6 +11,9 @@ const updateQuoteSchema = z.object({
   terms: z.string().optional().nullable(),
   expiryDate: z.string().datetime().optional().nullable(),
   markupPct: z.number().min(0).optional(),
+  taxPct: z.number().min(0).optional(),
+  taxLabel: z.string().optional(),
+  taxInclusive: z.boolean().optional(),
 });
 
 type RouteContext = { params: Promise<{ id: string }> };
@@ -105,11 +108,18 @@ export async function PUT(
       updateData.sentAt = new Date();
     }
 
-    // Recalculate total if markupPct changes
-    if (parsed.data.markupPct !== undefined) {
-      updateData.total = Math.round(
-        existing.subtotal * (1 + parsed.data.markupPct / 100) * 100
-      ) / 100;
+    // Recalculate total if markupPct or tax fields change
+    if (parsed.data.markupPct !== undefined || parsed.data.taxPct !== undefined || parsed.data.taxInclusive !== undefined) {
+      const markupPct = parsed.data.markupPct ?? existing.markupPct;
+      const taxPct = parsed.data.taxPct ?? existing.taxPct;
+      const taxInclusive = parsed.data.taxInclusive ?? existing.taxInclusive;
+
+      const subtotalWithMarkup = Math.round(existing.subtotal * (1 + markupPct / 100) * 100) / 100;
+      const tax = Math.round(subtotalWithMarkup * taxPct / 100 * 100) / 100;
+      const total = taxInclusive ? subtotalWithMarkup : Math.round((subtotalWithMarkup + tax) * 100) / 100;
+
+      updateData.tax = tax;
+      updateData.total = total;
     }
 
     const quote = await prisma.quote.update({

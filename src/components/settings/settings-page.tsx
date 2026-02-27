@@ -11,6 +11,7 @@ import { BatchPricingSettings } from "@/components/settings/batch-pricing-settin
 import { BillingSettings } from "@/components/settings/billing-settings";
 import { LogoUpload } from "@/components/settings/logo-upload";
 import type { BatchTier } from "@/lib/batch-pricing";
+import { TAX_REGION_OPTIONS, getSubRegionOptions, getTaxDefaults, type TaxRegion } from "@/lib/tax-regions";
 
 // ---------------------------------------------------------------------------
 // Types
@@ -37,6 +38,13 @@ interface Settings {
   bankAccountNumber: string | null;
   bankAccountName: string | null;
   quoteTermsText: string | null;
+  taxRegion: string;
+  taxSubRegion: string | null;
+  defaultTaxPct: number;
+  taxLabel: string;
+  taxIdNumber: string | null;
+  taxInclusive: boolean;
+  showTaxOnQuotes: boolean;
 }
 
 interface SettingsFormData {
@@ -57,6 +65,13 @@ interface SettingsFormData {
   bankAccountNumber: string;
   bankAccountName: string;
   quoteTermsText: string;
+  taxRegion: string;
+  taxSubRegion: string;
+  defaultTaxPct: string;
+  taxLabel: string;
+  taxIdNumber: string;
+  taxInclusive: boolean;
+  showTaxOnQuotes: boolean;
 }
 
 const CURRENCY_OPTIONS = [
@@ -89,6 +104,13 @@ function settingsToFormData(settings: Settings): SettingsFormData {
     bankAccountNumber: settings.bankAccountNumber ?? "",
     bankAccountName: settings.bankAccountName ?? "",
     quoteTermsText: settings.quoteTermsText ?? "",
+    taxRegion: settings.taxRegion ?? "AU",
+    taxSubRegion: settings.taxSubRegion ?? "",
+    defaultTaxPct: String(settings.defaultTaxPct ?? 10),
+    taxLabel: settings.taxLabel ?? "GST",
+    taxIdNumber: settings.taxIdNumber ?? "",
+    taxInclusive: settings.taxInclusive ?? true,
+    showTaxOnQuotes: settings.showTaxOnQuotes ?? false,
   };
 }
 
@@ -111,6 +133,13 @@ function formDataToPayload(form: SettingsFormData) {
     bankAccountNumber: form.bankAccountNumber.trim() || null,
     bankAccountName: form.bankAccountName.trim() || null,
     quoteTermsText: form.quoteTermsText.trim() || null,
+    taxRegion: form.taxRegion,
+    taxSubRegion: form.taxSubRegion.trim() || null,
+    defaultTaxPct: parseFloat(form.defaultTaxPct) || 0,
+    taxLabel: form.taxLabel.trim() || "GST",
+    taxIdNumber: form.taxIdNumber.trim() || null,
+    taxInclusive: form.taxInclusive,
+    showTaxOnQuotes: form.showTaxOnQuotes,
   };
 }
 
@@ -141,6 +170,13 @@ export function SettingsPage() {
     bankAccountNumber: "",
     bankAccountName: "",
     quoteTermsText: "",
+    taxRegion: "AU",
+    taxSubRegion: "",
+    defaultTaxPct: "10",
+    taxLabel: "GST",
+    taxIdNumber: "",
+    taxInclusive: true,
+    showTaxOnQuotes: false,
   });
   const [batchTiers, setBatchTiers] = useState<BatchTier[]>([]);
   const [logoUrl, setLogoUrl] = useState<string | null>(null);
@@ -344,6 +380,97 @@ export function SettingsPage() {
         </CardContent>
       </Card>
 
+      {/* Tax & Region */}
+      <Card>
+        <CardHeader>
+          <CardTitle>Tax & Region</CardTitle>
+        </CardHeader>
+        <CardContent>
+          <p className="text-sm text-muted-foreground mb-4">
+            Configure your tax region and default rates. These defaults apply to new invoices and quotes.
+          </p>
+          <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+            <Select
+              label="Tax Region"
+              value={form.taxRegion}
+              onChange={(e) => {
+                const region = e.target.value as TaxRegion;
+                const defaults = getTaxDefaults(region);
+                setForm((prev) => ({
+                  ...prev,
+                  taxRegion: region,
+                  taxSubRegion: "",
+                  defaultTaxPct: String(defaults.taxPct),
+                  taxLabel: defaults.taxLabel,
+                  taxInclusive: defaults.taxInclusive,
+                }));
+              }}
+              options={TAX_REGION_OPTIONS}
+            />
+            {getSubRegionOptions(form.taxRegion as TaxRegion).length > 0 && (
+              <Select
+                label="State / Province"
+                value={form.taxSubRegion}
+                onChange={(e) => {
+                  const subCode = e.target.value;
+                  const defaults = getTaxDefaults(form.taxRegion as TaxRegion, subCode || null);
+                  setForm((prev) => ({
+                    ...prev,
+                    taxSubRegion: subCode,
+                    defaultTaxPct: String(defaults.taxPct),
+                    taxLabel: defaults.taxLabel,
+                  }));
+                }}
+                options={[
+                  { value: "", label: "Default" },
+                  ...getSubRegionOptions(form.taxRegion as TaxRegion),
+                ]}
+              />
+            )}
+            <Input
+              label="Default Tax Rate (%)"
+              type="number"
+              step="0.01"
+              min="0"
+              value={form.defaultTaxPct}
+              onChange={(e) => updateField("defaultTaxPct", e.target.value)}
+            />
+            <Input
+              label="Tax Label"
+              value={form.taxLabel}
+              onChange={(e) => updateField("taxLabel", e.target.value)}
+              placeholder="e.g. GST, VAT, Sales Tax"
+            />
+            <Input
+              label={getTaxDefaults(form.taxRegion as TaxRegion).taxIdLabel}
+              value={form.taxIdNumber}
+              onChange={(e) => updateField("taxIdNumber", e.target.value)}
+              placeholder={`Your ${getTaxDefaults(form.taxRegion as TaxRegion).taxIdLabel}`}
+            />
+          </div>
+          <div className="mt-4 space-y-3">
+            <label className="flex items-center gap-2 cursor-pointer">
+              <input
+                type="checkbox"
+                checked={form.taxInclusive}
+                onChange={(e) => setForm((prev) => ({ ...prev, taxInclusive: e.target.checked }))}
+                className="h-4 w-4 rounded border-input accent-primary"
+              />
+              <span className="text-sm text-foreground">Prices include tax</span>
+            </label>
+            <label className="flex items-center gap-2 cursor-pointer">
+              <input
+                type="checkbox"
+                checked={form.showTaxOnQuotes}
+                onChange={(e) => setForm((prev) => ({ ...prev, showTaxOnQuotes: e.target.checked }))}
+                className="h-4 w-4 rounded border-input accent-primary"
+              />
+              <span className="text-sm text-foreground">Show tax on quotes</span>
+            </label>
+          </div>
+        </CardContent>
+      </Card>
+
       {/* Business Details */}
       <Card>
         <CardHeader>
@@ -361,10 +488,10 @@ export function SettingsPage() {
               placeholder="e.g. Printforge"
             />
             <Input
-              label="ABN"
+              label={getTaxDefaults(form.taxRegion as TaxRegion).taxIdLabel}
               value={form.businessAbn}
               onChange={(e) => updateField("businessAbn", e.target.value)}
-              placeholder="Australian Business Number"
+              placeholder={`Your ${getTaxDefaults(form.taxRegion as TaxRegion).taxIdLabel}`}
             />
             <Input
               label="Phone"

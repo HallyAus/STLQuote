@@ -63,7 +63,7 @@ export async function POST(
         allLineItems.reduce((sum, item) => sum + item.lineTotal, 0)
       );
       const tax = roundCurrency(subtotal * invoice.taxPct / 100);
-      const total = roundCurrency(subtotal + tax);
+      const total = invoice.taxInclusive ? subtotal : roundCurrency(subtotal + tax);
 
       await tx.invoice.update({
         where: { id: invoiceId },

@@ -47,7 +47,9 @@ interface Invoice {
   jobId: string | null;
   subtotal: number;
   taxPct: number;
+  taxLabel: string;
   tax: number;
+  taxInclusive: boolean;
   total: number;
   currency: string;
   notes: string | null;
@@ -225,6 +227,8 @@ export function InvoiceDetail() {
 
   // Editable fields
   const [taxPct, setTaxPct] = useState("10");
+  const [taxLabel, setTaxLabel] = useState("GST");
+  const [taxInclusive, setTaxInclusive] = useState(false);
   const [dueDate, setDueDate] = useState("");
   const [notes, setNotes] = useState("");
   const [terms, setTerms] = useState("");
@@ -253,6 +257,8 @@ export function InvoiceDetail() {
       const data: Invoice = await res.json();
       setInvoice(data);
       setTaxPct(String(data.taxPct));
+      setTaxLabel(data.taxLabel ?? "GST");
+      setTaxInclusive(data.taxInclusive ?? false);
       setDueDate(data.dueDate ? new Date(data.dueDate).toISOString().slice(0, 10) : "");
       setNotes(data.notes ?? "");
       setTerms(data.terms ?? "");
@@ -330,6 +336,8 @@ export function InvoiceDetail() {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           taxPct: parseFloat(taxPct) || 0,
+          taxLabel: taxLabel.trim() || "GST",
+          taxInclusive,
           dueDate: dueDate ? new Date(dueDate).toISOString() : null,
           notes: notes.trim() || null,
           terms: terms.trim() || null,
@@ -519,7 +527,7 @@ export function InvoiceDetail() {
     : 0;
   const currentTaxPct = parseFloat(taxPct) || 0;
   const tax = roundCurrency(subtotal * currentTaxPct / 100);
-  const total = roundCurrency(subtotal + tax);
+  const total = taxInclusive ? subtotal : roundCurrency(subtotal + tax);
 
   // ---- Client options ----
   const clientOptions = [
@@ -657,7 +665,7 @@ export function InvoiceDetail() {
                   <span className="font-medium tabular-nums">{formatCurrency(subtotal)}</span>
                 </div>
                 <div className="flex items-center justify-between text-sm mt-1">
-                  <span className="text-muted-foreground">GST ({currentTaxPct}%)</span>
+                  <span className="text-muted-foreground">{taxLabel} ({currentTaxPct}%)</span>
                   <span className="font-medium tabular-nums">{formatCurrency(tax)}</span>
                 </div>
                 <div className="flex items-center justify-between mt-2 pt-2 border-t border-border">
@@ -870,7 +878,7 @@ export function InvoiceDetail() {
               </span>
             </div>
             <div className="flex items-center justify-between gap-4 text-sm">
-              <span className="text-muted-foreground">GST %</span>
+              <span className="text-muted-foreground">{taxLabel} %</span>
               <Input
                 type="number"
                 min="0"
@@ -882,17 +890,31 @@ export function InvoiceDetail() {
             </div>
             <div className="flex items-center justify-between text-sm">
               <span className="text-muted-foreground">
-                GST ({currentTaxPct}%)
+                {taxLabel} ({currentTaxPct}%){taxInclusive ? " (incl.)" : ""}
               </span>
               <span className="tabular-nums font-medium">
                 {formatCurrency(tax)}
               </span>
             </div>
+            <label className="flex items-center gap-2 cursor-pointer">
+              <input
+                type="checkbox"
+                checked={taxInclusive}
+                onChange={(e) => setTaxInclusive(e.target.checked)}
+                className="h-4 w-4 rounded border-input accent-primary"
+              />
+              <span className="text-xs text-muted-foreground">Tax inclusive</span>
+            </label>
             <div className="border-t border-border pt-4">
               <div className="flex items-center justify-between">
                 <span className="text-lg font-semibold">Total</span>
                 <span className="text-2xl font-bold text-primary tabular-nums">
                   {formatCurrency(total)}
+                  {taxInclusive && currentTaxPct > 0 && (
+                    <span className="block text-xs font-normal text-muted-foreground">
+                      incl. {formatCurrency(tax)} {taxLabel}
+                    </span>
+                  )}
                 </span>
               </div>
             </div>

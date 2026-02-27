@@ -315,7 +315,11 @@ export interface InvoicePDFData {
   currency: string;
   subtotal: number;
   taxPct: number;
+  taxLabel?: string;
   tax: number;
+  taxInclusive?: boolean;
+  invoiceTitle?: string;
+  taxIdLabel?: string;
   total: number;
   status: string;
   notes: string | null;
@@ -388,13 +392,13 @@ export function InvoiceDocument({ data }: { data: InvoicePDFData }) {
                 {biz.email && <Text style={s.businessLine}>{biz.email}</Text>}
                 {biz.abn && (
                   <Text style={[s.businessLine, { fontFamily: "Helvetica-Bold" }]}>
-                    ABN {biz.abn}
+                    {data.taxIdLabel || "ABN"} {biz.abn}
                   </Text>
                 )}
               </View>
             </View>
             <View style={s.headerRight}>
-              <Text style={s.invoiceLabel}>TAX INVOICE</Text>
+              <Text style={s.invoiceLabel}>{data.invoiceTitle || "TAX INVOICE"}</Text>
               <Text style={s.invoiceNumber}>{data.invoiceNumber}</Text>
             </View>
           </View>
@@ -481,14 +485,20 @@ export function InvoiceDocument({ data }: { data: InvoicePDFData }) {
                 <Text style={s.totalsLabel}>Subtotal</Text>
                 <Text style={s.totalsValue}>{fmt(data.subtotal, cur)}</Text>
               </View>
-              <View style={s.totalsRow}>
-                <Text style={s.totalsLabel}>
-                  GST ({data.taxPct}%)
-                </Text>
-                <Text style={s.totalsValue}>{fmt(data.tax, cur)}</Text>
-              </View>
+              {data.taxPct > 0 && (
+                <View style={s.totalsRow}>
+                  <Text style={s.totalsLabel}>
+                    {data.taxLabel || "GST"} ({data.taxPct}%){data.taxInclusive ? " (incl.)" : ""}
+                  </Text>
+                  <Text style={s.totalsValue}>{fmt(data.tax, cur)}</Text>
+                </View>
+              )}
               <View style={s.totalFinalRow}>
-                <Text style={s.totalFinalLabel}>Total Due</Text>
+                <Text style={s.totalFinalLabel}>
+                  {data.taxInclusive && data.taxPct > 0
+                    ? `Total (incl. ${fmt(data.tax, cur)} ${data.taxLabel || "GST"})`
+                    : "Total Due"}
+                </Text>
                 <Text style={s.totalFinalValue}>
                   {fmt(data.total, cur)} {cur}
                 </Text>

@@ -10,6 +10,8 @@ const updateInvoiceSchema = z.object({
   notes: z.string().optional().nullable(),
   terms: z.string().optional().nullable(),
   taxPct: z.number().min(0).optional(),
+  taxLabel: z.string().optional(),
+  taxInclusive: z.boolean().optional(),
   dueDate: z.string().datetime().optional().nullable(),
   paidAt: z.string().datetime().optional().nullable(),
 });
@@ -110,11 +112,13 @@ export async function PUT(
       updateData.paidAt = new Date();
     }
 
-    // Recalculate totals if taxPct changes
-    if (parsed.data.taxPct !== undefined) {
-      const tax = roundCurrency(existing.subtotal * parsed.data.taxPct / 100);
+    // Recalculate totals if taxPct or taxInclusive changes
+    if (parsed.data.taxPct !== undefined || parsed.data.taxInclusive !== undefined) {
+      const taxPct = parsed.data.taxPct ?? existing.taxPct;
+      const taxInclusive = parsed.data.taxInclusive ?? existing.taxInclusive;
+      const tax = roundCurrency(existing.subtotal * taxPct / 100);
       updateData.tax = tax;
-      updateData.total = roundCurrency(existing.subtotal + tax);
+      updateData.total = taxInclusive ? existing.subtotal : roundCurrency(existing.subtotal + tax);
     }
 
     const invoice = await prisma.invoice.update({
