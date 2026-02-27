@@ -9,8 +9,32 @@ import { Select } from "@/components/ui/select";
 import { Textarea } from "@/components/ui/textarea";
 import { Badge } from "@/components/ui/badge";
 import { Dialog, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
-import { Plus, Minus, Pencil, Trash2, Package, Loader2 } from "lucide-react";
+import { Plus, Minus, Pencil, Trash2, Package, Loader2, History, TrendingUp, TrendingDown } from "lucide-react";
 import { MATERIAL_PRESETS } from "@/lib/presets";
+
+// ---------------------------------------------------------------------------
+// Stock Transaction Types
+// ---------------------------------------------------------------------------
+
+interface StockTransaction {
+  id: string;
+  type: string;
+  quantity: number;
+  balanceAfter: number;
+  notes: string | null;
+  createdAt: string;
+  user: { name: string | null } | null;
+}
+
+interface UsageStats {
+  totalReceived: number;
+  totalUsed: number;
+  jobCount: number;
+  avgPerJob: number;
+  costOfGoods: number;
+  transactionCount: number;
+  months: { month: string; used: number }[];
+}
 
 // ---------------------------------------------------------------------------
 // Types
@@ -258,12 +282,14 @@ function MaterialCard({
   onEdit,
   onDelete,
   onStockAdjust,
+  onHistory,
   adjustingId,
 }: {
   material: Material;
   onEdit: () => void;
   onDelete: () => void;
   onStockAdjust: (adjustment: number) => void;
+  onHistory: () => void;
   adjustingId: string | null;
 }) {
   const status = stockStatus(material.stockQty, material.lowStockThreshold);
@@ -341,6 +367,10 @@ function MaterialCard({
           <span className="font-medium">${(material.price * material.stockQty).toFixed(2)}</span>
         </div>
         <div className="mt-3 flex justify-end gap-2">
+          <Button variant="ghost" size="sm" onClick={onHistory}>
+            <History className="mr-1 h-3.5 w-3.5" />
+            History
+          </Button>
           <Button variant="ghost" size="sm" onClick={onEdit}>
             <Pencil className="mr-1 h-3.5 w-3.5" />
             Edit
@@ -352,6 +382,166 @@ function MaterialCard({
         </div>
       </CardContent>
     </Card>
+  );
+}
+
+// ---------------------------------------------------------------------------
+// Stock History Modal
+// ---------------------------------------------------------------------------
+
+function StockHistoryModal({
+  material,
+  onClose,
+}: {
+  material: Material;
+  onClose: () => void;
+}) {
+  const [transactions, setTransactions] = useState<StockTransaction[]>([]);
+  const [usage, setUsage] = useState<UsageStats | null>(null);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    Promise.all([
+      fetch(`/api/stock-transactions?materialId=${material.id}&limit=50`)
+        .then((res) => (res.ok ? res.json() : [])),
+      fetch(`/api/materials/${material.id}/usage`)
+        .then((res) => (res.ok ? res.json() : null)),
+    ])
+      .then(([txData, usageData]) => {
+        setTransactions(txData);
+        setUsage(usageData);
+      })
+      .catch(() => {})
+      .finally(() => setLoading(false));
+  }, [material.id]);
+
+  const typeLabel: Record<string, string> = {
+    received: "Received",
+    used: "Used",
+    adjusted: "Adjusted",
+    auto_deduct: "Auto-deduct",
+  };
+
+  return (
+    <Dialog open={true} onClose={onClose} maxWidth="max-w-2xl">
+      <DialogHeader onClose={onClose}>
+        <DialogTitle>
+          Stock History — {material.materialType}
+          {material.brand ? ` (${material.brand})` : ""}
+        </DialogTitle>
+      </DialogHeader>
+      {/* Usage stats */}
+      {usage && usage.transactionCount > 0 && (
+        <div className="grid grid-cols-2 gap-3 sm:grid-cols-4 mb-4">
+          <div className="rounded-lg border border-border p-2.5 text-center">
+            <p className="text-lg font-bold tabular-nums text-emerald-500">+{usage.totalReceived}</p>
+            <p className="text-[11px] text-muted-foreground">Received</p>
+          </div>
+          <div className="rounded-lg border border-border p-2.5 text-center">
+            <p className="text-lg font-bold tabular-nums text-red-500">-{usage.totalUsed}</p>
+            <p className="text-[11px] text-muted-foreground">Used</p>
+          </div>
+          <div className="rounded-lg border border-border p-2.5 text-center">
+            <p className="text-lg font-bold tabular-nums">{usage.jobCount}</p>
+            <p className="text-[11px] text-muted-foreground">Jobs</p>
+          </div>
+          <div className="rounded-lg border border-border p-2.5 text-center">
+            <p className="text-lg font-bold tabular-nums">${usage.costOfGoods.toFixed(2)}</p>
+            <p className="text-[11px] text-muted-foreground">Cost of Goods</p>
+          </div>
+        </div>
+      )}
+
+      {/* Monthly usage mini-chart */}
+      {usage && usage.months.length > 0 && (
+        <div className="mb-4">
+          <p className="text-xs font-medium text-muted-foreground mb-2">Monthly Usage (spools)</p>
+          <div className="flex items-end gap-1 h-16">
+            {usage.months.map((m) => {
+              const max = Math.max(...usage.months.map((x) => x.used), 1);
+              const heightPct = (m.used / max) * 100;
+              return (
+                <div key={m.month} className="flex-1 flex flex-col items-center gap-0.5">
+                  <span className="text-[10px] tabular-nums text-muted-foreground">{m.used}</span>
+                  <div
+                    className="w-full rounded-sm bg-primary/30"
+                    style={{ height: `${Math.max(heightPct, 4)}%` }}
+                  />
+                  <span className="text-[9px] text-muted-foreground">
+                    {new Date(m.month + "-01").toLocaleDateString("en-AU", { month: "short" })}
+                  </span>
+                </div>
+              );
+            })}
+          </div>
+        </div>
+      )}
+
+      {loading ? (
+        <div className="flex justify-center py-8">
+          <Loader2 className="h-5 w-5 animate-spin text-muted-foreground" />
+        </div>
+      ) : transactions.length === 0 ? (
+        <p className="py-8 text-center text-sm text-muted-foreground">
+          No stock history yet.
+        </p>
+      ) : (
+        <div className="max-h-96 overflow-y-auto">
+          <table className="w-full text-sm">
+            <thead className="sticky top-0 bg-card">
+              <tr className="border-b border-border text-left">
+                <th className="px-3 py-2 font-medium text-muted-foreground">Date</th>
+                <th className="px-3 py-2 font-medium text-muted-foreground">Type</th>
+                <th className="px-3 py-2 font-medium text-muted-foreground text-right">Change</th>
+                <th className="px-3 py-2 font-medium text-muted-foreground text-right">Balance</th>
+                <th className="px-3 py-2 font-medium text-muted-foreground">Notes</th>
+              </tr>
+            </thead>
+            <tbody>
+              {transactions.map((tx) => (
+                <tr key={tx.id} className="border-b border-border last:border-0">
+                  <td className="px-3 py-2 tabular-nums text-muted-foreground whitespace-nowrap">
+                    {new Date(tx.createdAt).toLocaleDateString("en-AU", {
+                      day: "numeric",
+                      month: "short",
+                      hour: "2-digit",
+                      minute: "2-digit",
+                    })}
+                  </td>
+                  <td className="px-3 py-2">
+                    <Badge variant={tx.quantity > 0 ? "success" : "destructive"}>
+                      {typeLabel[tx.type] ?? tx.type}
+                    </Badge>
+                  </td>
+                  <td className="px-3 py-2 text-right tabular-nums">
+                    <span className={cn(
+                      "inline-flex items-center gap-1 font-medium",
+                      tx.quantity > 0 ? "text-emerald-500" : "text-red-500"
+                    )}>
+                      {tx.quantity > 0 ? (
+                        <TrendingUp className="h-3 w-3" />
+                      ) : (
+                        <TrendingDown className="h-3 w-3" />
+                      )}
+                      {tx.quantity > 0 ? "+" : ""}{tx.quantity}
+                    </span>
+                  </td>
+                  <td className="px-3 py-2 text-right tabular-nums font-medium">
+                    {tx.balanceAfter}
+                  </td>
+                  <td className="px-3 py-2 text-muted-foreground truncate max-w-40">
+                    {tx.notes ?? "\u2014"}
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      )}
+      <DialogFooter>
+        <Button variant="ghost" onClick={onClose}>Close</Button>
+      </DialogFooter>
+    </Dialog>
   );
 }
 
@@ -368,6 +558,7 @@ export function MaterialsPage() {
   const [editingMaterial, setEditingMaterial] = useState<Material | null>(null);
   const [formData, setFormData] = useState<MaterialFormData>(EMPTY_FORM);
   const [adjustingId, setAdjustingId] = useState<string | null>(null);
+  const [historyMaterial, setHistoryMaterial] = useState<Material | null>(null);
 
   // Preset dropdown state
   const [presetOpen, setPresetOpen] = useState(false);
@@ -776,6 +967,14 @@ export function MaterialsPage() {
                             <Button
                               variant="ghost"
                               size="icon"
+                              onClick={() => setHistoryMaterial(material)}
+                              title="Stock history"
+                            >
+                              <History className="h-4 w-4" />
+                            </Button>
+                            <Button
+                              variant="ghost"
+                              size="icon"
                               onClick={() => openEditForm(material)}
                               title="Edit"
                             >
@@ -811,6 +1010,7 @@ export function MaterialsPage() {
               onEdit={() => openEditForm(material)}
               onDelete={() => handleDelete(material.id)}
               onStockAdjust={(adj) => handleStockAdjust(material.id, adj)}
+              onHistory={() => setHistoryMaterial(material)}
               adjustingId={adjustingId}
             />
           ))}
@@ -826,6 +1026,14 @@ export function MaterialsPage() {
           onSave={handleSave}
           onClose={closeForm}
           saving={saving}
+        />
+      )}
+
+      {/* Stock history modal */}
+      {historyMaterial && (
+        <StockHistoryModal
+          material={historyMaterial}
+          onClose={() => setHistoryMaterial(null)}
         />
       )}
     </div>

@@ -14,7 +14,7 @@ import {
   DialogTitle,
   DialogFooter,
 } from "@/components/ui/dialog";
-import { Plus, Pencil, Trash2, Loader2, Wrench, Search } from "lucide-react";
+import { Plus, Minus, Pencil, Trash2, Loader2, Wrench, Search } from "lucide-react";
 import { BANNER } from "@/lib/status-colours";
 
 // ---------------------------------------------------------------------------
@@ -248,12 +248,16 @@ function ConsumableCard({
   consumable,
   onEdit,
   onDelete,
+  onStockAdjust,
   confirmDeleteId,
+  adjustingId,
 }: {
   consumable: Consumable;
   onEdit: () => void;
   onDelete: () => void;
+  onStockAdjust: (adjustment: number) => void;
   confirmDeleteId: string | null;
+  adjustingId: string | null;
 }) {
   const status = stockStatus(consumable.stockQty, consumable.lowStockThreshold);
 
@@ -274,7 +278,27 @@ function ConsumableCard({
         <div className="mt-3 grid grid-cols-3 gap-2 text-sm">
           <div>
             <span className="text-muted-foreground">Stock</span>
-            <p className="font-medium tabular-nums">{consumable.stockQty}</p>
+            <div className="flex items-center gap-1">
+              <Button
+                variant="ghost"
+                size="icon"
+                className="h-6 w-6"
+                disabled={adjustingId === consumable.id || consumable.stockQty === 0}
+                onClick={(e) => { e.stopPropagation(); onStockAdjust(-1); }}
+              >
+                <Minus className="h-3 w-3" />
+              </Button>
+              <span className="font-medium tabular-nums">{consumable.stockQty}</span>
+              <Button
+                variant="ghost"
+                size="icon"
+                className="h-6 w-6"
+                disabled={adjustingId === consumable.id}
+                onClick={(e) => { e.stopPropagation(); onStockAdjust(1); }}
+              >
+                <Plus className="h-3 w-3" />
+              </Button>
+            </div>
           </div>
           <div>
             <span className="text-muted-foreground">Threshold</span>
@@ -348,6 +372,7 @@ export function ConsumablesPage() {
     useState<Consumable | null>(null);
   const [formData, setFormData] = useState<ConsumableFormData>(EMPTY_FORM);
   const [confirmDeleteId, setConfirmDeleteId] = useState<string | null>(null);
+  const [adjustingId, setAdjustingId] = useState<string | null>(null);
 
   // ---- Fetch consumables ----
   const fetchConsumables = useCallback(async () => {
@@ -500,6 +525,31 @@ export function ConsumablesPage() {
     }
   }
 
+  // ---- Stock adjustment ----
+  async function handleStockAdjust(id: string, adjustment: number) {
+    setAdjustingId(id);
+    try {
+      const res = await fetch(`/api/consumables/${id}/stock`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ adjustment }),
+      });
+      if (!res.ok) {
+        const err = await res.json().catch(() => null);
+        console.error("Stock adjust failed:", err);
+        return;
+      }
+      const updated = await res.json();
+      setConsumables((prev) =>
+        prev.map((c) => (c.id === id ? { ...c, stockQty: updated.stockQty } : c))
+      );
+    } catch (err) {
+      console.error("Stock adjust error:", err);
+    } finally {
+      setAdjustingId(null);
+    }
+  }
+
   // ---- Loading state ----
   if (loading) {
     return (
@@ -626,8 +676,30 @@ export function ConsumablesPage() {
                             {categoryLabel(consumable.category)}
                           </Badge>
                         </td>
-                        <td className="px-4 py-3 text-center tabular-nums">
-                          {consumable.stockQty}
+                        <td className="px-4 py-3">
+                          <div className="flex items-center justify-center gap-1">
+                            <Button
+                              variant="ghost"
+                              size="icon"
+                              className="h-7 w-7"
+                              disabled={adjustingId === consumable.id || consumable.stockQty === 0}
+                              onClick={() => handleStockAdjust(consumable.id, -1)}
+                            >
+                              <Minus className="h-3.5 w-3.5" />
+                            </Button>
+                            <span className="w-8 text-center font-medium tabular-nums">
+                              {consumable.stockQty}
+                            </span>
+                            <Button
+                              variant="ghost"
+                              size="icon"
+                              className="h-7 w-7"
+                              disabled={adjustingId === consumable.id}
+                              onClick={() => handleStockAdjust(consumable.id, 1)}
+                            >
+                              <Plus className="h-3.5 w-3.5" />
+                            </Button>
+                          </div>
                         </td>
                         <td className="px-4 py-3 text-center tabular-nums">
                           {consumable.lowStockThreshold}
@@ -695,7 +767,9 @@ export function ConsumablesPage() {
               consumable={consumable}
               onEdit={() => openEditForm(consumable)}
               onDelete={() => handleDelete(consumable.id)}
+              onStockAdjust={(adj) => handleStockAdjust(consumable.id, adj)}
               confirmDeleteId={confirmDeleteId}
+              adjustingId={adjustingId}
             />
           ))}
         </div>

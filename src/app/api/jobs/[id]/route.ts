@@ -165,6 +165,17 @@ export async function PUT(
             where: { id: existing.material.id },
             data: { stockQty: newQty },
           });
+          // Log stock transaction
+          await tx.stockTransaction.create({
+            data: {
+              userId: user.id,
+              materialId: existing.material.id,
+              type: "auto_deduct",
+              quantity: -spoolsUsed,
+              balanceAfter: newQty,
+              notes: `Job completed — ${weightG}g used`,
+            },
+          });
         }
 
         // Increment printer hours

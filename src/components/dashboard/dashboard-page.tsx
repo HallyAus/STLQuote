@@ -16,6 +16,8 @@ import {
   CalendarDays,
   Mail,
   Sparkles,
+  ShoppingCart,
+  ExternalLink,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card";
@@ -80,6 +82,7 @@ interface LowStockMaterial {
   stockQty: number;
   lowStockThreshold: number;
   price: number;
+  supplier: { name: string; email: string | null; website: string | null } | null;
 }
 
 interface ConsumableAlert {
@@ -88,7 +91,7 @@ interface ConsumableAlert {
   category: string;
   stockQty: number;
   lowStockThreshold: number;
-  supplier: { name: string; email: string | null } | null;
+  supplier: { name: string; email: string | null; website: string | null } | null;
 }
 
 interface DashboardData {
@@ -483,6 +486,114 @@ function ConsumableAlertsList({ alerts }: { alerts: ConsumableAlert[] }) {
 }
 
 // ---------------------------------------------------------------------------
+// Reorder Suggestions
+// ---------------------------------------------------------------------------
+
+function ReorderSuggestions({
+  materials,
+  consumables,
+}: {
+  materials: LowStockMaterial[];
+  consumables: ConsumableAlert[];
+}) {
+  const items = [
+    ...materials.map((m) => ({
+      id: m.id,
+      name: `${m.materialType}${m.brand ? ` — ${m.brand}` : ""}`,
+      type: "Material" as const,
+      stockQty: m.stockQty,
+      threshold: m.lowStockThreshold,
+      suggestedQty: Math.max(m.lowStockThreshold * 2 - m.stockQty, 1),
+      supplier: m.supplier,
+    })),
+    ...consumables.map((c) => ({
+      id: c.id,
+      name: c.name,
+      type: "Consumable" as const,
+      stockQty: c.stockQty,
+      threshold: c.lowStockThreshold,
+      suggestedQty: Math.max(c.lowStockThreshold * 2 - c.stockQty, 1),
+      supplier: c.supplier,
+    })),
+  ];
+
+  if (items.length === 0) return null;
+
+  return (
+    <Card className="lg:col-span-2">
+      <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-3">
+        <CardTitle className="text-base font-semibold">
+          <span className="flex items-center gap-2">
+            <ShoppingCart className="h-4 w-4 text-primary" />
+            Reorder Suggestions
+          </span>
+        </CardTitle>
+        <Link href="/purchase-orders">
+          <Badge variant="default" className="cursor-pointer hover:bg-primary/20">
+            Create PO
+          </Badge>
+        </Link>
+      </CardHeader>
+      <CardContent>
+        <div className="space-y-2">
+          {items.map((item) => (
+            <div
+              key={`${item.type}-${item.id}`}
+              className="flex items-center justify-between rounded-lg border border-border p-3 text-sm"
+            >
+              <div className="min-w-0 flex-1">
+                <p className="font-medium">{item.name}</p>
+                <div className="flex items-center gap-2 mt-0.5">
+                  <Badge variant={item.type === "Material" ? "default" : "warning"} className="text-[10px]">
+                    {item.type}
+                  </Badge>
+                  {item.supplier && (
+                    <span className="text-xs text-muted-foreground">{item.supplier.name}</span>
+                  )}
+                </div>
+              </div>
+              <div className="shrink-0 text-right flex items-center gap-3">
+                <div>
+                  <p className="text-xs text-muted-foreground">
+                    Suggest order: <span className="font-semibold text-foreground">{item.suggestedQty}</span>
+                  </p>
+                  <p className={cn(
+                    "text-xs tabular-nums",
+                    item.stockQty === 0 ? STATUS_TEXT.danger : STATUS_TEXT.warning
+                  )}>
+                    {item.stockQty} / {item.threshold} in stock
+                  </p>
+                </div>
+                {item.supplier?.website && (
+                  <a
+                    href={item.supplier.website.startsWith("http") ? item.supplier.website : `https://${item.supplier.website}`}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="inline-flex h-7 w-7 items-center justify-center rounded-md hover:bg-muted transition-colors"
+                    title={`Visit ${item.supplier.name}`}
+                  >
+                    <ExternalLink className="h-3.5 w-3.5 text-muted-foreground" />
+                  </a>
+                )}
+                {item.supplier?.email && (
+                  <a
+                    href={`mailto:${item.supplier.email}?subject=${encodeURIComponent(`Reorder: ${item.name}`)}`}
+                    className="inline-flex h-7 w-7 items-center justify-center rounded-md hover:bg-muted transition-colors"
+                    title={`Email ${item.supplier.name}`}
+                  >
+                    <Mail className="h-3.5 w-3.5 text-muted-foreground" />
+                  </a>
+                )}
+              </div>
+            </div>
+          ))}
+        </div>
+      </CardContent>
+    </Card>
+  );
+}
+
+// ---------------------------------------------------------------------------
 // Loading skeleton
 // ---------------------------------------------------------------------------
 
@@ -714,6 +825,11 @@ export function DashboardPage() {
         <LowStockAlertsList alerts={lowStockAlerts} />
         <ConsumableAlertsList alerts={consumableAlerts} />
       </div>
+
+      {/* Reorder Suggestions (only shown when items need reordering) */}
+      {(lowStockAlerts.length > 0 || consumableAlerts.length > 0) && (
+        <ReorderSuggestions materials={lowStockAlerts} consumables={consumableAlerts} />
+      )}
 
       {/* Revenue Charts */}
       <RevenueCharts />

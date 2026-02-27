@@ -111,9 +111,12 @@ export async function GET() {
       // Printers
       prisma.printer.count({ where: { userId: user.id } }),
 
-      // Materials
+      // Materials (with supplier info for reorder suggestions)
       prisma.material.findMany({
         where: { userId: user.id },
+        include: {
+          supplierRef: { select: { name: true, email: true, website: true } },
+        },
         orderBy: { stockQty: "asc" },
       }),
 
@@ -121,7 +124,7 @@ export async function GET() {
       prisma.consumable.findMany({
         where: { userId: user.id },
         include: {
-          supplier: { select: { name: true, email: true } },
+          supplier: { select: { name: true, email: true, website: true } },
         },
         orderBy: { stockQty: "asc" },
       }),
@@ -145,9 +148,19 @@ export async function GET() {
     );
 
     // Stock calculations
-    const lowStockAlerts = allMaterials.filter(
-      (m) => m.stockQty <= m.lowStockThreshold
-    );
+    const lowStockAlerts = allMaterials
+      .filter((m) => m.stockQty <= m.lowStockThreshold)
+      .map((m) => ({
+        id: m.id,
+        type: m.type,
+        materialType: m.materialType,
+        brand: m.brand,
+        colour: m.colour,
+        stockQty: m.stockQty,
+        lowStockThreshold: m.lowStockThreshold,
+        price: m.price,
+        supplier: m.supplierRef ? { name: m.supplierRef.name, email: m.supplierRef.email, website: m.supplierRef.website } : null,
+      }));
     const outOfStockCount = allMaterials.filter((m) => m.stockQty === 0).length;
     const totalStockValue = Math.round(
       allMaterials.reduce((sum, m) => sum + m.price * m.stockQty, 0) * 100
@@ -162,7 +175,7 @@ export async function GET() {
       category: c.category,
       stockQty: c.stockQty,
       lowStockThreshold: c.lowStockThreshold,
-      supplier: c.supplier ? { name: c.supplier.name, email: c.supplier.email } : null,
+      supplier: c.supplier ? { name: c.supplier.name, email: c.supplier.email, website: c.supplier.website } : null,
     }));
 
     return NextResponse.json({

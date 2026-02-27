@@ -100,6 +100,8 @@ model User {
   consumables        Consumable[]
   subscriptionEvents SubscriptionEvent[]
   quoteTemplates     QuoteTemplate[]
+  stockTransactions  StockTransaction[]
+  purchaseOrders     PurchaseOrder[]
 }
 
 model Settings {
@@ -176,9 +178,11 @@ model Material {
   createdAt          DateTime @default(now())
   updatedAt          DateTime @updatedAt
 
-  quoteLineItems QuoteLineItem[]
-  jobs           Job[]
-  supplierItems  SupplierItem[]
+  quoteLineItems     QuoteLineItem[]
+  jobs               Job[]
+  supplierItems      SupplierItem[]
+  stockTransactions  StockTransaction[]
+  purchaseOrderItems PurchaseOrderItem[]
 
   @@index([userId])
 }
@@ -404,9 +408,10 @@ model Supplier {
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
-  items      SupplierItem[]
-  materials  Material[]
-  consumables Consumable[]
+  items          SupplierItem[]
+  materials      Material[]
+  consumables    Consumable[]
+  purchaseOrders PurchaseOrder[]
 
   @@index([userId])
 }
@@ -477,6 +482,9 @@ model Consumable {
   notes             String?   @db.Text
   createdAt         DateTime  @default(now())
   updatedAt         DateTime  @updatedAt
+
+  stockTransactions  StockTransaction[]
+  purchaseOrderItems PurchaseOrderItem[]
 
   @@index([userId])
 }
@@ -612,4 +620,67 @@ model Webhook {
   updatedAt   DateTime  @updatedAt
 
   @@index([userId])
+}
+
+// --- Stock Transactions ---
+
+model StockTransaction {
+  id           String      @id @default(cuid())
+  userId       String
+  user         User        @relation(fields: [userId], references: [id], onDelete: Cascade)
+  materialId   String?
+  material     Material?   @relation(fields: [materialId], references: [id], onDelete: SetNull)
+  consumableId String?
+  consumable   Consumable? @relation(fields: [consumableId], references: [id], onDelete: SetNull)
+  type         String      // received | used | adjusted | auto_deduct
+  quantity     Int         // positive = in, negative = out
+  balanceAfter Int         // stock after transaction
+  notes        String?
+  createdAt    DateTime    @default(now())
+
+  @@index([userId])
+  @@index([materialId])
+  @@index([consumableId])
+  @@index([createdAt])
+}
+
+// --- Purchase Orders ---
+
+model PurchaseOrder {
+  id               String    @id @default(cuid())
+  userId           String
+  user             User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  supplierId       String
+  supplier         Supplier  @relation(fields: [supplierId], references: [id])
+  poNumber         String    // PO-YYYY-NNN
+  status           String    @default("DRAFT") // DRAFT | ORDERED | RECEIVED | CANCELLED
+  expectedDelivery DateTime?
+  totalCost        Float     @default(0)
+  notes            String?   @db.Text
+  invoiceUrl       String?   @db.Text  // base64 data URL for uploaded receipt
+  invoiceFilename  String?
+  createdAt        DateTime  @default(now())
+  updatedAt        DateTime  @updatedAt
+
+  items PurchaseOrderItem[]
+
+  @@unique([userId, poNumber])
+  @@index([userId])
+  @@index([supplierId])
+}
+
+model PurchaseOrderItem {
+  id              String         @id @default(cuid())
+  purchaseOrderId String
+  purchaseOrder   PurchaseOrder  @relation(fields: [purchaseOrderId], references: [id], onDelete: Cascade)
+  materialId      String?
+  material        Material?      @relation(fields: [materialId], references: [id], onDelete: SetNull)
+  consumableId    String?
+  consumable      Consumable?    @relation(fields: [consumableId], references: [id], onDelete: SetNull)
+  description     String
+  quantity        Int
+  unitCost        Float
+  receivedQty     Int            @default(0)
+
+  @@index([purchaseOrderId])
 }

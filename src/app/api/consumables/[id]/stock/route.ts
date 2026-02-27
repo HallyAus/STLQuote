@@ -20,13 +20,13 @@ export async function POST(
 
     const { id } = await context.params;
 
-    const existing = await prisma.material.findFirst({
+    const existing = await prisma.consumable.findFirst({
       where: { id, userId: user.id },
     });
 
     if (!existing) {
       return NextResponse.json(
-        { error: "Material not found" },
+        { error: "Consumable not found" },
         { status: 404 }
       );
     }
@@ -53,14 +53,14 @@ export async function POST(
     const type = parsed.data.adjustment > 0 ? "received" : "used";
 
     const [updated] = await prisma.$transaction([
-      prisma.material.update({
+      prisma.consumable.update({
         where: { id },
         data: { stockQty: newQty },
       }),
       prisma.stockTransaction.create({
         data: {
           userId: user.id,
-          materialId: id,
+          consumableId: id,
           type: parsed.data.notes ? "adjusted" : type,
           quantity: parsed.data.adjustment,
           balanceAfter: newQty,
@@ -71,7 +71,7 @@ export async function POST(
 
     return NextResponse.json(updated);
   } catch (error) {
-    console.error("Failed to adjust stock:", error);
+    console.error("Failed to adjust consumable stock:", error);
     return NextResponse.json(
       { error: "Failed to adjust stock" },
       { status: 500 }

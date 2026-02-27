@@ -19,6 +19,7 @@ import {
   Package,
   Receipt,
   Wrench,
+  ShoppingCart,
   Lock,
   Plug,
   BookTemplate,
@@ -67,6 +68,7 @@ const navGroups: NavGroup[] = [
       { href: "/materials", label: "Materials", icon: Palette },
       { href: "/suppliers", label: "Suppliers", icon: Package, proOnly: true },
       { href: "/consumables", label: "Consumables", icon: Wrench, proOnly: true },
+      { href: "/purchase-orders", label: "Purchase Orders", icon: ShoppingCart, proOnly: true },
     ],
   },
   {
