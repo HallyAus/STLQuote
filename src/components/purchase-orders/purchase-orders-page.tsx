@@ -14,7 +14,19 @@ import {
   DialogTitle,
   DialogFooter,
 } from "@/components/ui/dialog";
-import { Plus, Loader2, ShoppingCart, Trash2, X, UserPlus } from "lucide-react";
+import {
+  Plus,
+  Loader2,
+  ShoppingCart,
+
+  X,
+  UserPlus,
+  Upload,
+  FileText,
+  Sparkles,
+  AlertCircle,
+  PackagePlus,
+} from "lucide-react";
 
 // ---------------------------------------------------------------------------
 // Types
@@ -95,6 +107,18 @@ const STATUS_VARIANTS: Record<string, "default" | "success" | "warning" | "destr
 // Create PO Modal
 // ---------------------------------------------------------------------------
 
+interface ParsedInvoiceItem {
+  type: "material" | "consumable" | "other";
+  materialId: string | null;
+  consumableId: string | null;
+  description: string;
+  quantity: number;
+  unitCost: number;
+  isNew: boolean;
+  suggestedName: string | null;
+  suggestedCategory: "material" | "consumable" | null;
+}
+
 function CreatePOModal({
   onClose,
   onCreated,
@@ -115,6 +139,13 @@ function CreatePOModal({
   const [notes, setNotes] = useState("");
   const [items, setItems] = useState<NewItemForm[]>([{ ...EMPTY_ITEM }]);
   const [saving, setSaving] = useState(false);
+  const [apiError, setApiError] = useState<string | null>(null);
+
+  // AI invoice upload
+  const [invoiceParsing, setInvoiceParsing] = useState(false);
+  const [invoiceError, setInvoiceError] = useState<string | null>(null);
+  const [invoiceFileName, setInvoiceFileName] = useState<string | null>(null);
+  const [newItemFlags, setNewItemFlags] = useState<Map<number, ParsedInvoiceItem>>(new Map());
 
   // Inline supplier creation
   const [showNewSupplier, setShowNewSupplier] = useState(false);
@@ -151,6 +182,94 @@ function CreatePOModal({
     }
   }
 
+  async function handleInvoiceUpload(file: File) {
+    const allowedTypes = ["image/png", "image/jpeg", "image/webp", "image/gif", "application/pdf"];
+    if (!allowedTypes.includes(file.type)) {
+      setInvoiceError("Unsupported file type. Use PNG, JPEG, WebP, GIF, or PDF.");
+      return;
+    }
+    if (file.size > 20 * 1024 * 1024) {
+      setInvoiceError("File too large. Maximum 20MB.");
+      return;
+    }
+
+    setInvoiceParsing(true);
+    setInvoiceError(null);
+    setInvoiceFileName(file.name);
+
+    try {
+      const base64 = await new Promise<string>((resolve, reject) => {
+        const reader = new FileReader();
+        reader.onload = () => resolve(reader.result as string);
+        reader.onerror = reject;
+        reader.readAsDataURL(file);
+      });
+
+      const res = await fetch("/api/ai/parse-invoice", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ file: base64, mimeType: file.type }),
+      });
+
+      if (!res.ok) {
+        const err = await res.json();
+        setInvoiceError(err.error || "Failed to parse invoice.");
+        return;
+      }
+
+      const data = await res.json();
+
+      // Auto-match supplier by name
+      if (data.supplierName) {
+        const match = suppliers.find(
+          (s) => s.name.toLowerCase().includes(data.supplierName.toLowerCase()) ||
+                 data.supplierName.toLowerCase().includes(s.name.toLowerCase())
+        );
+        if (match) {
+          setSupplierId(match.id);
+        } else {
+          // Pre-fill inline supplier creation
+          setShowNewSupplier(true);
+          setNewSupplierName(data.supplierName);
+        }
+      }
+
+      // Auto-fill expected delivery
+      if (data.expectedDelivery) {
+        setExpectedDelivery(data.expectedDelivery.slice(0, 10));
+      }
+
+      // Auto-fill notes
+      if (data.notes) {
+        setNotes((prev) => prev ? `${prev}\n${data.notes}` : data.notes);
+      }
+
+      // Auto-fill items
+      if (data.items && Array.isArray(data.items) && data.items.length > 0) {
+        const newFlags = new Map<number, ParsedInvoiceItem>();
+        const parsed: NewItemForm[] = data.items.map((item: ParsedInvoiceItem, idx: number) => {
+          if (item.isNew) {
+            newFlags.set(idx, item);
+          }
+          return {
+            type: item.type === "material" || item.type === "consumable" ? item.type : "other",
+            materialId: item.materialId || "",
+            consumableId: item.consumableId || "",
+            description: item.description || "",
+            quantity: item.quantity || 1,
+            unitCost: item.unitCost || 0,
+          };
+        });
+        setItems(parsed);
+        setNewItemFlags(newFlags);
+      }
+    } catch {
+      setInvoiceError("Failed to upload invoice. Check your connection.");
+    } finally {
+      setInvoiceParsing(false);
+    }
+  }
+
   function addItem() {
     setItems((prev) => [...prev, { ...EMPTY_ITEM }]);
   }
@@ -183,7 +302,22 @@ function CreatePOModal({
   }
 
   async function handleCreate() {
-    if (!supplierId || items.length === 0) return;
+    setApiError(null);
+
+    if (!supplierId) {
+      setApiError("Please select a supplier.");
+      return;
+    }
+    if (items.length === 0) {
+      setApiError("Add at least one item.");
+      return;
+    }
+    const emptyDesc = items.findIndex((i) => !i.description.trim());
+    if (emptyDesc !== -1) {
+      setApiError(`Item ${emptyDesc + 1} needs a description.`);
+      return;
+    }
+
     setSaving(true);
     try {
       const payload = {
@@ -207,14 +341,14 @@ function CreatePOModal({
 
       if (!res.ok) {
         const err = await res.json();
-        console.error("Create PO failed:", err);
+        setApiError(err.error || "Failed to create purchase order.");
         return;
       }
 
       onCreated();
       onClose();
-    } catch (err) {
-      console.error("Create PO error:", err);
+    } catch {
+      setApiError("Network error. Please try again.");
     } finally {
       setSaving(false);
     }
@@ -228,6 +362,64 @@ function CreatePOModal({
         <DialogTitle>New Purchase Order</DialogTitle>
       </DialogHeader>
       <div className="space-y-4">
+        {/* AI Invoice Upload */}
+        <div className="rounded-lg border border-dashed border-border bg-muted/20 p-4">
+          <div className="flex items-start gap-3">
+            <div className="rounded-md bg-primary/10 p-2">
+              <Sparkles className="h-5 w-5 text-primary" />
+            </div>
+            <div className="flex-1 min-w-0">
+              <h4 className="text-sm font-semibold text-foreground">
+                Scan Invoice with AI
+              </h4>
+              <p className="mt-0.5 text-xs text-muted-foreground">
+                Upload a supplier invoice and AI will extract the items, quantities, and costs automatically.
+              </p>
+
+              {invoiceParsing ? (
+                <div className="mt-3 flex items-center gap-2 text-sm text-muted-foreground">
+                  <Loader2 className="h-4 w-4 animate-spin text-primary" />
+                  <span>Parsing {invoiceFileName}...</span>
+                </div>
+              ) : invoiceFileName && !invoiceError ? (
+                <div className="mt-3 flex items-center gap-2 text-sm text-green-600 dark:text-green-400">
+                  <FileText className="h-4 w-4" />
+                  <span>Parsed from {invoiceFileName} — review items below</span>
+                </div>
+              ) : (
+                <label className="mt-3 inline-flex cursor-pointer items-center gap-2 rounded-md border border-border bg-background px-3 py-1.5 text-sm font-medium text-foreground transition-colors hover:bg-muted">
+                  <Upload className="h-3.5 w-3.5" />
+                  Upload Invoice
+                  <input
+                    type="file"
+                    className="hidden"
+                    accept="image/png,image/jpeg,image/webp,image/gif,application/pdf"
+                    onChange={(e) => {
+                      const file = e.target.files?.[0];
+                      if (file) handleInvoiceUpload(file);
+                      e.target.value = "";
+                    }}
+                  />
+                </label>
+              )}
+
+              {invoiceError && (
+                <div className="mt-2 flex items-center gap-1.5 text-sm text-destructive">
+                  <AlertCircle className="h-3.5 w-3.5 shrink-0" />
+                  <span>{invoiceError}</span>
+                  <button
+                    type="button"
+                    onClick={() => { setInvoiceError(null); setInvoiceFileName(null); }}
+                    className="ml-2 text-xs underline"
+                  >
+                    Try again
+                  </button>
+                </div>
+              )}
+            </div>
+          </div>
+        </div>
+
         <div className="grid gap-4 sm:grid-cols-2">
           <div className="space-y-2">
             <Select
@@ -313,91 +505,106 @@ function CreatePOModal({
             </Button>
           </div>
           <div className="space-y-3">
-            {items.map((item, index) => (
-              <div key={index} className="grid gap-2 rounded-lg border border-border p-3 sm:grid-cols-12">
-                <div className="sm:col-span-2">
-                  <Select
-                    label="Type"
-                    value={item.type}
-                    onChange={(e) => updateItem(index, "type", e.target.value)}
-                    options={[
-                      { value: "material", label: "Material" },
-                      { value: "consumable", label: "Consumable" },
-                      { value: "other", label: "Other" },
-                    ]}
-                  />
-                </div>
-                {item.type === "material" && (
-                  <div className="sm:col-span-3">
-                    <Select
-                      label="Material"
-                      value={item.materialId}
-                      onChange={(e) => updateItem(index, "materialId", e.target.value)}
-                      options={[
-                        { value: "", label: "Select..." },
-                        ...materials.map((m) => ({
-                          value: m.id,
-                          label: `${m.materialType}${m.brand ? ` — ${m.brand}` : ""}`,
-                        })),
-                      ]}
-                    />
+            {items.map((item, index) => {
+              const newFlag = newItemFlags.get(index);
+              return (
+                <div key={index} className="space-y-1">
+                  <div className="grid gap-2 rounded-lg border border-border p-3 sm:grid-cols-12">
+                    <div className="sm:col-span-2">
+                      <Select
+                        label="Type"
+                        value={item.type}
+                        onChange={(e) => updateItem(index, "type", e.target.value)}
+                        options={[
+                          { value: "material", label: "Material" },
+                          { value: "consumable", label: "Consumable" },
+                          { value: "other", label: "Other" },
+                        ]}
+                      />
+                    </div>
+                    {item.type === "material" && (
+                      <div className="sm:col-span-3">
+                        <Select
+                          label="Material"
+                          value={item.materialId}
+                          onChange={(e) => updateItem(index, "materialId", e.target.value)}
+                          options={[
+                            { value: "", label: "Select..." },
+                            ...materials.map((m) => ({
+                              value: m.id,
+                              label: `${m.materialType}${m.brand ? ` — ${m.brand}` : ""}`,
+                            })),
+                          ]}
+                        />
+                      </div>
+                    )}
+                    {item.type === "consumable" && (
+                      <div className="sm:col-span-3">
+                        <Select
+                          label="Consumable"
+                          value={item.consumableId}
+                          onChange={(e) => updateItem(index, "consumableId", e.target.value)}
+                          options={[
+                            { value: "", label: "Select..." },
+                            ...consumables.map((c) => ({
+                              value: c.id,
+                              label: c.name,
+                            })),
+                          ]}
+                        />
+                      </div>
+                    )}
+                    <div className={item.type === "other" ? "sm:col-span-5" : "sm:col-span-3"}>
+                      <Input
+                        label="Description"
+                        value={item.description}
+                        onChange={(e) => updateItem(index, "description", e.target.value)}
+                      />
+                    </div>
+                    <div className="sm:col-span-2">
+                      <Input
+                        label="Qty"
+                        type="number"
+                        min="1"
+                        value={item.quantity}
+                        onChange={(e) => updateItem(index, "quantity", parseInt(e.target.value) || 1)}
+                      />
+                    </div>
+                    <div className="sm:col-span-2">
+                      <Input
+                        label="Unit cost"
+                        type="number"
+                        step="0.01"
+                        min="0"
+                        value={item.unitCost}
+                        onChange={(e) => updateItem(index, "unitCost", parseFloat(e.target.value) || 0)}
+                      />
+                    </div>
+                    <div className="flex items-end sm:col-span-1">
+                      <Button
+                        variant="ghost"
+                        size="icon"
+                        className="h-9 w-9"
+                        onClick={() => removeItem(index)}
+                        disabled={items.length === 1}
+                      >
+                        <X className="h-4 w-4" />
+                      </Button>
+                    </div>
                   </div>
-                )}
-                {item.type === "consumable" && (
-                  <div className="sm:col-span-3">
-                    <Select
-                      label="Consumable"
-                      value={item.consumableId}
-                      onChange={(e) => updateItem(index, "consumableId", e.target.value)}
-                      options={[
-                        { value: "", label: "Select..." },
-                        ...consumables.map((c) => ({
-                          value: c.id,
-                          label: c.name,
-                        })),
-                      ]}
-                    />
-                  </div>
-                )}
-                <div className={item.type === "other" ? "sm:col-span-5" : "sm:col-span-3"}>
-                  <Input
-                    label="Description"
-                    value={item.description}
-                    onChange={(e) => updateItem(index, "description", e.target.value)}
-                  />
+                  {newFlag && (
+                    <div className="flex items-center gap-2 px-3">
+                      <PackagePlus className="h-3.5 w-3.5 text-amber-500" />
+                      <span className="text-xs text-amber-600 dark:text-amber-400">
+                        New product — add as{" "}
+                        <span className="font-medium">{newFlag.suggestedCategory || "consumable"}</span>
+                        {" "}in Inventory after creating this PO
+                      </span>
+                    </div>
+                  )}
                 </div>
-                <div className="sm:col-span-2">
-                  <Input
-                    label="Qty"
-                    type="number"
-                    min="1"
-                    value={item.quantity}
-                    onChange={(e) => updateItem(index, "quantity", parseInt(e.target.value) || 1)}
-                  />
-                </div>
-                <div className="sm:col-span-2">
-                  <Input
-                    label="Unit cost"
-                    type="number"
-                    step="0.01"
-                    min="0"
-                    value={item.unitCost}
-                    onChange={(e) => updateItem(index, "unitCost", parseFloat(e.target.value) || 0)}
-                  />
-                </div>
-                <div className="flex items-end sm:col-span-1">
-                  <Button
-                    variant="ghost"
-                    size="icon"
-                    className="h-9 w-9"
-                    onClick={() => removeItem(index)}
-                    disabled={items.length === 1}
-                  >
-                    <X className="h-4 w-4" />
-                  </Button>
-                </div>
-              </div>
-            ))}
+              );
+            })}
           </div>
           <div className="mt-2 text-right text-sm font-medium">
             Total: ${totalCost.toFixed(2)}
@@ -410,9 +617,18 @@ function CreatePOModal({
           onChange={(e) => setNotes(e.target.value)}
         />
       </div>
+      {apiError && (
+        <div className="flex items-center gap-2 rounded-md border border-destructive/30 bg-destructive/10 px-3 py-2 text-sm text-destructive">
+          <AlertCircle className="h-4 w-4 shrink-0" />
+          <span>{apiError}</span>
+        </div>
+      )}
       <DialogFooter>
         <Button variant="ghost" onClick={onClose} disabled={saving}>Cancel</Button>
-        <Button onClick={handleCreate} disabled={saving || !supplierId || items.length === 0}>
+        <Button
+          onClick={handleCreate}
+          disabled={saving || !supplierId || items.length === 0 || items.some((i) => !i.description.trim())}
+        >
           {saving ? (
             <><Loader2 className="mr-2 h-4 w-4 animate-spin" />Creating...</>
           ) : (
