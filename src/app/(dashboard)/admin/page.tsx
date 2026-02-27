@@ -36,6 +36,10 @@ import {
   ChevronDown,
   ChevronUp,
   RefreshCw,
+  CreditCard,
+  CircleCheck,
+  CircleX,
+  ExternalLink,
 } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import { Select } from "@/components/ui/select";
@@ -90,7 +94,7 @@ export default function AdminPage() {
   const [users, setUsers] = useState<AdminUser[]>([]);
   const [loading, setLoading] = useState(true);
   const [actionLoading, setActionLoading] = useState<string | null>(null);
-  const [activeTab, setActiveTab] = useState<"users" | "waitlist" | "deploys" | "email" | "newsletter" | "config" | "logs">("users");
+  const [activeTab, setActiveTab] = useState<"users" | "waitlist" | "deploys" | "email" | "newsletter" | "config" | "logs" | "billing">("users");
 
   // Create user modal
   const [showCreateModal, setShowCreateModal] = useState(false);
@@ -173,6 +177,75 @@ export default function AdminPage() {
   const [logsPagination, setLogsPagination] = useState({ page: 1, total: 0, totalPages: 1 });
   const [logsLoading, setLogsLoading] = useState(false);
   const [expandedLogId, setExpandedLogId] = useState<string | null>(null);
+
+  // Billing
+  const [billingData, setBillingData] = useState<{
+    stats: { totalUsers: number; proUsers: number; trialUsers: number; freeUsers: number };
+    stripeSubscribers: {
+      id: string;
+      name: string | null;
+      email: string | null;
+      subscriptionTier: string;
+      subscriptionStatus: string;
+      stripeCustomerId: string | null;
+      stripeSubscriptionId: string | null;
+      subscriptionEndsAt: string | null;
+      createdAt: string;
+    }[];
+    events: {
+      id: string;
+      userId: string;
+      action: string;
+      detail: string | null;
+      createdAt: string;
+      user: { name: string | null; email: string | null };
+    }[];
+    config: {
+      stripeSecretKey: boolean;
+      stripeWebhookSecret: boolean;
+      monthlyPriceId: string | null;
+      annualPriceId: string | null;
+      appUrl: string | null;
+    };
+  } | null>(null);
+  const [billingLoading, setBillingLoading] = useState(false);
+  const [billingCheckoutLoading, setBillingCheckoutLoading] = useState(false);
+
+  const fetchBilling = useCallback(async () => {
+    setBillingLoading(true);
+    try {
+      const res = await fetch("/api/admin/billing");
+      if (res.ok) setBillingData(await res.json());
+    } catch { /* ignore */ } finally {
+      setBillingLoading(false);
+    }
+  }, []);
+
+  useEffect(() => {
+    if (activeTab !== "billing") return;
+    fetchBilling();
+  }, [activeTab, fetchBilling]);
+
+  async function handleAdminCheckout(interval: "month" | "year") {
+    setBillingCheckoutLoading(true);
+    try {
+      const res = await fetch("/api/billing/checkout", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ interval }),
+      });
+      const data = await res.json();
+      if (res.ok && data.url) {
+        window.location.href = data.url;
+      } else {
+        alert(data.error || "Failed to create checkout session");
+      }
+    } catch {
+      alert("Something went wrong");
+    } finally {
+      setBillingCheckoutLoading(false);
+    }
+  }
 
   const fetchUsers = useCallback(async () => {
     try {
@@ -605,6 +678,7 @@ export default function AdminPage() {
           { key: "deploys", icon: Rocket, label: "Deploys" },
           { key: "email", icon: Mail, label: "Email" },
           { key: "newsletter", icon: Megaphone, label: "Newsletter" },
+          { key: "billing", icon: CreditCard, label: "Billing" },
           { key: "config", icon: Settings, label: "Config" },
           { key: "logs", icon: Terminal, label: "Logs" },
         ] as const).map((tab) => {
@@ -1123,6 +1197,213 @@ export default function AdminPage() {
             </form>
           </CardContent>
         </Card>
+      )}
+
+      {/* Billing tab */}
+      {activeTab === "billing" && (
+        <div className="space-y-6">
+          {billingLoading && !billingData ? (
+            <div className="flex items-center justify-center py-12">
+              <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
+            </div>
+          ) : billingData ? (
+            <>
+              {/* Stripe setup status */}
+              <Card>
+                <CardHeader>
+                  <div className="flex items-center justify-between">
+                    <CardTitle className="flex items-center gap-2">
+                      <CreditCard className="h-5 w-5" />
+                      Stripe Configuration
+                    </CardTitle>
+                    <Button variant="ghost" size="sm" onClick={fetchBilling} disabled={billingLoading}>
+                      {billingLoading ? <Loader2 className="h-4 w-4 animate-spin" /> : <RefreshCw className="h-4 w-4" />}
+                    </Button>
+                  </div>
+                </CardHeader>
+                <CardContent>
+                  <div className="space-y-3">
+                    {[
+                      { label: "Secret Key", ok: billingData.config.stripeSecretKey, hint: "STRIPE_SECRET_KEY" },
+                      { label: "Webhook Secret", ok: billingData.config.stripeWebhookSecret, hint: "STRIPE_WEBHOOK_SECRET" },
+                      { label: "Monthly Price ID", ok: !!billingData.config.monthlyPriceId, hint: billingData.config.monthlyPriceId || "STRIPE_PRO_MONTHLY_PRICE_ID — not set" },
+                      { label: "Annual Price ID", ok: !!billingData.config.annualPriceId, hint: billingData.config.annualPriceId || "STRIPE_PRO_ANNUAL_PRICE_ID — not set" },
+                    ].map((item) => (
+                      <div key={item.label} className="flex items-center justify-between rounded-lg border border-border p-3">
+                        <div className="flex items-center gap-2">
+                          {item.ok ? (
+                            <CircleCheck className="h-4 w-4 text-success-foreground" />
+                          ) : (
+                            <CircleX className="h-4 w-4 text-destructive-foreground" />
+                          )}
+                          <span className="text-sm font-medium">{item.label}</span>
+                        </div>
+                        <span className="text-xs text-muted-foreground font-mono">{item.hint}</span>
+                      </div>
+                    ))}
+
+                    {billingData.config.appUrl && (
+                      <div className="rounded-lg border border-border p-3 mt-4">
+                        <p className="text-xs font-medium text-muted-foreground mb-1">Webhook URL (add in Stripe Dashboard)</p>
+                        <code className="text-xs text-foreground break-all">{billingData.config.appUrl}/api/billing/webhook</code>
+                      </div>
+                    )}
+                  </div>
+                </CardContent>
+              </Card>
+
+              {/* Subscriber stats */}
+              <div className="grid grid-cols-2 gap-4 md:grid-cols-4">
+                <Card>
+                  <CardContent className="p-4">
+                    <div className="text-2xl font-bold">{billingData.stats.proUsers}</div>
+                    <div className="text-sm text-muted-foreground">Pro subscribers</div>
+                  </CardContent>
+                </Card>
+                <Card>
+                  <CardContent className="p-4">
+                    <div className="text-2xl font-bold">{billingData.stats.trialUsers}</div>
+                    <div className="text-sm text-muted-foreground">On trial</div>
+                  </CardContent>
+                </Card>
+                <Card>
+                  <CardContent className="p-4">
+                    <div className="text-2xl font-bold">{billingData.stats.freeUsers}</div>
+                    <div className="text-sm text-muted-foreground">Free users</div>
+                  </CardContent>
+                </Card>
+                <Card>
+                  <CardContent className="p-4">
+                    <div className="text-2xl font-bold">{billingData.stats.totalUsers}</div>
+                    <div className="text-sm text-muted-foreground">Total users</div>
+                  </CardContent>
+                </Card>
+              </div>
+
+              {/* Quick checkout (for admin to test) */}
+              <Card>
+                <CardHeader>
+                  <CardTitle className="text-base">Quick Checkout</CardTitle>
+                </CardHeader>
+                <CardContent>
+                  <p className="text-sm text-muted-foreground mb-4">
+                    Create a Stripe checkout session for your own account to test the subscription flow.
+                  </p>
+                  <div className="flex gap-3">
+                    <Button
+                      variant="secondary"
+                      onClick={() => handleAdminCheckout("month")}
+                      disabled={billingCheckoutLoading || !billingData.config.monthlyPriceId}
+                    >
+                      {billingCheckoutLoading ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <ExternalLink className="mr-2 h-4 w-4" />}
+                      Monthly ($29/mo)
+                    </Button>
+                    <Button
+                      onClick={() => handleAdminCheckout("year")}
+                      disabled={billingCheckoutLoading || !billingData.config.annualPriceId}
+                    >
+                      {billingCheckoutLoading ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <ExternalLink className="mr-2 h-4 w-4" />}
+                      Annual ($290/yr)
+                    </Button>
+                  </div>
+                </CardContent>
+              </Card>
+
+              {/* Stripe subscribers */}
+              {billingData.stripeSubscribers.length > 0 && (
+                <Card>
+                  <CardHeader>
+                    <CardTitle className="text-base">Stripe Subscribers</CardTitle>
+                  </CardHeader>
+                  <CardContent>
+                    <div className="overflow-x-auto">
+                      <table className="w-full text-sm">
+                        <thead>
+                          <tr className="border-b border-border text-left text-muted-foreground">
+                            <th className="pb-3 pr-4 font-medium">User</th>
+                            <th className="pb-3 pr-4 font-medium">Status</th>
+                            <th className="pb-3 pr-4 font-medium">Customer ID</th>
+                            <th className="pb-3 font-medium">Ends At</th>
+                          </tr>
+                        </thead>
+                        <tbody>
+                          {billingData.stripeSubscribers.map((sub) => (
+                            <tr key={sub.id} className="border-b border-border/50 last:border-0">
+                              <td className="py-3 pr-4">
+                                <div className="font-medium">{sub.name || "No name"}</div>
+                                <div className="text-xs text-muted-foreground">{sub.email}</div>
+                              </td>
+                              <td className="py-3 pr-4">
+                                <span className={cn(
+                                  "inline-flex rounded-full px-2 py-0.5 text-xs font-medium",
+                                  sub.subscriptionStatus === "active" ? "bg-success/15 text-success-foreground"
+                                    : sub.subscriptionStatus === "past_due" ? "bg-amber-500/15 text-amber-600 dark:text-amber-400"
+                                    : "bg-muted text-muted-foreground"
+                                )}>
+                                  {sub.subscriptionStatus}
+                                </span>
+                              </td>
+                              <td className="py-3 pr-4 font-mono text-xs text-muted-foreground">
+                                {sub.stripeCustomerId?.slice(0, 18)}...
+                              </td>
+                              <td className="py-3 text-muted-foreground">
+                                {sub.subscriptionEndsAt
+                                  ? new Date(sub.subscriptionEndsAt).toLocaleDateString("en-AU")
+                                  : "—"}
+                              </td>
+                            </tr>
+                          ))}
+                        </tbody>
+                      </table>
+                    </div>
+                  </CardContent>
+                </Card>
+              )}
+
+              {/* Subscription events */}
+              <Card>
+                <CardHeader>
+                  <CardTitle className="text-base">Subscription Events</CardTitle>
+                </CardHeader>
+                <CardContent>
+                  {billingData.events.length === 0 ? (
+                    <div className="py-8 text-center text-muted-foreground">
+                      No subscription events yet.
+                    </div>
+                  ) : (
+                    <div className="space-y-2">
+                      {billingData.events.map((evt) => (
+                        <div key={evt.id} className="flex items-start gap-3 rounded-lg border border-border p-3">
+                          <div className="flex-1 min-w-0">
+                            <div className="flex items-center gap-2">
+                              <span className={cn(
+                                "inline-flex rounded-full px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wider",
+                                evt.action.includes("upgrade") || evt.action.includes("grant") ? "bg-success/15 text-success-foreground"
+                                  : evt.action.includes("cancel") || evt.action.includes("revoke") || evt.action.includes("failed") ? "bg-destructive/10 text-destructive-foreground"
+                                  : "bg-muted text-muted-foreground"
+                              )}>
+                                {evt.action.replace(/_/g, " ")}
+                              </span>
+                              <span className="text-xs text-muted-foreground">
+                                {evt.user?.name || evt.user?.email || "Unknown user"}
+                              </span>
+                            </div>
+                            {evt.detail && (
+                              <p className="text-xs text-muted-foreground mt-1 truncate">{evt.detail}</p>
+                            )}
+                          </div>
+                          <span className="text-[10px] text-muted-foreground whitespace-nowrap">
+                            {formatRelativeTime(evt.createdAt)}
+                          </span>
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                </CardContent>
+              </Card>
+            </>
+          ) : null}
+        </div>
       )}
 
       {/* Config tab */}

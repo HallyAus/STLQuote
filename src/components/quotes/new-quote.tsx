@@ -134,6 +134,12 @@ export function NewQuote() {
   const [expiryDate, setExpiryDate] = useState(defaultExpiryDate());
   const [markupPct, setMarkupPct] = useState("50");
 
+  // Tax defaults (from settings)
+  const [taxPct, setTaxPct] = useState(0);
+  const [taxLabel, setTaxLabel] = useState("GST");
+  const [taxInclusive, setTaxInclusive] = useState(false);
+  const [showTaxOnQuotes, setShowTaxOnQuotes] = useState(false);
+
   const [calcLineItems, setCalcLineItems] = useState<CalculatorLineItem[]>([]);
 
   const [templates, setTemplates] = useState<TemplateOption[]>([]);
@@ -141,13 +147,14 @@ export function NewQuote() {
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
-  // Load clients and templates on mount
+  // Load clients, templates, and settings on mount
   useEffect(() => {
     async function loadData() {
       try {
-        const [clientsRes, templatesRes] = await Promise.all([
+        const [clientsRes, templatesRes, settingsRes] = await Promise.all([
           fetch("/api/clients"),
           fetch("/api/quote-templates"),
+          fetch("/api/settings"),
         ]);
         if (clientsRes.ok) {
           const data = await clientsRes.json();
@@ -162,6 +169,15 @@ export function NewQuote() {
         if (templatesRes.ok) {
           const data = await templatesRes.json();
           setTemplates(data);
+        }
+        if (settingsRes.ok) {
+          const s = await settingsRes.json();
+          if (s.showTaxOnQuotes) {
+            setShowTaxOnQuotes(true);
+            setTaxPct(s.defaultTaxPct ?? 0);
+            setTaxLabel(s.taxLabel ?? "GST");
+            setTaxInclusive(s.taxInclusive ?? false);
+          }
         }
       } catch {
         // ignore — lists will be empty
@@ -282,6 +298,9 @@ export function NewQuote() {
         terms: terms.trim() || null,
         expiryDate: expiryDate ? new Date(expiryDate).toISOString() : null,
         markupPct: markupPct !== "" ? parseFloat(markupPct) : 50,
+        taxPct: showTaxOnQuotes ? taxPct : 0,
+        taxLabel,
+        taxInclusive,
         lineItems,
       };
 

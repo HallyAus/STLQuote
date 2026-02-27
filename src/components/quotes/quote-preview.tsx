@@ -14,6 +14,11 @@ interface PreviewQuote {
   quoteNumber: string;
   status: string;
   subtotal: number;
+  markupPct?: number;
+  taxPct?: number;
+  taxLabel?: string;
+  tax?: number;
+  taxInclusive?: boolean;
   total: number;
   currency: string;
   notes: string | null;
@@ -257,11 +262,13 @@ export function QuotePreview({
                           {formatCurrency(quote.subtotal)}
                         </span>
                       </div>
-                      {quote.total > quote.subtotal && (
+                      {(quote.taxPct ?? 0) > 0 && (
                         <div className="flex justify-between text-sm">
-                          <span className="text-gray-500">Markup</span>
+                          <span className="text-gray-500">
+                            {quote.taxLabel || "GST"} ({quote.taxPct}%){quote.taxInclusive ? " (incl.)" : ""}
+                          </span>
                           <span className="text-gray-900">
-                            {formatCurrency(quote.total - quote.subtotal)}
+                            {formatCurrency(quote.tax ?? 0)}
                           </span>
                         </div>
                       )}
@@ -271,6 +278,11 @@ export function QuotePreview({
                         </span>
                         <span className="text-lg font-bold text-blue-600">
                           {formatCurrency(quote.total)} {quote.currency}
+                          {quote.taxInclusive && (quote.taxPct ?? 0) > 0 && (
+                            <span className="block text-xs font-normal text-gray-400">
+                              incl. {formatCurrency(quote.tax ?? 0)} {quote.taxLabel || "GST"}
+                            </span>
+                          )}
                         </span>
                       </div>
                     </div>
