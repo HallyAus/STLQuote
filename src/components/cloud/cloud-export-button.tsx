@@ -14,9 +14,6 @@ import {
 interface CloudExportButtonProps {
   fileType: "design_file" | "quote_pdf" | "invoice_pdf";
   fileId: string;
-  /** For quote/invoice PDF exports, provide rendered PDF as base64 and filename */
-  pdfBase64?: string;
-  pdfFileName?: string;
 }
 
 interface ConnectionInfo {
@@ -24,7 +21,7 @@ interface ConnectionInfo {
   providerEmail: string | null;
 }
 
-export function CloudExportButton({ fileType, fileId, pdfBase64, pdfFileName }: CloudExportButtonProps) {
+export function CloudExportButton({ fileType, fileId }: CloudExportButtonProps) {
   const [connections, setConnections] = useState<{
     google_drive: ConnectionInfo;
     onedrive: ConnectionInfo;
@@ -65,11 +62,6 @@ export function CloudExportButton({ fileType, fileId, pdfBase64, pdfFileName }: 
         fileType,
         fileId,
       };
-
-      if ((fileType === "quote_pdf" || fileType === "invoice_pdf") && pdfBase64 && pdfFileName) {
-        body.pdfBase64 = pdfBase64;
-        body.pdfFileName = pdfFileName;
-      }
 
       const res = await fetch("/api/cloud/export", {
         method: "POST",

@@ -5,6 +5,11 @@ import * as googleDrive from "@/lib/google-drive";
 import * as oneDrive from "@/lib/onedrive";
 import path from "path";
 import fs from "fs/promises";
+import React, { type ReactElement, type JSXElementConstructor } from "react";
+import { renderToBuffer, type DocumentProps } from "@react-pdf/renderer";
+import { QuoteDocument } from "@/lib/pdf/quote-document";
+import { InvoiceDocument } from "@/lib/pdf/invoice-document";
+import { getTaxDefaults, type TaxRegion } from "@/lib/tax-regions";
 
 export async function POST(request: NextRequest) {
   try {
@@ -48,17 +53,96 @@ export async function POST(request: NextRequest) {
       mimeType = designFile.mimeType;
       targetFolder = `Designs/${designFile.design.designNumber}`;
 
-    } else if (fileType === "quote_pdf" || fileType === "invoice_pdf") {
-      // For quote/invoice PDFs, generate the PDF on the fly
-      // The caller should provide the rendered PDF as base64 in the request body
-      const { pdfBase64, pdfFileName } = body;
-      if (!pdfBase64 || !pdfFileName) {
-        return NextResponse.json({ error: "PDF data required for quote/invoice export" }, { status: 400 });
-      }
-      fileBuffer = Buffer.from(pdfBase64, "base64");
-      fileName = pdfFileName;
+    } else if (fileType === "quote_pdf") {
+      // Generate quote PDF server-side
+      const quote = await prisma.quote.findFirst({
+        where: { id: fileId, userId: user.id },
+        include: {
+          client: { select: { name: true, email: true, phone: true, company: true, billingAddress: true } },
+          lineItems: true,
+        },
+      });
+      if (!quote) return NextResponse.json({ error: "Quote not found" }, { status: 404 });
+
+      const settings = await prisma.settings.findUnique({
+        where: { userId: user.id },
+        select: { businessName: true, businessAddress: true, businessAbn: true, businessPhone: true, businessEmail: true, businessLogoUrl: true, taxRegion: true, taxLabel: true },
+      });
+      const regionDefaults = getTaxDefaults((settings?.taxRegion || "AU") as TaxRegion);
+
+      const pdfData = {
+        quoteNumber: quote.quoteNumber, createdAt: quote.createdAt.toISOString(),
+        expiryDate: quote.expiryDate?.toISOString() || null, currency: quote.currency,
+        subtotal: quote.subtotal, markupPct: quote.markupPct,
+        taxPct: quote.taxPct || 0, taxLabel: quote.taxLabel || settings?.taxLabel || "GST",
+        tax: quote.tax || 0, taxInclusive: quote.taxInclusive || false,
+        taxIdLabel: regionDefaults.taxIdLabel, total: quote.total,
+        notes: quote.notes, terms: quote.terms, client: quote.client,
+        lineItems: quote.lineItems.map((li) => ({
+          description: li.description, materialCost: li.materialCost, machineCost: li.machineCost,
+          labourCost: li.labourCost, overheadCost: li.overheadCost, lineTotal: li.lineTotal, quantity: li.quantity,
+        })),
+        business: {
+          name: settings?.businessName || null, address: settings?.businessAddress || null,
+          abn: settings?.businessAbn || null, phone: settings?.businessPhone || null,
+          email: settings?.businessEmail || null, logoUrl: settings?.businessLogoUrl || null,
+        },
+      };
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      const buffer = await renderToBuffer(
+        React.createElement(QuoteDocument, { data: pdfData }) as any as ReactElement<DocumentProps, string | JSXElementConstructor<DocumentProps>>
+      );
+      fileBuffer = Buffer.from(buffer);
+      fileName = `${quote.quoteNumber}.pdf`;
       mimeType = "application/pdf";
-      targetFolder = fileType === "quote_pdf" ? "Quotes" : "Invoices";
+      targetFolder = "Quotes";
+
+    } else if (fileType === "invoice_pdf") {
+      // Generate invoice PDF server-side
+      const invoice = await prisma.invoice.findFirst({
+        where: { id: fileId, userId: user.id },
+        include: {
+          client: { select: { name: true, email: true, phone: true, company: true, billingAddress: true } },
+          lineItems: true,
+        },
+      });
+      if (!invoice) return NextResponse.json({ error: "Invoice not found" }, { status: 404 });
+
+      const settings = await prisma.settings.findUnique({
+        where: { userId: user.id },
+        select: { businessName: true, businessAddress: true, businessAbn: true, businessPhone: true, businessEmail: true, businessLogoUrl: true, bankName: true, bankBsb: true, bankAccountNumber: true, bankAccountName: true, taxRegion: true, taxLabel: true },
+      });
+      const regionDefaults = getTaxDefaults((settings?.taxRegion || "AU") as TaxRegion);
+
+      const pdfData = {
+        invoiceNumber: invoice.invoiceNumber, createdAt: invoice.createdAt.toISOString(),
+        dueDate: invoice.dueDate?.toISOString() || null, currency: invoice.currency,
+        subtotal: invoice.subtotal, taxPct: invoice.taxPct,
+        taxLabel: invoice.taxLabel || settings?.taxLabel || "GST", tax: invoice.tax,
+        taxInclusive: invoice.taxInclusive || false,
+        invoiceTitle: regionDefaults.invoiceTitle, taxIdLabel: regionDefaults.taxIdLabel,
+        total: invoice.total, status: invoice.status,
+        notes: invoice.notes, terms: invoice.terms, client: invoice.client,
+        lineItems: invoice.lineItems.map((li) => ({
+          description: li.description, quantity: li.quantity, unitPrice: li.unitPrice, lineTotal: li.lineTotal,
+        })),
+        business: {
+          name: settings?.businessName || null, address: settings?.businessAddress || null,
+          abn: settings?.businessAbn || null, phone: settings?.businessPhone || null,
+          email: settings?.businessEmail || null, logoUrl: settings?.businessLogoUrl || null,
+        },
+        bank: settings?.bankName || settings?.bankBsb || settings?.bankAccountNumber || settings?.bankAccountName
+          ? { name: settings.bankName ?? null, bsb: settings.bankBsb ?? null, accountNumber: settings.bankAccountNumber ?? null, accountName: settings.bankAccountName ?? null }
+          : null,
+      };
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      const buffer = await renderToBuffer(
+        React.createElement(InvoiceDocument, { data: pdfData }) as any as ReactElement<DocumentProps, string | JSXElementConstructor<DocumentProps>>
+      );
+      fileBuffer = Buffer.from(buffer);
+      fileName = `${invoice.invoiceNumber}.pdf`;
+      mimeType = "application/pdf";
+      targetFolder = "Invoices";
 
     } else {
       return NextResponse.json({ error: "Invalid file type" }, { status: 400 });
