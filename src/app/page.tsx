@@ -40,13 +40,38 @@ import {
 import { CalculatorDemo } from "@/components/landing/calculator-demo";
 
 export const metadata: Metadata = {
-  title: "Printforge — Stop Guessing Your 3D Print Costs",
+  title: "Free 3D Print Cost Calculator & Quote Software | Printforge",
   description:
-    "The complete business platform for 3D print shops. Calculate costs, send professional quotes, manage inventory, track jobs, and invoice clients. Free to start.",
+    "Calculate your 3D printing costs instantly. Free 3D print cost calculator with material, machine, labour & overhead breakdown. Generate professional quotes, track jobs, and manage your 3D printing business. Try free — no credit card required.",
+  keywords: [
+    "3D print cost calculator",
+    "3D printing quote software",
+    "3D printing pricing tool",
+    "3D print quoting",
+    "3D printing business software",
+    "3D print cost estimator",
+    "STL file cost calculator",
+    "G-code cost calculator",
+    "3D printing invoice software",
+    "3D print shop management",
+  ],
+  alternates: {
+    canonical: "https://crm.printforge.com.au",
+  },
   openGraph: {
-    title: "Printforge — Stop Guessing Your 3D Print Costs",
+    title: "Free 3D Print Cost Calculator & Quote Software | Printforge",
     description:
-      "Calculate costs, send professional quotes, manage inventory, track jobs, and invoice clients. Built for 3D print businesses.",
+      "Stop guessing your 3D print costs. Calculate material, machine, labour & overhead costs instantly. Generate professional quotes, track jobs, and invoice clients. Free to start.",
+    url: "https://crm.printforge.com.au",
+    type: "website",
+    locale: "en_AU",
+    siteName: "Printforge",
+  },
+  twitter: {
+    card: "summary_large_image",
+    title: "Free 3D Print Cost Calculator & Quote Software | Printforge",
+    description:
+      "Calculate 3D printing costs instantly. Material, machine, labour & overhead — all in one tool. Free to start, no credit card.",
   },
 };
 
@@ -362,6 +387,18 @@ const FAQ = [
     q: "What currencies are supported?",
     a: "AUD, USD, EUR, and GBP. Set your default in settings — all quotes, invoices, and calculations use your chosen currency.",
   },
+  {
+    q: "How do you calculate 3D printing costs?",
+    a: "Total Cost = Material + Machine Time + Labour + Overhead. Material cost is part weight (plus supports and waste) multiplied by per-gram filament cost. Machine cost includes electricity, depreciation, and maintenance per hour. Labour covers setup, post-processing, and packing. Overhead includes monthly fixed costs divided across jobs. Printforge automates this entire calculation — upload your STL or G-code file and get an instant breakdown.",
+  },
+  {
+    q: "How much does it cost to 3D print something?",
+    a: "Typically $0.50 to $50+ depending on size, material, and complexity. A small PLA keychain might cost $0.50–$2 in materials plus $1–3 in machine time. A large PETG enclosure could cost $10–20 in materials plus $5–10 in machine time. Use Printforge's free calculator to get exact cost breakdowns for your specific prints.",
+  },
+  {
+    q: "What is the best 3D printing quote software?",
+    a: "Printforge is a free 3D printing quote software for small to medium print shops. It includes a cost calculator, professional PDF quotes, job tracking, inventory management, Shopify integration, and AI-powered quote drafting. The free tier includes unlimited quotes with no per-quote fees.",
+  },
 ];
 
 // ---------------------------------------------------------------------------
@@ -454,17 +491,18 @@ export default function LandingPage() {
 
             {/* Headline */}
             <h1 className="text-5xl font-extrabold tracking-tight sm:text-6xl lg:text-7xl">
-              Stop guessing your{" "}
+              The free{" "}
               <span className="bg-gradient-to-r from-primary to-primary/60 bg-clip-text text-transparent">
-                3D print costs
+                3D print cost calculator
               </span>
+              {" "}that does it all
             </h1>
 
             {/* Subheadline */}
             <p className="mx-auto max-w-2xl text-lg leading-relaxed text-muted-foreground sm:text-xl">
-              The complete business platform for 3D print shops. Calculate costs in seconds,
-              send professional quotes, manage inventory, track jobs, and invoice clients
-              — all from one dashboard.
+              Stop guessing. Calculate material, machine, labour, and overhead costs in seconds.
+              Generate professional quotes, track jobs, manage inventory, and invoice clients
+              — the complete 3D printing business software, free to start.
             </p>
 
             {/* CTAs */}
@@ -527,7 +565,7 @@ export default function LandingPage() {
               Features
             </p>
             <h2 className="mt-3 text-3xl font-bold tracking-tight sm:text-4xl">
-              Everything you need to run a print business
+              3D print cost calculator features for every print shop
             </h2>
             <p className="mt-4 text-lg text-muted-foreground">
               Purpose-built for 3D print shops — not another generic invoicing tool.
@@ -574,7 +612,7 @@ export default function LandingPage() {
               How it works
             </p>
             <h2 className="mt-3 text-3xl font-bold tracking-tight sm:text-4xl">
-              Three steps to accurate pricing
+              How the 3D printing quote software works
             </h2>
             <p className="mt-4 text-lg text-muted-foreground">
               From file upload to delivered order — streamlined for speed.
@@ -620,7 +658,7 @@ export default function LandingPage() {
               Integrations
             </p>
             <h2 className="mt-3 text-3xl font-bold tracking-tight sm:text-4xl">
-              Connects to your existing tools
+              3D printing software integrations
             </h2>
             <p className="mt-4 text-lg text-muted-foreground">
               Pull orders from Shopify, sync accounting with Xero, export files to Google Drive or OneDrive, draft quotes with AI, and trigger webhooks — all built in.
@@ -682,7 +720,7 @@ export default function LandingPage() {
               Comparison
             </p>
             <h2 className="mt-3 text-3xl font-bold tracking-tight sm:text-4xl">
-              Why not a spreadsheet?
+              3D print quoting software vs spreadsheets
             </h2>
             <p className="mt-4 text-lg text-muted-foreground">
               You could track everything in a spreadsheet. But should you?
@@ -729,7 +767,7 @@ export default function LandingPage() {
               Pricing
             </p>
             <h2 className="mt-3 text-3xl font-bold tracking-tight sm:text-4xl">
-              Simple, transparent pricing
+              3D print cost calculator pricing
             </h2>
             <p className="mt-4 text-lg text-muted-foreground">
               Start with a 14-day Pro trial. No credit card required. Keep Free forever.
@@ -841,7 +879,7 @@ export default function LandingPage() {
               FAQ
             </p>
             <h2 className="mt-3 text-3xl font-bold tracking-tight sm:text-4xl">
-              Frequently asked questions
+              3D print cost calculator FAQ
             </h2>
           </div>
 
@@ -861,6 +899,44 @@ export default function LandingPage() {
       </section>
 
       {/* ----------------------------------------------------------------- */}
+      {/* From the Blog */}
+      {/* ----------------------------------------------------------------- */}
+      <section className="border-t border-border/50 bg-card/30">
+        <div className="mx-auto max-w-6xl px-6 py-24">
+          <div className="mx-auto max-w-2xl text-center">
+            <p className="text-sm font-semibold uppercase tracking-wider text-primary">
+              Resources
+            </p>
+            <h2 className="mt-3 text-3xl font-bold tracking-tight sm:text-4xl">
+              3D printing business guides
+            </h2>
+            <p className="mt-4 text-lg text-muted-foreground">
+              Learn how to price 3D prints, choose materials, and grow your print business.
+            </p>
+          </div>
+          <div className="mt-12 grid gap-6 sm:grid-cols-3">
+            <Link href="/blog/how-to-price-3d-prints-for-profit" className="group rounded-xl border border-border bg-card p-6 transition-all hover:border-primary/30 hover:shadow-md">
+              <h3 className="font-semibold group-hover:text-primary">How to Price 3D Prints for Profit</h3>
+              <p className="mt-2 text-sm text-muted-foreground">The proven formula for covering costs and staying competitive.</p>
+            </Link>
+            <Link href="/blog/how-to-calculate-3d-printing-costs-accurately" className="group rounded-xl border border-border bg-card p-6 transition-all hover:border-primary/30 hover:shadow-md">
+              <h3 className="font-semibold group-hover:text-primary">How to Calculate 3D Printing Costs Accurately</h3>
+              <p className="mt-2 text-sm text-muted-foreground">Material, machine, labour, and overhead — the complete breakdown.</p>
+            </Link>
+            <Link href="/blog/why-3d-print-businesses-need-quoting-software" className="group rounded-xl border border-border bg-card p-6 transition-all hover:border-primary/30 hover:shadow-md">
+              <h3 className="font-semibold group-hover:text-primary">Why 3D Print Businesses Need Quoting Software</h3>
+              <p className="mt-2 text-sm text-muted-foreground">Stop losing money with spreadsheets and manual calculations.</p>
+            </Link>
+          </div>
+          <div className="mt-8 text-center">
+            <Link href="/blog" className="text-sm font-semibold text-primary hover:underline">
+              View all guides →
+            </Link>
+          </div>
+        </div>
+      </section>
+
+      {/* ----------------------------------------------------------------- */}
       {/* Final CTA */}
       {/* ----------------------------------------------------------------- */}
       <section className="relative border-t border-border/50 overflow-hidden">
@@ -869,7 +945,7 @@ export default function LandingPage() {
         </div>
         <div className="mx-auto max-w-6xl px-6 py-24 text-center">
           <h2 className="text-3xl font-bold tracking-tight sm:text-4xl">
-            Ready to know your real costs?
+            Start calculating your 3D printing costs today
           </h2>
           <p className="mx-auto mt-4 max-w-lg text-lg text-muted-foreground">
             Join print shops already using Printforge to quote accurately,
@@ -992,6 +1068,95 @@ export default function LandingPage() {
           </div>
         </div>
       </footer>
+
+      {/* JSON-LD Structured Data */}
+      <script
+        type="application/ld+json"
+        dangerouslySetInnerHTML={{
+          __html: JSON.stringify({
+            "@context": "https://schema.org",
+            "@graph": [
+              {
+                "@type": "WebSite",
+                "@id": "https://crm.printforge.com.au/#website",
+                url: "https://crm.printforge.com.au",
+                name: "Printforge",
+                description: "Free 3D Print Cost Calculator & Business Management Software",
+                publisher: { "@id": "https://crm.printforge.com.au/#organization" },
+                inLanguage: "en-AU",
+              },
+              {
+                "@type": "Organization",
+                "@id": "https://crm.printforge.com.au/#organization",
+                name: "Printforge",
+                url: "https://crm.printforge.com.au",
+                logo: {
+                  "@type": "ImageObject",
+                  url: "https://crm.printforge.com.au/icon.svg",
+                },
+                address: {
+                  "@type": "PostalAddress",
+                  addressCountry: "AU",
+                },
+              },
+              {
+                "@type": "SoftwareApplication",
+                "@id": "https://crm.printforge.com.au/#software",
+                name: "Printforge — 3D Print Cost Calculator",
+                applicationCategory: "BusinessApplication",
+                operatingSystem: "Web",
+                url: "https://crm.printforge.com.au",
+                description:
+                  "Free 3D print cost calculator that calculates material, machine, labour, and overhead costs. Generate professional quotes, track jobs, manage inventory, and invoice clients.",
+                offers: [
+                  {
+                    "@type": "Offer",
+                    price: "0",
+                    priceCurrency: "AUD",
+                    name: "Free",
+                    description: "Cost calculator, unlimited quotes, job tracking, client management",
+                  },
+                  {
+                    "@type": "Offer",
+                    price: "29",
+                    priceCurrency: "AUD",
+                    name: "Pro",
+                    description: "Everything in Free plus AI assistant, invoicing, analytics, integrations",
+                  },
+                ],
+                featureList: [
+                  "3D print cost calculator",
+                  "STL and G-code file upload",
+                  "Professional PDF quotes",
+                  "Job tracking kanban board",
+                  "Print farm calendar",
+                  "Material inventory management",
+                  "Client database",
+                  "Invoicing with email",
+                  "Shopify integration",
+                  "Xero accounting sync",
+                  "AI quote assistant",
+                  "Design Studio with AI",
+                  "Google Drive sync",
+                  "OneDrive sync",
+                ],
+              },
+              {
+                "@type": "FAQPage",
+                "@id": "https://crm.printforge.com.au/#faq",
+                mainEntity: FAQ.map((item) => ({
+                  "@type": "Question",
+                  name: item.q,
+                  acceptedAnswer: {
+                    "@type": "Answer",
+                    text: item.a,
+                  },
+                })),
+              },
+            ],
+          }),
+        }}
+      />
     </div>
   );
 }

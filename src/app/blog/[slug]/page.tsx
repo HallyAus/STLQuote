@@ -16,6 +16,23 @@ export async function generateMetadata({ params }: PageProps): Promise<Metadata>
   return {
     title: `${post.title} — Printforge Blog`,
     description: post.excerpt,
+    alternates: {
+      canonical: `https://crm.printforge.com.au/blog/${slug}`,
+    },
+    openGraph: {
+      title: post.title,
+      description: post.excerpt,
+      type: "article",
+      publishedTime: post.publishedAt,
+      authors: [post.author],
+      tags: post.tags,
+      url: `https://crm.printforge.com.au/blog/${slug}`,
+    },
+    twitter: {
+      card: "summary_large_image",
+      title: post.title,
+      description: post.excerpt,
+    },
   };
 }
 
@@ -208,6 +225,35 @@ export default async function BlogPostPage({ params }: PageProps) {
           </div>
         </div>
       </footer>
+
+      {/* Article JSON-LD */}
+      <script
+        type="application/ld+json"
+        dangerouslySetInnerHTML={{
+          __html: JSON.stringify({
+            "@context": "https://schema.org",
+            "@type": "Article",
+            headline: post.title,
+            description: post.excerpt,
+            author: {
+              "@type": "Organization",
+              name: "Printforge",
+              url: "https://crm.printforge.com.au",
+            },
+            publisher: {
+              "@type": "Organization",
+              name: "Printforge",
+              logo: {
+                "@type": "ImageObject",
+                url: "https://crm.printforge.com.au/icon.svg",
+              },
+            },
+            datePublished: post.publishedAt,
+            mainEntityOfPage: `https://crm.printforge.com.au/blog/${slug}`,
+            keywords: post.tags.join(", "),
+          }),
+        }}
+      />
     </div>
   );
 }
