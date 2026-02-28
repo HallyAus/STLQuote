@@ -53,9 +53,10 @@ model User {
   image         String?
   passwordHash  String?
   role          String    @default("USER") // USER | ADMIN | SUPER_ADMIN
-  disabled           Boolean   @default(false)
-  mustChangePassword Boolean   @default(false)
-  lastLogin          DateTime?
+  disabled              Boolean   @default(false)
+  mustChangePassword    Boolean   @default(false)
+  marketingUnsubscribed Boolean   @default(false)
+  lastLogin             DateTime?
 
   // Two-Factor Authentication (TOTP)
   totpSecret      String?

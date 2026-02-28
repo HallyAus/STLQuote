@@ -45,6 +45,7 @@ export default auth((req) => {
     "/api/xero/callback",
     "/api/cloud/google/callback",
     "/api/cloud/onedrive/callback",
+    "/api/unsubscribe",
     "/api/invoices/portal",
     "/waitlist",
     "/api/waitlist",

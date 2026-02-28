@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { z } from "zod";
 import { prisma } from "@/lib/prisma";
 import { requireAdmin } from "@/lib/auth-helpers";
-import { sendBulkEmail } from "@/lib/email";
+import { sendEmail, unsubscribeFooter } from "@/lib/email";
 import { rateLimit } from "@/lib/rate-limit";
 
 const newsletterSchema = z.object({
@@ -59,10 +59,11 @@ export async function POST(request: NextRequest) {
 
     const { subject, html, audience } = parsed.data;
 
-    // Build query based on audience
+    // Build query based on audience — exclude unsubscribed users
     const where: Record<string, unknown> = {
       disabled: false,
       email: { not: null },
+      marketingUnsubscribed: false,
     };
     if (audience === "active") {
       where.lastLogin = { not: null };
@@ -72,12 +73,12 @@ export async function POST(request: NextRequest) {
 
     const users = await prisma.user.findMany({
       where,
-      select: { email: true },
+      select: { id: true, email: true },
     });
 
-    const recipients = users
-      .map((u) => u.email)
-      .filter((e): e is string => !!e);
+    const recipients = users.filter(
+      (u): u is { id: string; email: string } => !!u.email
+    );
 
     if (recipients.length === 0) {
       return NextResponse.json(
@@ -86,11 +87,26 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    const result = await sendBulkEmail({ recipients, subject, html, type: "newsletter", userId: admin.id });
+    // Send individually so each email gets a per-user unsubscribe link
+    let sent = 0;
+    let failed = 0;
+    for (const user of recipients) {
+      const htmlWithUnsub = html + unsubscribeFooter(user.id);
+      const ok = await sendEmail({
+        to: user.email,
+        subject,
+        html: htmlWithUnsub,
+        type: "newsletter",
+        userId: admin.id,
+      });
+      if (ok) sent++;
+      else failed++;
+    }
 
     return NextResponse.json({
-      message: `Newsletter sent to ${result.sent} of ${recipients.length} recipients`,
-      ...result,
+      message: `Newsletter sent to ${sent} of ${recipients.length} recipients`,
+      sent,
+      failed,
       total: recipients.length,
     });
   } catch (error) {

@@ -16,7 +16,7 @@
  */
 
 import { prisma } from "@/lib/prisma";
-import { sendEmail } from "@/lib/email";
+import { sendEmail, unsubscribeFooter } from "@/lib/email";
 
 // ---------------------------------------------------------------------------
 // Types
@@ -26,7 +26,7 @@ interface DripEmail {
   key: string;
   dayOffset: number; // days after signup
   subject: string;
-  html: (name: string, appUrl: string, trialDaysLeft: number) => string;
+  html: (name: string, appUrl: string, trialDaysLeft: number, userId: string) => string;
 }
 
 // ---------------------------------------------------------------------------
@@ -76,7 +76,7 @@ const DRIP_SEQUENCE: DripEmail[] = [
     key: "day_0",
     dayOffset: 0,
     subject: "Welcome to Printforge — a personal note from Daniel",
-    html: (name, appUrl, daysLeft) => `
+    html: (name, appUrl, daysLeft, userId) => `
       <div style="${STYLE}">
         <h2 style="color: #171717;">Hey ${name},</h2>
         <p>I'm Daniel, the founder of Printforge. I built this because I was tired of guessing my 3D print costs and losing money on quotes.</p>
@@ -91,6 +91,7 @@ const DRIP_SEQUENCE: DripEmail[] = [
         <p style="color: #666; font-size: 14px;">Cheers,<br/><strong>Daniel Hall</strong><br/>Founder &amp; CEO, Printforge<br/><a href="https://printforge.com.au" style="color: #2563eb;">printforge.com.au</a></p>
         ${HR}
         ${FOOTER}
+        ${unsubscribeFooter(userId)}
       </div>`,
   },
 
@@ -99,7 +100,7 @@ const DRIP_SEQUENCE: DripEmail[] = [
     key: "day_1",
     dayOffset: 1,
     subject: "Quote Calculator — Never lose money on a print again",
-    html: (name, appUrl, daysLeft) => `
+    html: (name, appUrl, daysLeft, userId) => `
       <div style="${STYLE}">
         <h2 style="color: #171717;">Know your costs, ${name}</h2>
         <p>The calculator is the heart of Printforge. Upload an STL or G-code file and get an <strong>instant cost breakdown</strong>:</p>
@@ -118,6 +119,7 @@ const DRIP_SEQUENCE: DripEmail[] = [
         <p style="color: #666; font-size: 14px;">Questions? Just reply to this email.<br/>&mdash; Daniel</p>
         ${HR}
         ${FOOTER}
+        ${unsubscribeFooter(userId)}
       </div>`,
   },
 
@@ -126,7 +128,7 @@ const DRIP_SEQUENCE: DripEmail[] = [
     key: "day_2",
     dayOffset: 2,
     subject: "Your print farm, organised — Materials & Printers",
-    html: (name, appUrl, daysLeft) => `
+    html: (name, appUrl, daysLeft, userId) => `
       <div style="${STYLE}">
         <h2 style="color: #171717;">Track every spool and machine, ${name}</h2>
         <p>Stop guessing what filament you have left or what your printers cost to run.</p>
@@ -154,6 +156,7 @@ const DRIP_SEQUENCE: DripEmail[] = [
         <p style="color: #666; font-size: 14px;">Reply any time &mdash; I read every message.<br/>&mdash; Daniel</p>
         ${HR}
         ${FOOTER}
+        ${unsubscribeFooter(userId)}
       </div>`,
   },
 
@@ -162,7 +165,7 @@ const DRIP_SEQUENCE: DripEmail[] = [
     key: "day_3",
     dayOffset: 3,
     subject: "Professional quotes in 60 seconds — Clients & Templates",
-    html: (name, appUrl, daysLeft) => `
+    html: (name, appUrl, daysLeft, userId) => `
       <div style="${STYLE}">
         <h2 style="color: #171717;">Look professional, ${name}</h2>
         <p>Your clients get polished PDF quotes with your branding. You get a system that remembers everything.</p>
@@ -191,6 +194,7 @@ const DRIP_SEQUENCE: DripEmail[] = [
         <p style="color: #666; font-size: 14px;">Hit reply with any questions.<br/>&mdash; Daniel</p>
         ${HR}
         ${FOOTER}
+        ${unsubscribeFooter(userId)}
       </div>`,
   },
 
@@ -199,7 +203,7 @@ const DRIP_SEQUENCE: DripEmail[] = [
     key: "day_4",
     dayOffset: 4,
     subject: "Get paid faster — Invoicing & Payment Tracking",
-    html: (name, appUrl, daysLeft) => `
+    html: (name, appUrl, daysLeft, userId) => `
       <div style="${STYLE}">
         <h2 style="color: #171717;">Time to get paid, ${name}</h2>
         <p>Turn accepted quotes into invoices with one click. Track what's paid and what's overdue.</p>
@@ -222,6 +226,7 @@ const DRIP_SEQUENCE: DripEmail[] = [
         <p style="color: #666; font-size: 14px;">Questions about billing or Xero? Just reply.<br/>&mdash; Daniel</p>
         ${HR}
         ${FOOTER}
+        ${unsubscribeFooter(userId)}
       </div>`,
   },
 
@@ -230,7 +235,7 @@ const DRIP_SEQUENCE: DripEmail[] = [
     key: "day_5",
     dayOffset: 5,
     subject: "Run your print farm like a pro — Jobs & Calendar",
-    html: (name, appUrl, daysLeft) => `
+    html: (name, appUrl, daysLeft, userId) => `
       <div style="${STYLE}">
         <h2 style="color: #171717;">Track every print, ${name}</h2>
         <p>From the moment a quote is accepted to the day you ship &mdash; Printforge tracks the full lifecycle.</p>
@@ -258,6 +263,7 @@ const DRIP_SEQUENCE: DripEmail[] = [
         <p style="color: #666; font-size: 14px;">Got a fleet of printers? I'd love to hear how you run them &mdash; just reply.<br/>&mdash; Daniel</p>
         ${HR}
         ${FOOTER}
+        ${unsubscribeFooter(userId)}
       </div>`,
   },
 
@@ -266,7 +272,7 @@ const DRIP_SEQUENCE: DripEmail[] = [
     key: "day_6",
     dayOffset: 6,
     subject: "AI-powered design planning — Design Studio",
-    html: (name, appUrl, daysLeft) => `
+    html: (name, appUrl, daysLeft, userId) => `
       <div style="${STYLE}">
         <h2 style="color: #171717;">From idea to print-ready, ${name}</h2>
         <p>Design Studio is your AI-powered workspace for planning new products before you ever fire up CAD.</p>
@@ -289,6 +295,7 @@ const DRIP_SEQUENCE: DripEmail[] = [
         <p style="color: #666; font-size: 14px;">What would you design first? Reply and tell me &mdash; I'm curious!<br/>&mdash; Daniel</p>
         ${HR}
         ${FOOTER}
+        ${unsubscribeFooter(userId)}
       </div>`,
   },
 
@@ -297,7 +304,7 @@ const DRIP_SEQUENCE: DripEmail[] = [
     key: "day_7",
     dayOffset: 7,
     subject: "Connect everything — Integrations & what's next",
-    html: (name, appUrl, daysLeft) => `
+    html: (name, appUrl, daysLeft, userId) => `
       <div style="${STYLE}">
         <h2 style="color: #171717;">You've made it to day 7, ${name}!</h2>
         <p>This is the last email in the series. Let's talk about connecting Printforge to the rest of your workflow.</p>
@@ -342,6 +349,7 @@ const DRIP_SEQUENCE: DripEmail[] = [
         <p style="color: #666; font-size: 14px;">Thanks for giving Printforge a go. I hope it helps your business.<br/><br/>Cheers,<br/><strong>Daniel Hall</strong><br/>Founder &amp; CEO, Printforge</p>
         ${HR}
         ${FOOTER}
+        ${unsubscribeFooter(userId)}
       </div>`,
   },
 ];
@@ -372,6 +380,7 @@ export async function processDripEmails(userId: string): Promise<number> {
       email: true,
       createdAt: true,
       trialEndsAt: true,
+      marketingUnsubscribed: true,
       dripEmails: {
         select: { emailKey: true, sentAt: true },
         orderBy: { sentAt: "desc" },
@@ -379,7 +388,7 @@ export async function processDripEmails(userId: string): Promise<number> {
     },
   });
 
-  if (!user?.email) return 0;
+  if (!user?.email || user.marketingUnsubscribed) return 0;
 
   // Enforce 24h gap since last drip email
   const lastSent = user.dripEmails[0]?.sentAt;
@@ -406,7 +415,7 @@ export async function processDripEmails(userId: string): Promise<number> {
     if (daysSinceSignup < drip.dayOffset) continue;
 
     // Send at most 1 email per check to avoid flooding
-    const html = drip.html(name, appUrl, trialDaysLeft);
+    const html = drip.html(name, appUrl, trialDaysLeft, userId);
     const ok = await sendEmail({
       to: user.email,
       subject: drip.subject,

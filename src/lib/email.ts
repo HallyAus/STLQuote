@@ -1,4 +1,5 @@
 import { Resend } from "resend";
+import { createHmac } from "crypto";
 import { prisma } from "@/lib/prisma";
 
 // Lazy-init — Resend constructor throws if API key is missing (breaks Docker build)
@@ -12,6 +13,36 @@ function getResend(): Resend | null {
 
 const fromAddress = process.env.RESEND_FROM || "Printforge <hello@printforge.com.au>";
 const replyToAddress = process.env.RESEND_REPLY_TO || undefined;
+
+// ---------------------------------------------------------------------------
+// Unsubscribe token (HMAC-SHA256, no DB lookup needed to verify)
+// ---------------------------------------------------------------------------
+
+function getUnsubscribeSecret(): string {
+  return process.env.NEXTAUTH_SECRET || process.env.AUTH_SECRET || "printforge-unsub-fallback";
+}
+
+export function generateUnsubscribeToken(userId: string): string {
+  return createHmac("sha256", getUnsubscribeSecret()).update(userId).digest("hex");
+}
+
+export function verifyUnsubscribeToken(userId: string, token: string): boolean {
+  const expected = generateUnsubscribeToken(userId);
+  return expected === token;
+}
+
+export function getUnsubscribeUrl(userId: string): string {
+  const appUrl = process.env.NEXT_PUBLIC_APP_URL || "https://crm.printforge.com.au";
+  const token = generateUnsubscribeToken(userId);
+  return `${appUrl}/api/unsubscribe?uid=${userId}&token=${token}`;
+}
+
+export function unsubscribeFooter(userId: string): string {
+  const url = getUnsubscribeUrl(userId);
+  return `<p style="color: #999; font-size: 11px; margin-top: 16px;">
+    <a href="${url}" style="color: #999; text-decoration: underline;">Unsubscribe</a> from marketing emails
+  </p>`;
+}
 
 // Strip HTML to plain text for multipart emails (reduces spam score)
 function htmlToText(html: string): string {
