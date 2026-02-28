@@ -143,7 +143,10 @@ export async function POST(request: NextRequest) {
           const dataFolderId = await oneDrive.createFolder(accessToken, "Data", backupRootId);
 
           const dataExports: Array<{ name: string; query: () => Promise<unknown> }> = [
-            { name: "settings.json", query: () => prisma.settings.findMany({ where: { userId: user.id } }) },
+            { name: "settings.json", query: async () => {
+              const s = await prisma.settings.findMany({ where: { userId: user.id } });
+              return s.map((r) => ({ ...r, stripeConnectAccountId: r.stripeConnectAccountId ? "***REDACTED***" : null }));
+            }},
             { name: "printers.json", query: () => prisma.printer.findMany({ where: { userId: user.id } }) },
             { name: "materials.json", query: () => prisma.material.findMany({ where: { userId: user.id } }) },
             { name: "clients.json", query: () => prisma.client.findMany({ where: { userId: user.id }, include: { interactions: true } }) },
@@ -162,7 +165,10 @@ export async function POST(request: NextRequest) {
             }},
             { name: "drawings.json", query: () => prisma.partDrawing.findMany({ where: { userId: user.id } }) },
             { name: "quote-templates.json", query: () => prisma.quoteTemplate.findMany({ where: { userId: user.id } }) },
-            { name: "upload-links.json", query: () => prisma.uploadLink.findMany({ where: { userId: user.id }, include: { quoteRequests: true } }) },
+            { name: "upload-links.json", query: async () => {
+              const links = await prisma.uploadLink.findMany({ where: { userId: user.id }, include: { quoteRequests: true } });
+              return links.map((l) => ({ ...l, token: "***REDACTED***" }));
+            }},
           ];
 
           for (let i = 0; i < dataExports.length; i++) {
