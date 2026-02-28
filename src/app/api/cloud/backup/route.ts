@@ -37,7 +37,43 @@ interface BackupStats {
 }
 
 // ---------------------------------------------------------------------------
-// Helpers
+// CSV helpers
+// ---------------------------------------------------------------------------
+
+/** Escape a value for CSV: wrap in quotes if it contains comma, newline, or quote. */
+function csvEscape(value: unknown): string {
+  if (value === null || value === undefined) return "";
+  const str = value instanceof Date ? value.toISOString() : String(value);
+  if (str.includes(",") || str.includes('"') || str.includes("\n") || str.includes("\r")) {
+    return `"${str.replace(/"/g, '""')}"`;
+  }
+  return str;
+}
+
+/** Convert an array of flat objects to CSV string with header row. */
+function toCsv(rows: Record<string, unknown>[]): string {
+  if (rows.length === 0) return "";
+  const headers = Object.keys(rows[0]);
+  const lines = [headers.join(",")];
+  for (const row of rows) {
+    lines.push(headers.map((h) => csvEscape(row[h])).join(","));
+  }
+  return lines.join("\n");
+}
+
+/** Flatten a row, omitting specified nested keys. */
+function flatRow(obj: Record<string, unknown>, omitKeys: string[] = []): Record<string, unknown> {
+  const result: Record<string, unknown> = {};
+  for (const [key, val] of Object.entries(obj)) {
+    if (omitKeys.includes(key)) continue;
+    if (Array.isArray(val) || (val && typeof val === "object" && !(val instanceof Date))) continue;
+    result[key] = val;
+  }
+  return result;
+}
+
+// ---------------------------------------------------------------------------
+// SSE helpers
 // ---------------------------------------------------------------------------
 
 function sseEncode(event: BackupEvent): string {
@@ -117,6 +153,18 @@ export async function POST(request: NextRequest) {
           send({ type: "error", phase, item, message: error });
         }
 
+        async function uploadCsv(
+          accessToken: string,
+          name: string,
+          rows: Record<string, unknown>[],
+          folderId: string
+        ) {
+          const csv = toCsv(rows);
+          if (!csv) return; // skip empty
+          const buf = Buffer.from(csv, "utf-8");
+          await oneDrive.uploadFile(accessToken, name, "text/csv", buf, folderId);
+        }
+
         try {
           // Get fresh access token
           let accessToken = await oneDrive.getAccessToken(user.id);
@@ -137,48 +185,164 @@ export async function POST(request: NextRequest) {
           const backupRootId = await oneDrive.createFolder(accessToken, timestamp, backupsId);
 
           // ---------------------------------------------------------------
-          // Phase 1: JSON data export
+          // Phase 1: CSV data export
           // ---------------------------------------------------------------
-          sendProgress("data", "Starting data export...", 0, 17);
+          const csvFiles: Array<{ name: string; generate: () => Promise<Record<string, unknown>[]> }> = [];
+
+          // Settings (1 row, flat — redact Stripe ID)
+          csvFiles.push({ name: "settings.csv", generate: async () => {
+            const rows = await prisma.settings.findMany({ where: { userId: user.id } });
+            return rows.map((r) => ({ ...flatRow(r as unknown as Record<string, unknown>), stripeConnectAccountId: r.stripeConnectAccountId ? "***REDACTED***" : "" }));
+          }});
+
+          // Printers
+          csvFiles.push({ name: "printers.csv", generate: async () => {
+            const rows = await prisma.printer.findMany({ where: { userId: user.id } });
+            return rows.map((r) => flatRow(r as unknown as Record<string, unknown>));
+          }});
+
+          // Materials
+          csvFiles.push({ name: "materials.csv", generate: async () => {
+            const rows = await prisma.material.findMany({ where: { userId: user.id } });
+            return rows.map((r) => flatRow(r as unknown as Record<string, unknown>));
+          }});
+
+          // Clients (flat) + Client Interactions (separate)
+          csvFiles.push({ name: "clients.csv", generate: async () => {
+            const rows = await prisma.client.findMany({ where: { userId: user.id } });
+            return rows.map((r) => flatRow(r as unknown as Record<string, unknown>));
+          }});
+          csvFiles.push({ name: "client-interactions.csv", generate: async () => {
+            const rows = await prisma.clientInteraction.findMany({ where: { client: { userId: user.id } } });
+            return rows.map((r) => flatRow(r as unknown as Record<string, unknown>));
+          }});
+
+          // Quotes (flat) + Quote Line Items + Quote Events (separate CSVs)
+          csvFiles.push({ name: "quotes.csv", generate: async () => {
+            const rows = await prisma.quote.findMany({ where: { userId: user.id } });
+            return rows.map((r) => flatRow(r as unknown as Record<string, unknown>));
+          }});
+          csvFiles.push({ name: "quote-line-items.csv", generate: async () => {
+            const rows = await prisma.quoteLineItem.findMany({ where: { quote: { userId: user.id } } });
+            return rows.map((r) => flatRow(r as unknown as Record<string, unknown>));
+          }});
+          csvFiles.push({ name: "quote-events.csv", generate: async () => {
+            const rows = await prisma.quoteEvent.findMany({ where: { quote: { userId: user.id } } });
+            return rows.map((r) => flatRow(r as unknown as Record<string, unknown>));
+          }});
+
+          // Invoices (flat) + Invoice Line Items (separate)
+          csvFiles.push({ name: "invoices.csv", generate: async () => {
+            const rows = await prisma.invoice.findMany({ where: { userId: user.id } });
+            return rows.map((r) => flatRow(r as unknown as Record<string, unknown>));
+          }});
+          csvFiles.push({ name: "invoice-line-items.csv", generate: async () => {
+            const rows = await prisma.invoiceLineItem.findMany({ where: { invoice: { userId: user.id } } });
+            return rows.map((r) => flatRow(r as unknown as Record<string, unknown>));
+          }});
+
+          // Jobs (flat) + Job Events (separate)
+          csvFiles.push({ name: "jobs.csv", generate: async () => {
+            const rows = await prisma.job.findMany({ where: { userId: user.id } });
+            return rows.map((r) => flatRow(r as unknown as Record<string, unknown>));
+          }});
+          csvFiles.push({ name: "job-events.csv", generate: async () => {
+            const rows = await prisma.jobEvent.findMany({ where: { job: { userId: user.id } } });
+            return rows.map((r) => flatRow(r as unknown as Record<string, unknown>));
+          }});
+
+          // Designs (flat) + Design Files + Design Revisions (separate)
+          csvFiles.push({ name: "designs.csv", generate: async () => {
+            const rows = await prisma.design.findMany({ where: { userId: user.id } });
+            return rows.map((r) => flatRow(r as unknown as Record<string, unknown>));
+          }});
+          csvFiles.push({ name: "design-files.csv", generate: async () => {
+            const rows = await prisma.designFile.findMany({ where: { design: { userId: user.id } } });
+            return rows.map((r) => flatRow(r as unknown as Record<string, unknown>));
+          }});
+          csvFiles.push({ name: "design-revisions.csv", generate: async () => {
+            const rows = await prisma.designRevision.findMany({ where: { design: { userId: user.id } } });
+            return rows.map((r) => flatRow(r as unknown as Record<string, unknown>));
+          }});
+
+          // Suppliers (flat) + Supplier Items (separate)
+          csvFiles.push({ name: "suppliers.csv", generate: async () => {
+            const rows = await prisma.supplier.findMany({ where: { userId: user.id } });
+            return rows.map((r) => flatRow(r as unknown as Record<string, unknown>));
+          }});
+          csvFiles.push({ name: "supplier-items.csv", generate: async () => {
+            const rows = await prisma.supplierItem.findMany({ where: { supplier: { userId: user.id } } });
+            return rows.map((r) => flatRow(r as unknown as Record<string, unknown>));
+          }});
+
+          // Consumables
+          csvFiles.push({ name: "consumables.csv", generate: async () => {
+            const rows = await prisma.consumable.findMany({ where: { userId: user.id } });
+            return rows.map((r) => flatRow(r as unknown as Record<string, unknown>));
+          }});
+
+          // Stock Transactions
+          csvFiles.push({ name: "stock-transactions.csv", generate: async () => {
+            const rows = await prisma.stockTransaction.findMany({ where: { userId: user.id } });
+            return rows.map((r) => flatRow(r as unknown as Record<string, unknown>));
+          }});
+
+          // Purchase Orders (flat) + PO Items (separate)
+          csvFiles.push({ name: "purchase-orders.csv", generate: async () => {
+            const rows = await prisma.purchaseOrder.findMany({ where: { userId: user.id } });
+            return rows.map((r) => flatRow(r as unknown as Record<string, unknown>));
+          }});
+          csvFiles.push({ name: "purchase-order-items.csv", generate: async () => {
+            const rows = await prisma.purchaseOrderItem.findMany({ where: { purchaseOrder: { userId: user.id } } });
+            return rows.map((r) => flatRow(r as unknown as Record<string, unknown>));
+          }});
+
+          // Calculator Presets
+          csvFiles.push({ name: "calculator-presets.csv", generate: async () => {
+            const rows = await prisma.calculatorPreset.findMany({ where: { userId: user.id } });
+            return rows.map((r) => flatRow(r as unknown as Record<string, unknown>));
+          }});
+
+          // Webhooks (redact secrets)
+          csvFiles.push({ name: "webhooks.csv", generate: async () => {
+            const rows = await prisma.webhook.findMany({ where: { userId: user.id } });
+            return rows.map((r) => ({ ...flatRow(r as unknown as Record<string, unknown>), secret: "***REDACTED***" }));
+          }});
+
+          // Part Drawings
+          csvFiles.push({ name: "drawings.csv", generate: async () => {
+            const rows = await prisma.partDrawing.findMany({ where: { userId: user.id } });
+            return rows.map((r) => flatRow(r as unknown as Record<string, unknown>));
+          }});
+
+          // Quote Templates
+          csvFiles.push({ name: "quote-templates.csv", generate: async () => {
+            const rows = await prisma.quoteTemplate.findMany({ where: { userId: user.id } });
+            return rows.map((r) => flatRow(r as unknown as Record<string, unknown>));
+          }});
+
+          // Upload Links (redact tokens) + Quote Requests (separate)
+          csvFiles.push({ name: "upload-links.csv", generate: async () => {
+            const rows = await prisma.uploadLink.findMany({ where: { userId: user.id } });
+            return rows.map((r) => ({ ...flatRow(r as unknown as Record<string, unknown>), token: "***REDACTED***" }));
+          }});
+          csvFiles.push({ name: "quote-requests.csv", generate: async () => {
+            const rows = await prisma.quoteRequest.findMany({ where: { userId: user.id } });
+            return rows.map((r) => flatRow(r as unknown as Record<string, unknown>));
+          }});
+
+          // Upload all CSVs
+          sendProgress("data", "Starting CSV data export...", 0, csvFiles.length);
           const dataFolderId = await oneDrive.createFolder(accessToken, "Data", backupRootId);
 
-          const dataExports: Array<{ name: string; query: () => Promise<unknown> }> = [
-            { name: "settings.json", query: async () => {
-              const s = await prisma.settings.findMany({ where: { userId: user.id } });
-              return s.map((r) => ({ ...r, stripeConnectAccountId: r.stripeConnectAccountId ? "***REDACTED***" : null }));
-            }},
-            { name: "printers.json", query: () => prisma.printer.findMany({ where: { userId: user.id } }) },
-            { name: "materials.json", query: () => prisma.material.findMany({ where: { userId: user.id } }) },
-            { name: "clients.json", query: () => prisma.client.findMany({ where: { userId: user.id }, include: { interactions: true } }) },
-            { name: "quotes.json", query: () => prisma.quote.findMany({ where: { userId: user.id }, include: { lineItems: true, events: true } }) },
-            { name: "invoices.json", query: () => prisma.invoice.findMany({ where: { userId: user.id }, include: { lineItems: true } }) },
-            { name: "jobs.json", query: () => prisma.job.findMany({ where: { userId: user.id }, include: { events: true } }) },
-            { name: "designs.json", query: () => prisma.design.findMany({ where: { userId: user.id }, include: { files: true, revisions: true } }) },
-            { name: "suppliers.json", query: () => prisma.supplier.findMany({ where: { userId: user.id }, include: { items: true } }) },
-            { name: "consumables.json", query: () => prisma.consumable.findMany({ where: { userId: user.id } }) },
-            { name: "stock-transactions.json", query: () => prisma.stockTransaction.findMany({ where: { userId: user.id } }) },
-            { name: "purchase-orders.json", query: () => prisma.purchaseOrder.findMany({ where: { userId: user.id }, include: { items: true } }) },
-            { name: "calculator-presets.json", query: () => prisma.calculatorPreset.findMany({ where: { userId: user.id } }) },
-            { name: "webhooks.json", query: async () => {
-              const hooks = await prisma.webhook.findMany({ where: { userId: user.id } });
-              return hooks.map((h) => ({ ...h, secret: "***REDACTED***" }));
-            }},
-            { name: "drawings.json", query: () => prisma.partDrawing.findMany({ where: { userId: user.id } }) },
-            { name: "quote-templates.json", query: () => prisma.quoteTemplate.findMany({ where: { userId: user.id } }) },
-            { name: "upload-links.json", query: async () => {
-              const links = await prisma.uploadLink.findMany({ where: { userId: user.id }, include: { quoteRequests: true } });
-              return links.map((l) => ({ ...l, token: "***REDACTED***" }));
-            }},
-          ];
-
-          for (let i = 0; i < dataExports.length; i++) {
-            const { name, query } = dataExports[i];
+          for (let i = 0; i < csvFiles.length; i++) {
+            const { name, generate } = csvFiles[i];
             try {
-              sendProgress("data", name, i + 1, dataExports.length);
-              const data = await query();
-              const json = JSON.stringify(data, null, 2);
-              const buf = Buffer.from(json, "utf-8");
-              await oneDrive.uploadFile(accessToken, name, "application/json", buf, dataFolderId);
+              sendProgress("data", name, i + 1, csvFiles.length);
+              const rows = await generate();
+              if (rows.length > 0) {
+                await uploadCsv(accessToken, name, rows, dataFolderId);
+              }
               stats.dataFiles++;
             } catch (err) {
               sendError("data", name, err instanceof Error ? err.message : "Unknown error");
@@ -188,7 +352,7 @@ export async function POST(request: NextRequest) {
           // ---------------------------------------------------------------
           // Phase 2: Quote PDFs
           // ---------------------------------------------------------------
-          accessToken = await oneDrive.getAccessToken(user.id); // refresh token
+          accessToken = await oneDrive.getAccessToken(user.id);
 
           const quotes = await prisma.quote.findMany({
             where: { userId: user.id },
@@ -334,7 +498,6 @@ export async function POST(request: NextRequest) {
               try {
                 sendProgress("designs", `${designNumber}/${file.originalName}`, i + 1, allDesignFiles.length);
 
-                // Ensure per-design subfolder
                 let designFolderId = designFolderCache.get(designNumber);
                 if (!designFolderId) {
                   designFolderId = await ensureFolder(accessToken, designNumber, designsFolderId);
@@ -395,6 +558,7 @@ export async function POST(request: NextRequest) {
 
           const manifest = {
             version: "1.0",
+            format: "csv",
             createdBy: "Printforge CRM",
             ...stats,
             errors: errors.length > 0 ? errors : undefined,
