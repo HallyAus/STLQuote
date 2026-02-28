@@ -4,7 +4,7 @@ import bcrypt from "bcryptjs";
 import { prisma } from "@/lib/prisma";
 import { rateLimit, getClientIp } from "@/lib/rate-limit";
 import { createEmailVerificationToken } from "@/lib/tokens";
-import { sendVerificationEmail, sendWelcomeEmail, sendEmail } from "@/lib/email";
+import { sendVerificationEmail, sendWelcomeEmail, sendEmail, escapeHtml } from "@/lib/email";
 
 const registerSchema = z.object({
   name: z.string().min(1, "Name is required"),
@@ -142,9 +142,9 @@ export async function POST(request: NextRequest) {
             html: `<div style="font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; max-width: 600px; margin: 0 auto;">
               <h2 style="color: #171717;">New User Signup</h2>
               <table style="border-collapse: collapse; width: 100%; margin: 16px 0;">
-                <tr><td style="padding: 8px 0; color: #666; width: 120px;">Name</td><td style="padding: 8px 0; font-weight: 600;">${name}</td></tr>
-                <tr><td style="padding: 8px 0; color: #666;">Email</td><td style="padding: 8px 0;">${email}</td></tr>
-                ${businessName ? `<tr><td style="padding: 8px 0; color: #666;">Business</td><td style="padding: 8px 0;">${businessName}</td></tr>` : ""}
+                <tr><td style="padding: 8px 0; color: #666; width: 120px;">Name</td><td style="padding: 8px 0; font-weight: 600;">${escapeHtml(name)}</td></tr>
+                <tr><td style="padding: 8px 0; color: #666;">Email</td><td style="padding: 8px 0;">${escapeHtml(email)}</td></tr>
+                ${businessName ? `<tr><td style="padding: 8px 0; color: #666;">Business</td><td style="padding: 8px 0;">${escapeHtml(businessName)}</td></tr>` : ""}
               </table>
               <p style="margin: 24px 0;">
                 <a href="${appUrl}/admin" style="background-color: #2563eb; color: white; padding: 12px 24px; border-radius: 6px; text-decoration: none; font-weight: 600;">
@@ -177,7 +177,7 @@ export async function POST(request: NextRequest) {
       subject: "You're on the Printforge waitlist!",
       type: "waitlist",
       html: `<div style="font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; max-width: 600px; margin: 0 auto;">
-        <h2 style="color: #171717;">Hey ${name}!</h2>
+        <h2 style="color: #171717;">Hey ${escapeHtml(name)}!</h2>
         <p>Thanks for signing up for Printforge Quote. You're on the waitlist!</p>
         <p>We'll send you an email as soon as your account is ready. In the meantime, feel free to reply to this email if you have any questions.</p>
         <hr style="border: none; border-top: 1px solid #e5e5e5; margin: 24px 0;" />
@@ -196,9 +196,9 @@ export async function POST(request: NextRequest) {
         html: `<div style="font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; max-width: 600px; margin: 0 auto;">
           <h2 style="color: #171717;">New Waitlist Signup</h2>
           <table style="border-collapse: collapse; width: 100%; margin: 16px 0;">
-            <tr><td style="padding: 8px 0; color: #666; width: 120px;">Name</td><td style="padding: 8px 0; font-weight: 600;">${name}</td></tr>
-            <tr><td style="padding: 8px 0; color: #666;">Email</td><td style="padding: 8px 0;">${email}</td></tr>
-            ${businessName ? `<tr><td style="padding: 8px 0; color: #666;">Business</td><td style="padding: 8px 0;">${businessName}</td></tr>` : ""}
+            <tr><td style="padding: 8px 0; color: #666; width: 120px;">Name</td><td style="padding: 8px 0; font-weight: 600;">${escapeHtml(name)}</td></tr>
+            <tr><td style="padding: 8px 0; color: #666;">Email</td><td style="padding: 8px 0;">${escapeHtml(email)}</td></tr>
+            ${businessName ? `<tr><td style="padding: 8px 0; color: #666;">Business</td><td style="padding: 8px 0;">${escapeHtml(businessName)}</td></tr>` : ""}
           </table>
           <p style="margin: 24px 0;">
             <a href="${appUrl}/admin" style="background-color: #2563eb; color: white; padding: 12px 24px; border-radius: 6px; text-decoration: none; font-weight: 600;">

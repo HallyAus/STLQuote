@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { z } from "zod";
 import { prisma } from "@/lib/prisma";
-import { sendEmail } from "@/lib/email";
+import { sendEmail, escapeHtml } from "@/lib/email";
 import { rateLimit, getClientIp } from "@/lib/rate-limit";
 
 type RouteContext = { params: Promise<{ token: string }> };
@@ -93,17 +93,17 @@ export async function POST(
       },
     }).catch((err) => console.error("Failed to log quote event:", err));
 
-    const businessName = quote.user?.settings?.businessName || "Printforge";
-    const businessEmail = quote.user?.settings?.businessEmail || quote.user?.email;
-    const businessPhone = quote.user?.settings?.businessPhone;
-    const clientName = quote.client?.name || "A client";
+    const businessName = escapeHtml(quote.user?.settings?.businessName || "Printforge");
+    const businessEmail = escapeHtml(quote.user?.settings?.businessEmail || quote.user?.email || "");
+    const businessPhone = quote.user?.settings?.businessPhone ? escapeHtml(quote.user.settings.businessPhone) : null;
+    const clientName = escapeHtml(quote.client?.name || "A client");
     const actionText = parsed.data.action === "accept" ? "accepted" : "rejected";
     const appUrl = process.env.NEXT_PUBLIC_APP_URL || "http://localhost:3000";
 
     // Enhanced owner notification
     if (quote.user?.email) {
       const lineItemSummary = quote.lineItems
-        .map((li) => `${li.description} (x${li.quantity}) — $${li.lineTotal.toFixed(2)}`)
+        .map((li) => `${escapeHtml(li.description)} (x${li.quantity}) — $${li.lineTotal.toFixed(2)}`)
         .join("<br />");
 
       try {
@@ -133,9 +133,9 @@ export async function POST(
 
                 <div style="margin: 16px 0; padding: 12px; background: #f9fafb; border-radius: 6px;">
                   <p style="font-size: 12px; font-weight: 600; color: #888; text-transform: uppercase; margin: 0 0 6px;">Client Contact</p>
-                  <p style="font-size: 13px; color: #333; margin: 0;">${clientName}${quote.client?.company ? ` — ${quote.client.company}` : ""}</p>
-                  ${quote.client?.email ? `<p style="font-size: 13px; color: #555; margin: 2px 0;">${quote.client.email}</p>` : ""}
-                  ${quote.client?.phone ? `<p style="font-size: 13px; color: #555; margin: 2px 0;">${quote.client.phone}</p>` : ""}
+                  <p style="font-size: 13px; color: #333; margin: 0;">${clientName}${quote.client?.company ? ` — ${escapeHtml(quote.client.company)}` : ""}</p>
+                  ${quote.client?.email ? `<p style="font-size: 13px; color: #555; margin: 2px 0;">${escapeHtml(quote.client.email)}</p>` : ""}
+                  ${quote.client?.phone ? `<p style="font-size: 13px; color: #555; margin: 2px 0;">${escapeHtml(quote.client.phone)}</p>` : ""}
                 </div>
 
                 <p style="margin: 24px 0 16px;">

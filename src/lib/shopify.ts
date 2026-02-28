@@ -8,7 +8,7 @@
 
 import crypto from "crypto";
 import { prisma } from "@/lib/prisma";
-import { decryptOrPlaintext } from "@/lib/encryption";
+import { encrypt, decryptOrPlaintext } from "@/lib/encryption";
 
 const API_VERSION = "2024-01";
 
@@ -82,7 +82,7 @@ export async function getAccessToken(userId: string): Promise<{ token: string; s
     user.shopifyTokenExpiresAt &&
     user.shopifyTokenExpiresAt.getTime() > Date.now() + bufferMs
   ) {
-    return { token: user.shopifyAccessToken, shopDomain: user.shopifyShopDomain };
+    return { token: decryptOrPlaintext(user.shopifyAccessToken), shopDomain: user.shopifyShopDomain };
   }
 
   // Token expired or missing — exchange for a new one
@@ -97,7 +97,7 @@ export async function getAccessToken(userId: string): Promise<{ token: string; s
   await prisma.user.update({
     where: { id: userId },
     data: {
-      shopifyAccessToken: tokenData.access_token,
+      shopifyAccessToken: encrypt(tokenData.access_token),
       shopifyTokenExpiresAt: expiresAt,
     },
   });

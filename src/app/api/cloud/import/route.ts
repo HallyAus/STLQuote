@@ -12,6 +12,23 @@ const ALLOWED_EXTENSIONS = new Set([
   "pdf", "doc", "docx", "txt",
 ]);
 
+// Magic byte signatures for content validation
+const MAGIC_BYTES: Record<string, (buf: Buffer) => boolean> = {
+  jpg: (buf) => buf.length >= 2 && buf[0] === 0xff && buf[1] === 0xd8,
+  jpeg: (buf) => buf.length >= 2 && buf[0] === 0xff && buf[1] === 0xd8,
+  png: (buf) => buf.length >= 4 && buf[0] === 0x89 && buf[1] === 0x50 && buf[2] === 0x4e && buf[3] === 0x47,
+  gif: (buf) => buf.length >= 3 && buf[0] === 0x47 && buf[1] === 0x49 && buf[2] === 0x46,
+  pdf: (buf) => buf.length >= 4 && buf[0] === 0x25 && buf[1] === 0x50 && buf[2] === 0x44 && buf[3] === 0x46,
+  "3mf": (buf) => buf.length >= 2 && buf[0] === 0x50 && buf[1] === 0x4b, // ZIP-based
+  docx: (buf) => buf.length >= 2 && buf[0] === 0x50 && buf[1] === 0x4b, // ZIP-based
+  stl: (buf) => {
+    if (buf.length < 5) return false;
+    // Binary STL starts with 80-byte header; ASCII STL starts with "solid"
+    const header = buf.subarray(0, 80).toString("ascii").toLowerCase();
+    return header.startsWith("solid") || buf.length > 84;
+  },
+};
+
 function getFileType(ext: string): string {
   const imageExts = new Set(["jpg", "jpeg", "png", "gif", "webp", "bmp", "svg"]);
   const cadExts: Record<string, string> = { stl: "stl", "3mf": "3mf", step: "step", stp: "step", obj: "obj", gcode: "gcode" };
@@ -63,6 +80,15 @@ export async function POST(request: NextRequest) {
       const metadata = await oneDrive.getFileMetadata(accessToken, cloudFileId);
       mimeType = metadata.file?.mimeType || mimeType;
       fileBuffer = await oneDrive.downloadFile(accessToken, cloudFileId);
+    }
+
+    // Validate content matches claimed extension (magic bytes check)
+    const validator = MAGIC_BYTES[ext];
+    if (validator && !validator(fileBuffer)) {
+      return NextResponse.json(
+        { error: `File content does not match .${ext} format` },
+        { status: 400 }
+      );
     }
 
     // Save to disk (same pattern as design file upload)

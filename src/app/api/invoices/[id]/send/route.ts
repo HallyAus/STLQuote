@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { requireFeature } from "@/lib/auth-helpers";
-import { sendEmail } from "@/lib/email";
+import { sendEmail, escapeHtml } from "@/lib/email";
 import { generateToken } from "@/lib/tokens";
 import { rateLimit } from "@/lib/rate-limit";
 import { renderToBuffer, type DocumentProps } from "@react-pdf/renderer";
@@ -82,7 +82,7 @@ export async function POST(
       },
     });
 
-    const businessName = settings?.businessName || "Printforge";
+    const businessName = escapeHtml(settings?.businessName || "Printforge");
 
     // Generate PDF attachment
     let pdfBuffer: Buffer | undefined;

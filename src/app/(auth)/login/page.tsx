@@ -21,8 +21,8 @@ function LoginForm() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const rawCallback = searchParams.get("callbackUrl") || "/dashboard";
-  // Prevent open redirect — only allow relative paths
-  const callbackUrl = rawCallback.startsWith("/") ? rawCallback : "/dashboard";
+  // Prevent open redirect — only allow relative paths (reject protocol-relative //evil.com)
+  const callbackUrl = rawCallback.startsWith("/") && !rawCallback.startsWith("//") ? rawCallback : "/dashboard";
   const errorParam = searchParams.get("error");
 
   const [email, setEmail] = useState("");

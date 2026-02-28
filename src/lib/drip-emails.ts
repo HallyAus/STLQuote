@@ -16,7 +16,7 @@
  */
 
 import { prisma } from "@/lib/prisma";
-import { sendEmail, unsubscribeFooter } from "@/lib/email";
+import { sendEmail, unsubscribeFooter, escapeHtml } from "@/lib/email";
 
 // ---------------------------------------------------------------------------
 // Types
@@ -403,7 +403,7 @@ export async function processDripEmails(userId: string): Promise<number> {
     : 0;
 
   const appUrl = process.env.NEXT_PUBLIC_APP_URL || "https://crm.printforge.com.au";
-  const name = user.name?.split(" ")[0] || "there";
+  const name = escapeHtml(user.name?.split(" ")[0] || "there");
 
   let sent = 0;
 

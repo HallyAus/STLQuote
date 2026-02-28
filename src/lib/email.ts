@@ -313,7 +313,7 @@ export async function sendQuoteEmail({
   pdfBuffer?: Buffer;
   userId?: string;
 }): Promise<boolean> {
-  const from = businessName || "Printforge";
+  const from = escapeHtml(businessName || "Printforge");
   const attachments = pdfBuffer
     ? [{ filename: `${quoteNumber}.pdf`, content: pdfBuffer, contentType: "application/pdf" }]
     : undefined;

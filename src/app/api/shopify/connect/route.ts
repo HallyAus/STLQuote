@@ -58,7 +58,7 @@ export async function POST(request: Request) {
         shopifyShopDomain: shop.myshopify_domain || shopDomain,
         shopifyClientId: clientId,
         shopifyClientSecret: encrypt(clientSecret),
-        shopifyAccessToken: tokenData.access_token,
+        shopifyAccessToken: encrypt(tokenData.access_token),
         shopifyTokenExpiresAt: expiresAt,
         shopifyConnectedAt: new Date(),
         shopifyWebhookId: webhookId,
