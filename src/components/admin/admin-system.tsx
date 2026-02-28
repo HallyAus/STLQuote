@@ -190,6 +190,7 @@ export function AdminSystem() {
 
   const registrationOpen = config.registrationOpen ?? "true";
   const waitlistMode = config.waitlistMode ?? "false";
+  const dripEmailsEnabled = config.dripEmailsEnabled ?? "true";
 
   return (
     <div className="space-y-4">
@@ -347,6 +348,31 @@ export function AdminSystem() {
                       className={cn(
                         "pointer-events-none inline-block h-5 w-5 rounded-full bg-background shadow-lg ring-0 transition-transform duration-200 ease-in-out",
                         waitlistMode === "true" ? "translate-x-5" : "translate-x-0"
+                      )}
+                    />
+                  </button>
+                </div>
+
+                {/* Drip Emails toggle */}
+                <div className="flex items-center justify-between">
+                  <div>
+                    <p className="text-sm font-medium">Onboarding Drip Emails</p>
+                    <p className="text-xs text-muted-foreground">
+                      Send new users a daily feature email for 7 days after signup
+                    </p>
+                  </div>
+                  <button
+                    onClick={() => toggleConfig("dripEmailsEnabled", dripEmailsEnabled)}
+                    disabled={configSaving}
+                    className={cn(
+                      "relative inline-flex h-6 w-11 shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors duration-200 ease-in-out focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50",
+                      dripEmailsEnabled === "true" ? "bg-primary" : "bg-muted"
+                    )}
+                  >
+                    <span
+                      className={cn(
+                        "pointer-events-none inline-block h-5 w-5 rounded-full bg-background shadow-lg ring-0 transition-transform duration-200 ease-in-out",
+                        dripEmailsEnabled === "true" ? "translate-x-5" : "translate-x-0"
                       )}
                     />
                   </button>

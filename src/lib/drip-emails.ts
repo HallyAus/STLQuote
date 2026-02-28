@@ -355,7 +355,16 @@ const DRIP_SEQUENCE: DripEmail[] = [
  * Called on dashboard load — lightweight, idempotent.
  * Returns the number of emails sent in this call.
  */
+const MIN_GAP_MS = 24 * 60 * 60 * 1000; // 24 hours between emails
+
 export async function processDripEmails(userId: string): Promise<number> {
+  // Check global toggle — admins can disable drip emails system-wide
+  const toggle = await prisma.systemConfig.findUnique({
+    where: { key: "dripEmailsEnabled" },
+    select: { value: true },
+  });
+  if (toggle?.value === "false") return 0;
+
   const user = await prisma.user.findUnique({
     where: { id: userId },
     select: {
@@ -363,11 +372,20 @@ export async function processDripEmails(userId: string): Promise<number> {
       email: true,
       createdAt: true,
       trialEndsAt: true,
-      dripEmails: { select: { emailKey: true } },
+      dripEmails: {
+        select: { emailKey: true, sentAt: true },
+        orderBy: { sentAt: "desc" },
+      },
     },
   });
 
   if (!user?.email) return 0;
+
+  // Enforce 24h gap since last drip email
+  const lastSent = user.dripEmails[0]?.sentAt;
+  if (lastSent && Date.now() - lastSent.getTime() < MIN_GAP_MS) {
+    return 0;
+  }
 
   const sentKeys = new Set(user.dripEmails.map((d) => d.emailKey));
   const daysSinceSignup = Math.floor((Date.now() - user.createdAt.getTime()) / (1000 * 60 * 60 * 24));
