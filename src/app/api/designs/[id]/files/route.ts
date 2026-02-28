@@ -10,7 +10,7 @@ const MAX_THUMBNAIL_BYTES = 50 * 1024; // 50KB base64 for thumbnail storage
 const ALLOWED_EXTENSIONS = new Set([
   "jpg", "jpeg", "png", "gif", "webp", "bmp",
   "stl", "3mf", "step", "stp", "obj", "gcode",
-  "pdf", "doc", "docx", "txt",
+  "pdf", "txt",
 ]);
 
 // Magic byte signatures for content validation
@@ -21,11 +21,19 @@ const MAGIC_BYTES: Record<string, (buf: Buffer) => boolean> = {
   gif: (buf) => buf.length >= 3 && buf[0] === 0x47 && buf[1] === 0x49 && buf[2] === 0x46,
   pdf: (buf) => buf.length >= 4 && buf[0] === 0x25 && buf[1] === 0x50 && buf[2] === 0x44 && buf[3] === 0x46,
   "3mf": (buf) => buf.length >= 2 && buf[0] === 0x50 && buf[1] === 0x4b, // ZIP-based
-  docx: (buf) => buf.length >= 2 && buf[0] === 0x50 && buf[1] === 0x4b, // ZIP-based
   stl: (buf) => {
     if (buf.length < 5) return false;
-    const header = buf.subarray(0, 80).toString("ascii").toLowerCase();
-    return header.startsWith("solid") || buf.length > 84;
+    // Binary STL: 80-byte header + 4-byte triangle count, then 50 bytes per triangle
+    if (buf.length >= 84) {
+      const numTriangles = buf.readUInt32LE(80);
+      const expectedSize = 80 + 4 + numTriangles * 50;
+      if (numTriangles > 0 && buf.length >= expectedSize && buf.length <= expectedSize + 2) {
+        return true;
+      }
+    }
+    // ASCII STL: must have "solid" header AND "endsolid" footer
+    const text = buf.toString("ascii");
+    return text.trimStart().startsWith("solid") && /endsolid/i.test(text);
   },
 };
 
@@ -34,7 +42,7 @@ function getFileType(ext: string): string {
   const cadExts: Record<string, string> = { stl: "stl", "3mf": "3mf", step: "step", stp: "step", obj: "obj", gcode: "gcode" };
   if (imageExts.has(ext)) return "reference_image";
   if (cadExts[ext]) return cadExts[ext];
-  if (["pdf", "doc", "docx", "txt"].includes(ext)) return "document";
+  if (["pdf", "txt"].includes(ext)) return "document";
   return "other";
 }
 

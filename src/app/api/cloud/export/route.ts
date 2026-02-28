@@ -254,7 +254,7 @@ export async function POST(request: NextRequest) {
     if (error instanceof Response) return error;
     console.error("Cloud export error:", error);
     return NextResponse.json(
-      { error: error instanceof Error ? error.message : "Failed to export file" },
+      { error: "Failed to export file" },
       { status: 500 }
     );
   }

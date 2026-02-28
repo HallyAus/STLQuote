@@ -7,7 +7,8 @@ import { rateLimit, getClientIp } from "@/lib/rate-limit";
 
 const schema = z.object({
   token: z.string().min(1, "Token is required"),
-  password: z.string().min(8, "Password must be at least 8 characters"),
+  password: z.string().min(8, "Password must be at least 8 characters").max(72, "Password too long")
+    .refine((p) => /[A-Z]/.test(p) && /[a-z]/.test(p) && /\d/.test(p), { message: "Password must include uppercase, lowercase, and a number" }),
 });
 
 export async function POST(request: NextRequest) {

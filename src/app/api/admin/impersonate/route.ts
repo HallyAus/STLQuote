@@ -4,6 +4,7 @@ import { prisma } from "@/lib/prisma";
 import { requireAdmin } from "@/lib/auth-helpers";
 import { rateLimit } from "@/lib/rate-limit";
 import { log } from "@/lib/logger";
+import { signImpersonation } from "@/lib/impersonation";
 
 export async function POST(request: NextRequest) {
   try {
@@ -47,7 +48,7 @@ export async function POST(request: NextRequest) {
     }
 
     const cookieStore = await cookies();
-    cookieStore.set("impersonate-user-id", userId, {
+    cookieStore.set("impersonate-user-id", signImpersonation(admin.id, userId), {
       httpOnly: true,
       secure: process.env.NODE_ENV === "production",
       sameSite: "strict",

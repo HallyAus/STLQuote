@@ -56,7 +56,7 @@ export async function GET(request: NextRequest) {
     if (error instanceof Response) return error;
     console.error("Cloud browse error:", error);
     return NextResponse.json(
-      { error: error instanceof Error ? error.message : "Failed to browse files" },
+      { error: "Failed to browse files" },
       { status: 500 }
     );
   }

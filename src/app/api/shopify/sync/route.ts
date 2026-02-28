@@ -133,7 +133,7 @@ export async function POST() {
       detail: err instanceof Error ? err.message : String(err),
     });
     return NextResponse.json(
-      { error: err instanceof Error ? err.message : "Sync failed" },
+      { error: "Sync failed" },
       { status: 500 }
     );
   }

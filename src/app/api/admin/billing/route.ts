@@ -34,8 +34,8 @@ export async function GET() {
         email: true,
         subscriptionTier: true,
         subscriptionStatus: true,
-        stripeCustomerId: true,
-        stripeSubscriptionId: true,
+        stripeCustomerId: false,
+        stripeSubscriptionId: false,
         subscriptionEndsAt: true,
         createdAt: true,
       },
@@ -55,8 +55,8 @@ export async function GET() {
     const config = {
       stripeSecretKey: !!process.env.STRIPE_SECRET_KEY,
       stripeWebhookSecret: !!process.env.STRIPE_WEBHOOK_SECRET,
-      monthlyPriceId: process.env.STRIPE_PRO_MONTHLY_PRICE_ID || null,
-      annualPriceId: process.env.STRIPE_PRO_ANNUAL_PRICE_ID || null,
+      monthlyPriceId: !!process.env.STRIPE_PRO_MONTHLY_PRICE_ID,
+      annualPriceId: !!process.env.STRIPE_PRO_ANNUAL_PRICE_ID,
       appUrl: process.env.NEXT_PUBLIC_APP_URL || null,
     };
 

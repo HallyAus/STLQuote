@@ -9,7 +9,7 @@ const updateUserSchema = z.object({
   email: z.string().email().optional(),
   role: z.enum(["USER", "ADMIN"]).optional(),
   disabled: z.boolean().optional(),
-  password: z.string().min(8, "Password must be at least 8 characters").optional(),
+  password: z.string().min(8, "Password must be at least 8 characters").max(72, "Password too long").optional(),
   grantPro: z.boolean().optional(),
 });
 

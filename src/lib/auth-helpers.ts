@@ -35,7 +35,19 @@ export async function getSessionUser(): Promise<SessionUser | null> {
   // Check for impersonation (admin or super admin only)
   if (isAdminRole(role)) {
     const cookieStore = await cookies();
-    const impersonateId = cookieStore.get("impersonate-user-id")?.value;
+    const rawCookie = cookieStore.get("impersonate-user-id")?.value;
+
+    // Verify HMAC-signed impersonation cookie (format: adminId:targetId:hmac)
+    let impersonateId: string | null = null;
+    if (rawCookie) {
+      // Support both signed (adminId:targetId:hmac) and legacy (plain userId) formats
+      if (rawCookie.includes(":")) {
+        const { verifyImpersonation } = await import("@/lib/impersonation");
+        impersonateId = verifyImpersonation(rawCookie, realUserId);
+      } else {
+        impersonateId = rawCookie; // Legacy plain cookie — will be re-signed on next impersonation
+      }
+    }
 
     if (impersonateId && impersonateId !== realUserId) {
       const impersonatedUser = await prisma.user.findUnique({

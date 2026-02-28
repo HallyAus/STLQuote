@@ -15,14 +15,21 @@ function getKey(): Buffer {
   const raw = process.env.CLOUD_ENCRYPTION_KEY;
   if (!raw) throw new Error("CLOUD_ENCRYPTION_KEY not configured");
 
-  // Accept hex (64 chars) or raw 32-char string
+  // Hex-encoded (64 chars = 32 bytes)
   if (raw.length === 64 && /^[0-9a-fA-F]+$/.test(raw)) {
     return Buffer.from(raw, "hex");
   }
 
+  // Base64-encoded (44 chars = 32 bytes)
+  if (raw.length === 44 && /^[A-Za-z0-9+/]+=*$/.test(raw)) {
+    const buf = Buffer.from(raw, "base64");
+    if (buf.length === 32) return buf;
+  }
+
+  // Fallback: UTF-8 string (must be exactly 32 bytes for AES-256)
   const buf = Buffer.from(raw, "utf8");
   if (buf.length < 32) {
-    throw new Error("CLOUD_ENCRYPTION_KEY must be at least 32 bytes");
+    throw new Error("CLOUD_ENCRYPTION_KEY must be 64 hex chars, 44 base64 chars, or at least 32 UTF-8 bytes");
   }
   return buf.subarray(0, 32);
 }

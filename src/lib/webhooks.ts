@@ -1,6 +1,7 @@
 import crypto from "crypto";
 import { prisma } from "@/lib/prisma";
 import { isPrivateUrl } from "@/lib/url-safety";
+import { decryptOrPlaintext } from "@/lib/encryption";
 
 /**
  * Fire webhooks for a user event. Non-blocking — errors never propagate.
@@ -27,8 +28,9 @@ export async function fireWebhooks(
     await Promise.allSettled(
       matching.filter((w) => !isPrivateUrl(w.url)).map(async (webhook) => {
         try {
+          const decryptedSecret = decryptOrPlaintext(webhook.secret);
           const signature = crypto
-            .createHmac("sha256", webhook.secret)
+            .createHmac("sha256", decryptedSecret)
             .update(body)
             .digest("hex");
 

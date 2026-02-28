@@ -9,7 +9,8 @@ import { sendVerificationEmail, sendWelcomeEmail, sendEmail, escapeHtml } from "
 const registerSchema = z.object({
   name: z.string().min(1, "Name is required"),
   email: z.string().email("Invalid email address"),
-  password: z.string().min(8, "Password must be at least 8 characters"),
+  password: z.string().min(8, "Password must be at least 8 characters").max(72, "Password too long")
+    .refine((p) => /[A-Z]/.test(p) && /[a-z]/.test(p) && /\d/.test(p), { message: "Password must include uppercase, lowercase, and a number" }),
   businessName: z.string().optional(),
 });
 

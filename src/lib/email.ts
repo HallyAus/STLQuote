@@ -115,10 +115,13 @@ export async function sendEmail({
   type?: string;
   userId?: string;
 }): Promise<boolean> {
+  // Strip CRLF from subject to prevent email header injection
+  const safeSubject = subject.replace(/[\r\n]/g, " ").trim();
+
   const client = getResend();
   if (!client) {
     console.warn("RESEND_API_KEY not configured — skipping email to", to);
-    logEmail({ to, subject, type, status: "skipped", error: "RESEND_API_KEY not configured", userId });
+    logEmail({ to, subject: safeSubject, type, status: "skipped", error: "RESEND_API_KEY not configured", userId });
     return false;
   }
 
@@ -127,7 +130,7 @@ export async function sendEmail({
       from: fromAddress,
       replyTo: replyToAddress,
       to,
-      subject,
+      subject: safeSubject,
       html,
       text: htmlToText(html),
       attachments: attachments?.map((a) => ({

@@ -5,6 +5,7 @@ import bcrypt from "bcryptjs";
 import { prisma } from "@/lib/prisma";
 import { requireAuth } from "@/lib/auth-helpers";
 import { rateLimit } from "@/lib/rate-limit";
+import { decryptOrPlaintext } from "@/lib/encryption";
 
 const schema = z.object({
   password: z.string().min(1, "Password is required"),
@@ -65,14 +66,15 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    // Validate TOTP code
+    // Validate TOTP code (decrypt secret which may be encrypted at rest)
+    const decryptedSecret = decryptOrPlaintext(dbUser.totpSecret);
     const totp = new OTPAuth.TOTP({
       issuer: "Printforge",
       label: user.email ?? "user",
       algorithm: "SHA1",
       digits: 6,
       period: 30,
-      secret: OTPAuth.Secret.fromBase32(dbUser.totpSecret),
+      secret: OTPAuth.Secret.fromBase32(decryptedSecret),
     });
 
     const delta = totp.validate({ token: code, window: 1 });

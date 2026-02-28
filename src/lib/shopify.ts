@@ -288,6 +288,10 @@ export function normaliseShopDomain(input: string): string {
   if (!domain.includes(".")) {
     domain = `${domain}.myshopify.com`;
   }
+  // Validate domain ends with .myshopify.com to prevent SSRF to arbitrary hosts
+  if (!domain.endsWith(".myshopify.com")) {
+    throw new Error("Invalid Shopify domain — must be a .myshopify.com address");
+  }
   return domain;
 }
 

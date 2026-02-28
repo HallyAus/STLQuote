@@ -52,6 +52,12 @@ export async function POST(
       return NextResponse.json({ error: "Quote not found" }, { status: 404 });
     }
 
+    // Enforce portal link expiry (30 days from creation)
+    const maxPortalAge = 30 * 24 * 60 * 60 * 1000;
+    if (Date.now() - new Date(quote.createdAt).getTime() > maxPortalAge) {
+      return NextResponse.json({ error: "This quote link has expired" }, { status: 410 });
+    }
+
     // Only allow responding to SENT quotes
     if (quote.status !== "SENT") {
       return NextResponse.json(

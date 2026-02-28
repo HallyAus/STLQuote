@@ -76,7 +76,7 @@ export async function POST(request: Request) {
       return NextResponse.json(body, { status: err.status });
     }
     return NextResponse.json(
-      { error: err instanceof Error ? err.message : "Failed to connect to Shopify" },
+      { error: "Failed to connect to Shopify" },
       { status: 500 }
     );
   }

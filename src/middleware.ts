@@ -4,7 +4,36 @@ import { NextResponse } from "next/server";
 
 const { auth } = NextAuth(authConfig);
 
-export default auth((req) => {
+/** Verify HMAC signature using Web Crypto API (edge-compatible, constant-time) */
+async function verifyHmac(userId: string, ts: string, sig: string): Promise<boolean> {
+  const secret = process.env.NEXTAUTH_SECRET || process.env.AUTH_SECRET;
+  if (!secret) return false;
+
+  const encoder = new TextEncoder();
+  const key = await crypto.subtle.importKey(
+    "raw",
+    encoder.encode(secret),
+    { name: "HMAC", hash: "SHA-256" },
+    false,
+    ["sign"]
+  );
+
+  const payload = `${userId}:${ts}`;
+  const signature = await crypto.subtle.sign("HMAC", key, encoder.encode(payload));
+  const expectedSig = Array.from(new Uint8Array(signature))
+    .map((b) => b.toString(16).padStart(2, "0"))
+    .join("");
+
+  // Constant-time comparison
+  if (expectedSig.length !== sig.length) return false;
+  let mismatch = 0;
+  for (let i = 0; i < expectedSig.length; i++) {
+    mismatch |= expectedSig.charCodeAt(i) ^ sig.charCodeAt(i);
+  }
+  return mismatch === 0;
+}
+
+export default auth(async (req) => {
   const { pathname } = req.nextUrl;
 
   // CSRF protection: block state-changing requests from foreign origins
@@ -104,11 +133,8 @@ export default auth((req) => {
       const parts = twoFaVerifiedCookie.split(":");
       if (parts.length === 3) {
         const [cookieUserId, ts, sig] = parts;
-        if (cookieUserId === userId && ts && sig) {
-          // HMAC verification using Web Crypto (edge-compatible)
-          // Sync check: just verify format and userId match here,
-          // the HMAC was verified at creation in the API route
-          isVerified = cookieUserId === userId && /^\d+$/.test(ts) && /^[0-9a-f]{64}$/.test(sig);
+        if (cookieUserId === userId && /^\d+$/.test(ts) && /^[0-9a-f]{64}$/.test(sig)) {
+          isVerified = await verifyHmac(cookieUserId, ts, sig);
         }
       }
     }

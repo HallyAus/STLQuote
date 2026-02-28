@@ -14,7 +14,8 @@ const schema = z.object({
 });
 
 function signCookie(userId: string, timestamp: number): string {
-  const secret = process.env.NEXTAUTH_SECRET || process.env.AUTH_SECRET || "fallback";
+  const secret = process.env.NEXTAUTH_SECRET || process.env.AUTH_SECRET;
+  if (!secret) throw new Error("NEXTAUTH_SECRET or AUTH_SECRET must be configured");
   const payload = `${userId}:${timestamp}`;
   const sig = createHmac("sha256", secret).update(payload).digest("hex");
   return `${payload}:${sig}`;

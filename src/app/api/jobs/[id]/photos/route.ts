@@ -111,8 +111,24 @@ export async function POST(
     // Create directories recursively
     await mkdir(absoluteDir, { recursive: true });
 
-    // Write file to disk
+    // Write file to disk after magic bytes validation
     const buffer = Buffer.from(await file.arrayBuffer());
+
+    const MAGIC: Record<string, (b: Buffer) => boolean> = {
+      jpg: (b) => b.length >= 2 && b[0] === 0xff && b[1] === 0xd8,
+      jpeg: (b) => b.length >= 2 && b[0] === 0xff && b[1] === 0xd8,
+      png: (b) => b.length >= 4 && b[0] === 0x89 && b[1] === 0x50 && b[2] === 0x4e && b[3] === 0x47,
+      gif: (b) => b.length >= 3 && b[0] === 0x47 && b[1] === 0x49 && b[2] === 0x46,
+      webp: (b) => b.length >= 12 && b[0] === 0x52 && b[1] === 0x49 && b[2] === 0x46 && b[3] === 0x46 && b[8] === 0x57 && b[9] === 0x45 && b[10] === 0x42 && b[11] === 0x50,
+    };
+    const validator = MAGIC[ext];
+    if (validator && !validator(buffer)) {
+      return NextResponse.json(
+        { error: `File content does not match .${ext} image format` },
+        { status: 400 }
+      );
+    }
+
     await writeFile(absolutePath, buffer);
 
     // Create DB record

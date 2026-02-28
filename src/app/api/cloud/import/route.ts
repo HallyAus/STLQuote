@@ -155,7 +155,7 @@ export async function POST(request: NextRequest) {
     if (error instanceof Response) return error;
     console.error("Cloud import error:", error);
     return NextResponse.json(
-      { error: error instanceof Error ? error.message : "Failed to import file" },
+      { error: "Failed to import file" },
       { status: 500 }
     );
   }

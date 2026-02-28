@@ -3,6 +3,7 @@ import crypto from "crypto";
 import { prisma } from "@/lib/prisma";
 import { getSessionUser } from "@/lib/auth-helpers";
 import { isPrivateUrl } from "@/lib/url-safety";
+import { decryptOrPlaintext } from "@/lib/encryption";
 
 type RouteContext = { params: Promise<{ id: string }> };
 
@@ -35,8 +36,9 @@ export async function POST(_request: NextRequest, context: RouteContext) {
       data: { message: "This is a test webhook from Printforge Quote." },
     });
 
+    const decryptedSecret = decryptOrPlaintext(webhook.secret);
     const signature = crypto
-      .createHmac("sha256", webhook.secret)
+      .createHmac("sha256", decryptedSecret)
       .update(body)
       .digest("hex");
 

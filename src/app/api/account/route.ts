@@ -3,6 +3,7 @@ import { z } from "zod";
 import bcrypt from "bcryptjs";
 import { prisma } from "@/lib/prisma";
 import { getSessionUser } from "@/lib/auth-helpers";
+import { rateLimit } from "@/lib/rate-limit";
 
 export async function GET() {
   try {
@@ -37,7 +38,8 @@ const updateSchema = z
     name: z.string().min(1).optional(),
     email: z.string().email().optional(),
     currentPassword: z.string().optional(),
-    newPassword: z.string().min(8, "Password must be at least 8 characters").optional(),
+    newPassword: z.string().min(8, "Password must be at least 8 characters").max(72, "Password too long")
+      .refine((p) => /[A-Z]/.test(p) && /[a-z]/.test(p) && /\d/.test(p), { message: "Password must include uppercase, lowercase, and a number" }).optional(),
   })
   .refine(
     (data) => !data.newPassword || data.currentPassword,
@@ -48,6 +50,15 @@ export async function PUT(request: NextRequest) {
   try {
     const user = await getSessionUser();
     if (!user) return NextResponse.json({ error: "Unauthorised" }, { status: 401 });
+
+    // Rate limit: 10 updates per 15 min (protects password brute-force via currentPassword)
+    const rl = rateLimit(`account-update:${user.id}`, { windowMs: 15 * 60 * 1000, maxRequests: 10 });
+    if (rl.limited) {
+      return NextResponse.json(
+        { error: "Too many attempts. Please try again later." },
+        { status: 429, headers: { "Retry-After": String(rl.retryAfterSeconds) } }
+      );
+    }
 
     const body = await request.json();
     const parsed = updateSchema.safeParse(body);

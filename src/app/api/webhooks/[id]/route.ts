@@ -48,6 +48,16 @@ export async function PUT(request: NextRequest, context: RouteContext) {
     const webhook = await prisma.webhook.update({
       where: { id },
       data: parsed.data,
+      select: {
+        id: true,
+        url: true,
+        events: true,
+        active: true,
+        lastFiredAt: true,
+        lastStatus: true,
+        createdAt: true,
+        updatedAt: true,
+      },
     });
 
     return NextResponse.json(webhook);

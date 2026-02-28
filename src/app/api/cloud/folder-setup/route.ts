@@ -61,7 +61,7 @@ export async function POST(request: NextRequest) {
     if (error instanceof Response) return error;
     console.error("Cloud folder setup error:", error);
     return NextResponse.json(
-      { error: error instanceof Error ? error.message : "Failed to set up folders" },
+      { error: "Failed to set up folders" },
       { status: 500 }
     );
   }

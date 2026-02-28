@@ -3,9 +3,11 @@ import { z } from "zod";
 import bcrypt from "bcryptjs";
 import { prisma } from "@/lib/prisma";
 import { getSessionUser } from "@/lib/auth-helpers";
+import { rateLimit } from "@/lib/rate-limit";
 
 const schema = z.object({
-  password: z.string().min(8, "Password must be at least 8 characters"),
+  password: z.string().min(8, "Password must be at least 8 characters").max(72, "Password too long")
+    .refine((p) => /[A-Z]/.test(p) && /[a-z]/.test(p) && /\d/.test(p), { message: "Password must include uppercase, lowercase, and a number" }),
 });
 
 export async function POST(request: NextRequest) {
@@ -13,6 +15,27 @@ export async function POST(request: NextRequest) {
     const user = await getSessionUser();
     if (!user) {
       return NextResponse.json({ error: "Unauthorised" }, { status: 401 });
+    }
+
+    // Rate limit: 5 attempts per 15 min
+    const rl = rateLimit(`change-password:${user.id}`, { windowMs: 15 * 60 * 1000, maxRequests: 5 });
+    if (rl.limited) {
+      return NextResponse.json(
+        { error: "Too many attempts. Please try again later." },
+        { status: 429, headers: { "Retry-After": String(rl.retryAfterSeconds) } }
+      );
+    }
+
+    // Only allow if user has mustChangePassword flag set
+    const dbUser = await prisma.user.findUnique({
+      where: { id: user.id },
+      select: { mustChangePassword: true },
+    });
+    if (!dbUser?.mustChangePassword) {
+      return NextResponse.json(
+        { error: "Use the account page to change your password" },
+        { status: 403 }
+      );
     }
 
     const body = await request.json();

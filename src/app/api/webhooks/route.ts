@@ -4,6 +4,7 @@ import crypto from "crypto";
 import { prisma } from "@/lib/prisma";
 import { requireFeature } from "@/lib/auth-helpers";
 import { isPrivateUrl } from "@/lib/url-safety";
+import { encrypt } from "@/lib/encryption";
 
 const createWebhookSchema = z.object({
   url: z.string().url("Invalid URL"),
@@ -18,6 +19,16 @@ export async function GET() {
     const webhooks = await prisma.webhook.findMany({
       where: { userId: user.id },
       orderBy: { createdAt: "desc" },
+      select: {
+        id: true,
+        url: true,
+        events: true,
+        active: true,
+        lastFiredAt: true,
+        lastStatus: true,
+        createdAt: true,
+        updatedAt: true,
+      },
     });
 
     return NextResponse.json(webhooks);
@@ -49,7 +60,8 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    const secret = crypto.randomBytes(32).toString("hex");
+    const rawSecret = crypto.randomBytes(32).toString("hex");
+    const encryptedSecret = encrypt(rawSecret);
 
     const webhook = await prisma.webhook.create({
       data: {
@@ -57,11 +69,19 @@ export async function POST(request: NextRequest) {
         url: parsed.data.url,
         events: parsed.data.events,
         active: parsed.data.active,
-        secret,
+        secret: encryptedSecret,
+      },
+      select: {
+        id: true,
+        url: true,
+        events: true,
+        active: true,
+        createdAt: true,
       },
     });
 
-    return NextResponse.json(webhook, { status: 201 });
+    // Return raw secret only on creation (one-time display)
+    return NextResponse.json({ ...webhook, secret: rawSecret }, { status: 201 });
   } catch (error) {
     console.error("Failed to create webhook:", error);
     return NextResponse.json({ error: "Failed to create webhook" }, { status: 500 });
