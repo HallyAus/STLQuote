@@ -28,6 +28,7 @@ declare module "next-auth" {
     createdAt?: Date | null;
     requiresTwoFactor?: boolean;
     totpEnabled?: boolean;
+    authProvider?: string;
   }
 }
 
@@ -43,7 +44,7 @@ export const authConfig = {
   },
   providers: [], // Credentials added in auth.ts
   callbacks: {
-    async jwt({ token, user }) {
+    async jwt({ token, user, account }) {
       if (user) {
         token.id = user.id as string;
         token.role = (user as any).role as string;
@@ -56,6 +57,14 @@ export const authConfig = {
         token.requiresTwoFactor = (user as any).requiresTwoFactor ?? false;
         token.totpEnabled = (user as any).totpEnabled ?? false;
         token.lastTouched = Date.now();
+      }
+
+      // Track auth provider — OAuth users skip 2FA
+      if (account) {
+        token.authProvider = account.provider;
+        if (account.provider !== "credentials") {
+          token.requiresTwoFactor = false;
+        }
       }
 
       // Throttled refresh — once per 30 minutes while session is active.

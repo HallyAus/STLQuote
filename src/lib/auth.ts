@@ -1,12 +1,15 @@
 import NextAuth from "next-auth";
 import Credentials from "next-auth/providers/credentials";
+import MicrosoftEntraId from "next-auth/providers/microsoft-entra-id";
 import bcrypt from "bcryptjs";
 import { prisma } from "@/lib/prisma";
 import { authConfig } from "@/lib/auth.config";
 import { rateLimit } from "@/lib/rate-limit";
 
+const ADMIN_EMAIL = process.env.ADMIN_EMAIL?.toLowerCase();
+
 /**
- * Full NextAuth instance with Credentials provider (bcryptjs — Node.js only).
+ * Full NextAuth instance with Credentials + Microsoft Entra ID providers.
  * Middleware imports from auth.config.ts instead to avoid Edge Runtime warnings.
  */
 export const { handlers, auth, signIn, signOut } = NextAuth({
@@ -75,5 +78,73 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
         };
       },
     }),
+    MicrosoftEntraId({
+      clientId: process.env.AUTH_MICROSOFT_ENTRA_ID_ID,
+      clientSecret: process.env.AUTH_MICROSOFT_ENTRA_ID_SECRET,
+      issuer: `https://login.microsoftonline.com/common/v2.0`,
+      authorization: {
+        params: { scope: "openid profile email User.Read" },
+      },
+    }),
   ],
+  callbacks: {
+    ...authConfig.callbacks,
+    async signIn({ user, account }) {
+      // Credentials provider handles its own checks in authorize()
+      if (account?.provider === "credentials") return true;
+
+      // OAuth sign-in checks
+      if (user.email) {
+        const existingUser = await prisma.user.findUnique({
+          where: { email: user.email },
+          select: { id: true, disabled: true },
+        });
+
+        // Block disabled users
+        if (existingUser?.disabled) {
+          return "/login?error=AccountDisabled";
+        }
+
+        // Check waitlist mode for new users
+        if (!existingUser) {
+          try {
+            const waitlistMode = await prisma.systemConfig.findUnique({
+              where: { key: "waitlistMode" },
+              select: { value: true },
+            });
+            if (waitlistMode?.value === "true") {
+              return "/login?error=WaitlistMode";
+            }
+          } catch {
+            // SystemConfig table may not exist yet — allow sign-in
+          }
+        }
+      }
+
+      return true;
+    },
+  },
+  events: {
+    // Fires when PrismaAdapter creates a new user via OAuth
+    async createUser({ user }) {
+      if (!user.id || !user.email) return;
+
+      const trialEnd = new Date();
+      trialEnd.setDate(trialEnd.getDate() + 14);
+
+      const isAdmin = ADMIN_EMAIL && user.email.toLowerCase() === ADMIN_EMAIL;
+
+      await prisma.user.update({
+        where: { id: user.id },
+        data: {
+          emailVerified: new Date(),
+          role: isAdmin ? "SUPER_ADMIN" : "USER",
+          subscriptionTier: "pro",
+          subscriptionStatus: "trialing",
+          trialEndsAt: trialEnd,
+          lastLogin: new Date(),
+        },
+      });
+    },
+  },
 });

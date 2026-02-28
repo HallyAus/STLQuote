@@ -122,8 +122,10 @@ export default auth(async (req) => {
     }
   }
 
-  // Two-factor authentication gate
-  const requiresTwoFactor = (req.auth as any)?.user?.requiresTwoFactor || (req.auth as any)?.token?.requiresTwoFactor;
+  // Two-factor authentication gate — skip for OAuth/SSO users (they use provider MFA)
+  const authProvider = (req.auth as any)?.token?.authProvider;
+  const isOAuthUser = authProvider && authProvider !== "credentials";
+  const requiresTwoFactor = !isOAuthUser && ((req.auth as any)?.user?.requiresTwoFactor || (req.auth as any)?.token?.requiresTwoFactor);
   if (requiresTwoFactor) {
     const twoFaVerifiedCookie = req.cookies.get("__2fa_verified")?.value;
     const userId = req.auth?.user?.id;

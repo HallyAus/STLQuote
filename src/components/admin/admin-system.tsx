@@ -19,19 +19,34 @@ import {
   ChevronUp,
   HardDrive,
   Database,
+  Activity,
+  Plug,
+  AlertTriangle,
+  Clock,
 } from "lucide-react";
 
-interface SystemHealth {
-  tableCounts: {
-    users: number;
-    quotes: number;
-    jobs: number;
-    materials: number;
-    printers: number;
-    clients: number;
-    invoices: number;
+interface HealthData {
+  status: "healthy" | "warning" | "degraded";
+  appVersion: string;
+  nodeVersion: string;
+  pgVersion: string;
+  uptime: number;
+  database: {
+    connected: boolean;
+    sizeBytes: number;
+    totalRecords: number;
+    tableCounts: Record<string, number>;
   };
-  uploadsDirSizeBytes: number;
+  storage: {
+    totalBytes: number;
+    breakdown: { name: string; sizeBytes: number }[];
+  };
+  integrations: {
+    name: string;
+    configured: boolean;
+    connectedUsers: number;
+  }[];
+  recentErrorCount: number;
 }
 
 interface LogEntry {
@@ -55,6 +70,23 @@ function formatBytes(bytes: number): string {
   const sizes = ["B", "KB", "MB", "GB"];
   const i = Math.floor(Math.log(bytes) / Math.log(k));
   return parseFloat((bytes / Math.pow(k, i)).toFixed(1)) + " " + sizes[i];
+}
+
+function formatUptime(seconds: number): string {
+  const d = Math.floor(seconds / 86400);
+  const h = Math.floor((seconds % 86400) / 3600);
+  const m = Math.floor((seconds % 3600) / 60);
+  if (d > 0) return `${d}d ${h}h`;
+  if (h > 0) return `${h}h ${m}m`;
+  return `${m}m`;
+}
+
+function formatTableName(name: string): string {
+  // camelCase → Title Case, or kebab-case → Title Case
+  return name
+    .replace(/([a-z])([A-Z])/g, "$1 $2")
+    .replace(/-/g, " ")
+    .replace(/\b\w/g, (c) => c.toUpperCase());
 }
 
 const LOG_TYPE_OPTIONS = [
@@ -82,8 +114,9 @@ export function AdminSystem() {
   const [logsOpen, setLogsOpen] = useState(true);
 
   // Health
-  const [health, setHealth] = useState<SystemHealth | null>(null);
+  const [health, setHealth] = useState<HealthData | null>(null);
   const [healthLoading, setHealthLoading] = useState(true);
+  const [tablesExpanded, setTablesExpanded] = useState(false);
 
   // Config
   const [config, setConfig] = useState<Record<string, string>>({});
@@ -99,14 +132,14 @@ export function AdminSystem() {
   const [logPage, setLogPage] = useState(1);
   const [expandedLogId, setExpandedLogId] = useState<string | null>(null);
 
-  // Fetch health data from analytics endpoint
+  // Fetch health data from dedicated health endpoint
   const fetchHealth = useCallback(async () => {
     setHealthLoading(true);
     try {
-      const res = await fetch("/api/admin/analytics");
+      const res = await fetch("/api/admin/health");
       if (res.ok) {
         const data = await res.json();
-        setHealth(data.system);
+        setHealth(data);
       }
     } catch {
       /* ignore */
@@ -202,14 +235,28 @@ export function AdminSystem() {
         >
           <div className="flex items-center justify-between">
             <CardTitle className="flex items-center gap-2 text-sm font-medium">
-              <Database className="h-4 w-4 text-muted-foreground" />
+              <Activity className="h-4 w-4 text-muted-foreground" />
               Health
             </CardTitle>
-            {healthOpen ? (
-              <ChevronUp className="h-4 w-4 text-muted-foreground" />
-            ) : (
-              <ChevronDown className="h-4 w-4 text-muted-foreground" />
-            )}
+            <div className="flex items-center gap-2">
+              {health && (
+                <span
+                  className={cn(
+                    "inline-flex h-2 w-2 rounded-full",
+                    health.status === "healthy"
+                      ? "bg-emerald-500"
+                      : health.status === "warning"
+                        ? "bg-amber-500"
+                        : "bg-red-500"
+                  )}
+                />
+              )}
+              {healthOpen ? (
+                <ChevronUp className="h-4 w-4 text-muted-foreground" />
+              ) : (
+                <ChevronDown className="h-4 w-4 text-muted-foreground" />
+              )}
+            </div>
           </div>
         </CardHeader>
         {healthOpen && (
@@ -219,32 +266,167 @@ export function AdminSystem() {
                 <Loader2 className="h-5 w-5 animate-spin text-muted-foreground" />
               </div>
             ) : (
-              <div className="space-y-3">
-                <div className="flex items-center justify-between">
-                  <span className="flex items-center gap-2 text-sm text-muted-foreground">
-                    <HardDrive className="h-3.5 w-3.5" />
-                    Uploads directory
-                  </span>
-                  <span className="text-sm font-medium">
-                    {formatBytes(health.uploadsDirSizeBytes)}
-                  </span>
-                </div>
-                <div className="border-t border-border pt-3 space-y-2">
-                  <p className="text-xs font-medium uppercase tracking-wider text-muted-foreground">
-                    Database tables
-                  </p>
-                  {Object.entries(health.tableCounts).map(([table, count]) => (
-                    <div key={table} className="flex items-center justify-between">
-                      <span className="text-sm text-muted-foreground capitalize">{table}</span>
-                      <span className="text-sm font-medium tabular-nums">{count}</span>
-                    </div>
-                  ))}
-                </div>
-                <div className="border-t border-border pt-3">
-                  <div className="flex items-center justify-between">
-                    <span className="text-sm text-muted-foreground">App version</span>
-                    <span className="text-sm font-medium font-mono">4.14.0</span>
+              <div className="space-y-4">
+                {/* System info */}
+                <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
+                  <div className="rounded-lg bg-muted/50 px-3 py-2">
+                    <p className="text-[10px] font-medium uppercase tracking-wider text-muted-foreground">Version</p>
+                    <p className="mt-0.5 text-sm font-medium font-mono">{health.appVersion}</p>
                   </div>
+                  <div className="rounded-lg bg-muted/50 px-3 py-2">
+                    <p className="text-[10px] font-medium uppercase tracking-wider text-muted-foreground">PostgreSQL</p>
+                    <p className="mt-0.5 text-sm font-medium font-mono">{health.pgVersion}</p>
+                  </div>
+                  <div className="rounded-lg bg-muted/50 px-3 py-2">
+                    <p className="text-[10px] font-medium uppercase tracking-wider text-muted-foreground">Node.js</p>
+                    <p className="mt-0.5 text-sm font-medium font-mono">{health.nodeVersion}</p>
+                  </div>
+                  <div className="rounded-lg bg-muted/50 px-3 py-2">
+                    <p className="text-[10px] font-medium uppercase tracking-wider text-muted-foreground">Uptime</p>
+                    <p className="mt-0.5 text-sm font-medium font-mono">{formatUptime(health.uptime)}</p>
+                  </div>
+                </div>
+
+                {/* Database */}
+                <div className="border-t border-border pt-3">
+                  <div className="flex items-center gap-2 mb-2">
+                    <Database className="h-3.5 w-3.5 text-muted-foreground" />
+                    <p className="text-xs font-medium uppercase tracking-wider text-muted-foreground">Database</p>
+                  </div>
+                  <div className="flex items-center justify-between mb-2">
+                    <span className="text-sm text-muted-foreground">Size</span>
+                    <span className="text-sm font-medium tabular-nums">{formatBytes(health.database.sizeBytes)}</span>
+                  </div>
+                  <div className="flex items-center justify-between mb-2">
+                    <span className="text-sm text-muted-foreground">Total records</span>
+                    <span className="text-sm font-medium tabular-nums">{health.database.totalRecords.toLocaleString()}</span>
+                  </div>
+                  <button
+                    className="flex items-center gap-1 text-xs text-muted-foreground hover:text-foreground transition-colors"
+                    onClick={() => setTablesExpanded(!tablesExpanded)}
+                  >
+                    {tablesExpanded ? (
+                      <ChevronUp className="h-3 w-3" />
+                    ) : (
+                      <ChevronDown className="h-3 w-3" />
+                    )}
+                    {tablesExpanded ? "Hide" : "Show"} table breakdown ({Object.keys(health.database.tableCounts).length} tables)
+                  </button>
+                  {tablesExpanded && (
+                    <div className="mt-2 grid grid-cols-2 gap-x-4 gap-y-1 sm:grid-cols-3">
+                      {Object.entries(health.database.tableCounts).map(([table, count]) => (
+                        <div key={table} className="flex items-center justify-between">
+                          <span className="text-xs text-muted-foreground">{formatTableName(table)}</span>
+                          <span className="text-xs font-medium tabular-nums">{count}</span>
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                </div>
+
+                {/* Storage */}
+                <div className="border-t border-border pt-3">
+                  <div className="flex items-center gap-2 mb-2">
+                    <HardDrive className="h-3.5 w-3.5 text-muted-foreground" />
+                    <p className="text-xs font-medium uppercase tracking-wider text-muted-foreground">File Storage</p>
+                    <span className="ml-auto text-sm font-medium tabular-nums">{formatBytes(health.storage.totalBytes)}</span>
+                  </div>
+                  {health.storage.totalBytes > 0 && (
+                    <>
+                      {/* Storage bar */}
+                      <div className="mb-2 flex h-2 overflow-hidden rounded-full bg-muted">
+                        {health.storage.breakdown.filter(s => s.sizeBytes > 0).map((seg, i) => {
+                          const pct = (seg.sizeBytes / health.storage.totalBytes) * 100;
+                          const colours = [
+                            "bg-sky-500",
+                            "bg-violet-500",
+                            "bg-amber-500",
+                            "bg-muted-foreground/40",
+                          ];
+                          return (
+                            <div
+                              key={seg.name}
+                              className={cn("h-full", colours[i % colours.length])}
+                              style={{ width: `${Math.max(pct, 1)}%` }}
+                            />
+                          );
+                        })}
+                      </div>
+                      <div className="space-y-1">
+                        {health.storage.breakdown.map((seg, i) => {
+                          const colours = [
+                            "bg-sky-500",
+                            "bg-violet-500",
+                            "bg-amber-500",
+                            "bg-muted-foreground/40",
+                          ];
+                          return (
+                            <div key={seg.name} className="flex items-center justify-between">
+                              <span className="flex items-center gap-2 text-xs text-muted-foreground">
+                                <span className={cn("inline-block h-2 w-2 rounded-full", colours[i % colours.length])} />
+                                {formatTableName(seg.name)}
+                              </span>
+                              <span className="text-xs font-medium tabular-nums">{formatBytes(seg.sizeBytes)}</span>
+                            </div>
+                          );
+                        })}
+                      </div>
+                    </>
+                  )}
+                </div>
+
+                {/* Integrations */}
+                <div className="border-t border-border pt-3">
+                  <div className="flex items-center gap-2 mb-2">
+                    <Plug className="h-3.5 w-3.5 text-muted-foreground" />
+                    <p className="text-xs font-medium uppercase tracking-wider text-muted-foreground">Integrations</p>
+                  </div>
+                  <div className="grid grid-cols-2 gap-2 sm:grid-cols-4">
+                    {health.integrations.map((integration) => (
+                      <div
+                        key={integration.name}
+                        className="flex items-center gap-2 rounded-md border border-border px-2.5 py-1.5"
+                      >
+                        <span
+                          className={cn(
+                            "inline-flex h-1.5 w-1.5 shrink-0 rounded-full",
+                            integration.configured
+                              ? integration.connectedUsers > 0
+                                ? "bg-emerald-500"
+                                : "bg-emerald-500/60"
+                              : "bg-muted-foreground/30"
+                          )}
+                        />
+                        <span className="text-xs text-muted-foreground truncate">{integration.name}</span>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+
+                {/* Errors */}
+                {health.recentErrorCount > 0 && (
+                  <div className="border-t border-border pt-3">
+                    <div className="flex items-center gap-2 rounded-md bg-destructive/10 px-3 py-2">
+                      <AlertTriangle className="h-3.5 w-3.5 shrink-0 text-destructive-foreground" />
+                      <span className="text-sm text-destructive-foreground">
+                        {health.recentErrorCount} error{health.recentErrorCount !== 1 ? "s" : ""} in the last 24 hours
+                      </span>
+                    </div>
+                  </div>
+                )}
+
+                {/* Refresh */}
+                <div className="flex justify-end">
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    onClick={fetchHealth}
+                    disabled={healthLoading}
+                    className="text-xs text-muted-foreground"
+                  >
+                    <RefreshCw className={cn("mr-1.5 h-3 w-3", healthLoading && "animate-spin")} />
+                    Refresh
+                  </Button>
                 </div>
               </div>
             )}

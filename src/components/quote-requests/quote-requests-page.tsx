@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState, useCallback } from "react";
+import { useRouter } from "next/navigation";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Card, CardContent } from "@/components/ui/card";
@@ -24,6 +25,8 @@ import {
   User,
   Cloud,
   Loader2,
+  ClipboardList,
+  Briefcase,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 
@@ -58,10 +61,13 @@ interface QuoteRequest {
 // ---------- Component ----------
 
 export function QuoteRequestsPage() {
+  const router = useRouter();
   const [requests, setRequests] = useState<QuoteRequest[]>([]);
   const [uploadLinks, setUploadLinks] = useState<UploadLink[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [creatingQuoteId, setCreatingQuoteId] = useState<string | null>(null);
+  const [creatingJobId, setCreatingJobId] = useState<string | null>(null);
 
   // Filter state
   const [statusFilter, setStatusFilter] = useState<string>("ALL");
@@ -281,6 +287,52 @@ export function QuoteRequestsPage() {
       setError(err instanceof Error ? err.message : "Cloud export failed");
     } finally {
       setExportingId(null);
+    }
+  }
+
+  async function handleCreateQuote(id: string) {
+    try {
+      setCreatingQuoteId(id);
+      setError(null);
+      const res = await fetch(`/api/quote-requests/${id}/create-quote`, {
+        method: "POST",
+      });
+      if (!res.ok) {
+        const data = await res.json().catch(() => null);
+        throw new Error(data?.error || "Failed to create quote");
+      }
+      const data = await res.json();
+      setRequests((prev) =>
+        prev.map((r) => (r.id === id ? { ...r, status: "QUOTED" } : r))
+      );
+      router.push(`/quotes/${data.quoteId}`);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Failed to create quote");
+    } finally {
+      setCreatingQuoteId(null);
+    }
+  }
+
+  async function handleCreateJob(id: string) {
+    try {
+      setCreatingJobId(id);
+      setError(null);
+      const res = await fetch(`/api/quote-requests/${id}/create-job`, {
+        method: "POST",
+      });
+      if (!res.ok) {
+        const data = await res.json().catch(() => null);
+        throw new Error(data?.error || "Failed to create job");
+      }
+      const data = await res.json();
+      setRequests((prev) =>
+        prev.map((r) => (r.id === id ? { ...r, status: "REVIEWED" } : r))
+      );
+      router.push("/jobs");
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Failed to create job");
+    } finally {
+      setCreatingJobId(null);
     }
   }
 
@@ -510,6 +562,32 @@ export function QuoteRequestsPage() {
                             <Button
                               variant="ghost"
                               size="sm"
+                              onClick={() => handleCreateQuote(req.id)}
+                              disabled={creatingQuoteId === req.id}
+                              title="Create quote"
+                            >
+                              {creatingQuoteId === req.id ? (
+                                <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                              ) : (
+                                <ClipboardList className="h-3.5 w-3.5" />
+                              )}
+                            </Button>
+                            <Button
+                              variant="ghost"
+                              size="sm"
+                              onClick={() => handleCreateJob(req.id)}
+                              disabled={creatingJobId === req.id}
+                              title="Create job"
+                            >
+                              {creatingJobId === req.id ? (
+                                <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                              ) : (
+                                <Briefcase className="h-3.5 w-3.5" />
+                              )}
+                            </Button>
+                            <Button
+                              variant="ghost"
+                              size="sm"
                               onClick={() =>
                                 window.open(
                                   `/api/files/${req.filePath}`,
@@ -635,6 +713,32 @@ export function QuoteRequestsPage() {
                           label: REQUEST_STATUS[s].label,
                         }))}
                       />
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        onClick={() => handleCreateQuote(req.id)}
+                        disabled={creatingQuoteId === req.id}
+                        title="Create quote"
+                      >
+                        {creatingQuoteId === req.id ? (
+                          <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                        ) : (
+                          <ClipboardList className="h-3.5 w-3.5" />
+                        )}
+                      </Button>
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        onClick={() => handleCreateJob(req.id)}
+                        disabled={creatingJobId === req.id}
+                        title="Create job"
+                      >
+                        {creatingJobId === req.id ? (
+                          <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                        ) : (
+                          <Briefcase className="h-3.5 w-3.5" />
+                        )}
+                      </Button>
                       <Button
                         variant="ghost"
                         size="sm"
