@@ -29,6 +29,7 @@ import {
 import { QUOTE_STATUS, BANNER, type QuoteStatus } from "@/lib/status-colours";
 import { QuoteTimeline } from "@/components/quotes/quote-timeline";
 import { QuotePreview } from "@/components/quotes/quote-preview";
+import { CloudExportButton } from "@/components/cloud/cloud-export-button";
 
 interface LineItem {
   id: string;
@@ -899,6 +900,10 @@ export function QuoteDetail() {
             <Download className="mr-2 h-4 w-4" />
             Download PDF
           </Button>
+          <CloudExportButton
+            fileType="quote_pdf"
+            fileId={quoteId}
+          />
           <Button
             variant="secondary"
             onClick={handleDuplicateQuote}

@@ -9,6 +9,7 @@ import { Input } from "@/components/ui/input";
 import { Select } from "@/components/ui/select";
 import { cn } from "@/lib/utils";
 import { formatRelativeTime } from "@/lib/format";
+import { UserModules } from "@/components/admin/user-modules";
 import {
   Users,
   Shield,
@@ -673,8 +674,8 @@ export function AdminUsers() {
 
       {/* Edit User Modal */}
       {editUser && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50">
-          <Card className="w-full max-w-md mx-4">
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4">
+          <Card className="w-full max-w-md max-h-[90vh] overflow-y-auto">
             <CardHeader>
               <div className="flex items-center justify-between">
                 <CardTitle className="flex items-center gap-2">
@@ -735,6 +736,7 @@ export function AdminUsers() {
                   </Button>
                 </div>
               </form>
+              {editUser && <UserModules userId={editUser.id} />}
             </CardContent>
           </Card>
         </div>

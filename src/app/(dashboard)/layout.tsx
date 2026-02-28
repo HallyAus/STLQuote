@@ -6,6 +6,7 @@ import { Sidebar } from "@/components/layout/sidebar";
 import { Header } from "@/components/layout/header";
 import { DebugPanel } from "@/components/debug/debug-panel";
 import { NavigationProgress } from "@/components/layout/navigation-progress";
+import { DripEmailTrigger } from "@/components/layout/drip-email-trigger";
 
 const pageTitles: Record<string, string> = {
   "/dashboard": "Dashboard",
@@ -57,8 +58,9 @@ export default function DashboardLayout({
   const breadcrumb = resolveBreadcrumb(pathname);
 
   return (
-    <div className="flex h-screen overflow-hidden">
+    <div className="flex h-dvh overflow-hidden">
       <NavigationProgress />
+      <DripEmailTrigger />
       <Sidebar open={sidebarOpen} onClose={() => setSidebarOpen(false)} />
       <div className="flex flex-1 flex-col overflow-hidden">
         <Header

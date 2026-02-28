@@ -15,7 +15,9 @@ import {
   Image as ImageIcon,
   Box,
   X,
+  Cloud,
 } from "lucide-react";
+import { CloudFilePicker } from "@/components/cloud/cloud-file-picker";
 
 interface DesignFile {
   id: string;
@@ -63,6 +65,7 @@ export function DesignFiles({ designId, filter, onUpdate }: DesignFilesProps) {
   const [files, setFiles] = useState<DesignFile[]>([]);
   const [loading, setLoading] = useState(true);
   const [uploading, setUploading] = useState(false);
+  const [showCloudPicker, setShowCloudPicker] = useState(false);
   const [deleting, setDeleting] = useState<string | null>(null);
   const [analyzing, setAnalyzing] = useState<string | null>(null);
   const [analysisResult, setAnalysisResult] = useState<Record<string, unknown> | null>(null);
@@ -232,9 +235,15 @@ export function DesignFiles({ designId, filter, onUpdate }: DesignFilesProps) {
           {uploading ? "Uploading..." : "Drag files here or"}
         </p>
         {!uploading && (
-          <Button variant="secondary" size="sm" className="mt-2" onClick={() => fileInputRef.current?.click()}>
-            Choose Files
-          </Button>
+          <div className="flex gap-2 mt-2">
+            <Button variant="secondary" size="sm" onClick={() => fileInputRef.current?.click()}>
+              Choose Files
+            </Button>
+            <Button variant="ghost" size="sm" onClick={() => setShowCloudPicker(true)}>
+              <Cloud className="h-3.5 w-3.5 mr-1.5" />
+              Import from Cloud
+            </Button>
+          </div>
         )}
       </div>
 
@@ -362,6 +371,15 @@ export function DesignFiles({ designId, filter, onUpdate }: DesignFilesProps) {
             className="max-h-[90vh] max-w-[90vw] object-contain"
           />
         </div>
+      )}
+
+      {/* Cloud file picker */}
+      {showCloudPicker && (
+        <CloudFilePicker
+          designId={designId}
+          onImport={() => { fetchFiles(); onUpdate(); }}
+          onClose={() => setShowCloudPicker(false)}
+        />
       )}
     </div>
   );

@@ -4,6 +4,8 @@ import { Suspense } from "react";
 import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card";
 import { XeroSettings } from "@/components/settings/xero-settings";
 import { ShopifySettings } from "@/components/integrations/shopify-settings";
+import { GoogleDriveSettings } from "@/components/integrations/google-drive-settings";
+import { OneDriveSettings } from "@/components/integrations/onedrive-settings";
 import { WebhookSettings } from "@/components/settings/webhook-settings";
 import { CreditCard, MessageSquare, Gamepad2, Send } from "lucide-react";
 
@@ -49,6 +51,14 @@ export function IntegrationsPage() {
 
         <Suspense fallback={null}>
           <ShopifySettings />
+        </Suspense>
+
+        <Suspense fallback={null}>
+          <GoogleDriveSettings />
+        </Suspense>
+
+        <Suspense fallback={null}>
+          <OneDriveSettings />
         </Suspense>
 
         <WebhookSettings />

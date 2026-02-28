@@ -11,6 +11,8 @@ Each entry: `[YYYY-MM-DD] Decision — Rationale`
 
 <!-- Claude: add new entries at the top -->
 
+- [2026-02-28] Cloud Storage is a Pro feature (cloud_storage in tier.ts) — gated via requireFeature("cloud_storage"). Tokens encrypted with AES-256-GCM using CLOUD_ENCRYPTION_KEY env var. Separate CloudConnection model (not on User) for clean multi-provider support.
+- [2026-02-28] Cloud storage OAuth follows same pattern as Xero: state cookie + callback redirect to /integrations. Google uses drive.file scope (limited to app-created files), OneDrive uses Files.ReadWrite.All.
 - [2026-02-28] Module override system: UserModule table with per-user feature overrides (enabled/disabled/null) — checked before tier in requireFeature() and sidebar. Admin API to manage. Three-state toggle: Tier Default / Force On / Force Off.
 - [2026-02-28] Design Studio is a Pro feature (design_studio in tier.ts) — gated via requireFeature("design_studio") on all API routes. Can be force-enabled for Free users via module overrides.
 - [2026-02-28] Design number format: DS-YYYY-NNN (auto-generated, unique per user per year) — mirrors quote PF-YYYY-NNN pattern.

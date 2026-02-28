@@ -9,7 +9,10 @@ _None_
 
 ## Up Next
 
-- [ ] Deploy v5.0.0 — run migration 0026 on production DB
+- [ ] Deploy v5.3.0 — run migrations 0028 + 0029 on production DB
+- [ ] Set cloud storage env vars (Google Drive, OneDrive, CLOUD_ENCRYPTION_KEY)
+- [ ] Test cloud storage end-to-end (connect → browse → import → export)
+- [ ] Verify drip emails trigger for new users on dashboard load
 - [ ] Test Design Studio end-to-end (create → upload → chat → brief → create quote)
 - [ ] Test module override system (admin panel → toggle feature for user)
 - [ ] Design file serving route — `/api/designs/[id]/files/[fileId]/serve` (referenced by UI but not implemented)
@@ -27,6 +30,8 @@ _None_
 
 ## Done (Recent)
 
+- [x] v5.3.0 — Onboarding drip emails (DripEmailLog model, 8-email sequence, check-on-login trigger, migration 0029) — 2026-02-28
+- [x] v5.2.0 — Cloud Storage (Google Drive + OneDrive, OAuth, encryption, browse/import/export, CloudFilePicker, migration 0028) — 2026-02-28
 - [x] v5.0.0 — Design Studio + Module System (4 models, 10 API routes, 10 UI components, module overrides, migration 0026) — 2026-02-28
 - [x] v4.15.3 — Security hardening for public release (HSTS, rate limits x13, SSRF, CSRF, path traversal, MIME validation, audit logging, email enumeration fix, token removal, cookie expiry, Content-Disposition sanitisation) — 2026-02-27
 - [x] v4.15.0 — Mobile nav fix, admin seed data, 2FA (TOTP), upload error handling — 2026-02-27

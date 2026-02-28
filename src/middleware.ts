@@ -43,6 +43,8 @@ export default auth((req) => {
     "/api/billing/webhook",
     "/api/shopify/webhook",
     "/api/xero/callback",
+    "/api/cloud/google/callback",
+    "/api/cloud/onedrive/callback",
     "/api/invoices/portal",
     "/waitlist",
     "/api/waitlist",
@@ -90,7 +92,7 @@ export default auth((req) => {
   }
 
   // Two-factor authentication gate
-  const requiresTwoFactor = (req.auth as any)?.token?.requiresTwoFactor;
+  const requiresTwoFactor = (req.auth as any)?.user?.requiresTwoFactor || (req.auth as any)?.token?.requiresTwoFactor;
   if (requiresTwoFactor) {
     const twoFaVerifiedCookie = req.cookies.get("__2fa_verified")?.value;
     const userId = req.auth?.user?.id;

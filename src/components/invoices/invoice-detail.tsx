@@ -22,6 +22,7 @@ import {
   Ban,
 } from "lucide-react";
 import { BANNER } from "@/lib/status-colours";
+import { CloudExportButton } from "@/components/cloud/cloud-export-button";
 
 // ---------------------------------------------------------------------------
 // Types
@@ -696,6 +697,10 @@ export function InvoiceDetail() {
             <Download className="mr-2 h-4 w-4" />
             Download PDF
           </Button>
+          <CloudExportButton
+            fileType="invoice_pdf"
+            fileId={invoiceId}
+          />
           {invoice.status !== "PAID" && invoice.status !== "VOID" && (
             <Button variant="secondary" onClick={handleMarkAsPaid}>
               <CheckCircle className="mr-2 h-4 w-4" />

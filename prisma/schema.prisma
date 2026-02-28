@@ -111,6 +111,8 @@ model User {
   quoteRequests      QuoteRequest[]
   designs            Design[]
   modules            UserModule[]
+  cloudConnections   CloudConnection[]
+  dripEmails         DripEmailLog[]
 }
 
 model Settings {
@@ -873,6 +875,8 @@ model DesignFile {
   notes        String?         @db.Text
   revisionId   String?
   revision     DesignRevision? @relation(fields: [revisionId], references: [id], onDelete: SetNull)
+  cloudFileId    String?       // ID of file in cloud storage
+  cloudProvider  String?       // "google_drive" | "onedrive"
   createdAt    DateTime        @default(now())
 
   @@index([designId])
@@ -890,4 +894,60 @@ model DesignRevision {
   createdAt   DateTime     @default(now())
 
   @@index([designId])
+}
+
+// --- Cloud Storage ---
+
+model CloudConnection {
+  id              String    @id @default(cuid())
+  userId          String
+  user            User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  provider        String    // "google_drive" | "onedrive"
+  accessToken     String    @db.Text  // AES-256-GCM encrypted
+  refreshToken    String    @db.Text  // AES-256-GCM encrypted
+  tokenExpiresAt  DateTime?
+  providerEmail   String?
+  rootFolderId    String?   // ID of the Printforge root folder in cloud
+  connectedAt     DateTime  @default(now())
+  lastSyncAt      DateTime?
+  syncEnabled     Boolean   @default(true)
+
+  syncRecords     CloudSyncRecord[]
+
+  @@unique([userId, provider])
+  @@index([userId])
+}
+
+model CloudSyncRecord {
+  id              String          @id @default(cuid())
+  connectionId    String
+  connection      CloudConnection @relation(fields: [connectionId], references: [id], onDelete: Cascade)
+  localFileType   String          // "design_file" | "quote_pdf" | "invoice_pdf"
+  localFileId     String
+  cloudFileId     String
+  cloudFileName   String
+  cloudFolderPath String?
+  direction       String          // "upload" | "download" | "bidirectional"
+  localModifiedAt DateTime?
+  cloudModifiedAt DateTime?
+  syncStatus      String          @default("synced") // "synced" | "pending" | "conflict" | "error"
+  errorMessage    String?         @db.Text
+  createdAt       DateTime        @default(now())
+  updatedAt       DateTime        @updatedAt
+
+  @@unique([connectionId, localFileType, localFileId])
+  @@index([connectionId])
+}
+
+// --- Drip Emails ---
+
+model DripEmailLog {
+  id        String   @id @default(cuid())
+  userId    String
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  emailKey  String   // "day_0", "day_1", ... "day_7"
+  sentAt    DateTime @default(now())
+
+  @@unique([userId, emailKey])
+  @@index([userId])
 }
