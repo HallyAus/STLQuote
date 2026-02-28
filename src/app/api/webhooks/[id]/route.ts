@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { z } from "zod";
 import { prisma } from "@/lib/prisma";
 import { getSessionUser } from "@/lib/auth-helpers";
+import { isPrivateUrl } from "@/lib/url-safety";
 
 const updateWebhookSchema = z.object({
   url: z.string().url("Invalid URL").optional(),
@@ -32,6 +33,14 @@ export async function PUT(request: NextRequest, context: RouteContext) {
     if (!parsed.success) {
       return NextResponse.json(
         { error: "Validation failed", details: parsed.error.flatten() },
+        { status: 400 }
+      );
+    }
+
+    // SSRF check on URL update
+    if (parsed.data.url && isPrivateUrl(parsed.data.url)) {
+      return NextResponse.json(
+        { error: "Webhook URL must not point to a private network address" },
         { status: 400 }
       );
     }

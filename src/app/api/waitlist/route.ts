@@ -2,7 +2,8 @@ import { NextRequest, NextResponse } from "next/server";
 import { z } from "zod";
 import { prisma } from "@/lib/prisma";
 import { requireAdmin } from "@/lib/auth-helpers";
-import { sendEmail } from "@/lib/email";
+import { sendEmail, escapeHtml } from "@/lib/email";
+import { rateLimit, getClientIp } from "@/lib/rate-limit";
 
 const waitlistSchema = z.object({
   name: z.string().min(1, "Name is required"),
@@ -45,26 +46,27 @@ export async function POST(request: NextRequest) {
 
     const { name, email, businessName } = parsed.data;
 
-    // Check if email already on waitlist
-    const existingWaitlist = await prisma.waitlist.findUnique({
-      where: { email },
-    });
-
-    if (existingWaitlist) {
+    // Rate limit: 5 signups per 15 min per IP
+    const ip = getClientIp(request);
+    const rl = rateLimit(`waitlist:${ip}`, { windowMs: 15 * 60 * 1000, maxRequests: 5 });
+    if (rl.limited) {
       return NextResponse.json(
-        { error: "This email is already on the waitlist" },
-        { status: 409 }
+        { error: "Too many requests. Please try again later." },
+        { status: 429, headers: { "Retry-After": String(rl.retryAfterSeconds) } }
       );
     }
 
-    // Check if email already has a user account
+    // Check if email already registered (generic message to prevent enumeration)
+    const existingWaitlist = await prisma.waitlist.findUnique({
+      where: { email },
+    });
     const existingUser = await prisma.user.findUnique({
       where: { email },
     });
 
-    if (existingUser) {
+    if (existingWaitlist || existingUser) {
       return NextResponse.json(
-        { error: "An account with this email already exists" },
+        { error: "This email is already registered" },
         { status: 409 }
       );
     }
@@ -79,13 +81,16 @@ export async function POST(request: NextRequest) {
       },
     });
 
+    const safeName = escapeHtml(name);
+    const safeBusiness = businessName ? escapeHtml(businessName) : null;
+
     // Send confirmation email to the user (fire-and-forget)
     sendEmail({
       to: email,
       subject: "You're on the Printforge waitlist!",
       type: "waitlist",
       html: `<div style="font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; max-width: 600px; margin: 0 auto;">
-        <h2 style="color: #171717;">Hey ${name}!</h2>
+        <h2 style="color: #171717;">Hey ${safeName}!</h2>
         <p>Thanks for signing up for Printforge Quote. You're on the waitlist!</p>
         <p>We'll send you an email as soon as your account is ready. In the meantime, feel free to reply to this email if you have any questions.</p>
         <hr style="border: none; border-top: 1px solid #e5e5e5; margin: 24px 0;" />
@@ -104,9 +109,9 @@ export async function POST(request: NextRequest) {
         html: `<div style="font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; max-width: 600px; margin: 0 auto;">
           <h2 style="color: #171717;">New Waitlist Signup</h2>
           <table style="border-collapse: collapse; width: 100%; margin: 16px 0;">
-            <tr><td style="padding: 8px 0; color: #666; width: 120px;">Name</td><td style="padding: 8px 0; font-weight: 600;">${name}</td></tr>
-            <tr><td style="padding: 8px 0; color: #666;">Email</td><td style="padding: 8px 0;">${email}</td></tr>
-            ${businessName ? `<tr><td style="padding: 8px 0; color: #666;">Business</td><td style="padding: 8px 0;">${businessName}</td></tr>` : ""}
+            <tr><td style="padding: 8px 0; color: #666; width: 120px;">Name</td><td style="padding: 8px 0; font-weight: 600;">${safeName}</td></tr>
+            <tr><td style="padding: 8px 0; color: #666;">Email</td><td style="padding: 8px 0;">${escapeHtml(email)}</td></tr>
+            ${safeBusiness ? `<tr><td style="padding: 8px 0; color: #666;">Business</td><td style="padding: 8px 0;">${safeBusiness}</td></tr>` : ""}
           </table>
           <p style="margin: 24px 0;">
             <a href="${appUrl}/admin" style="background-color: #2563eb; color: white; padding: 12px 24px; border-radius: 6px; text-decoration: none; font-weight: 600;">

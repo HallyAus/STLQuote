@@ -54,3 +54,12 @@ export function decrypt(encoded: string): string {
 
   return decipher.update(ciphertext) + decipher.final("utf8");
 }
+
+/** Try to decrypt, falling back to plaintext if decryption fails (migration compat). */
+export function decryptOrPlaintext(value: string): string {
+  try {
+    return decrypt(value);
+  } catch {
+    return value;
+  }
+}

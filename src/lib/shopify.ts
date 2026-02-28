@@ -8,6 +8,7 @@
 
 import crypto from "crypto";
 import { prisma } from "@/lib/prisma";
+import { decryptOrPlaintext } from "@/lib/encryption";
 
 const API_VERSION = "2024-01";
 
@@ -72,6 +73,8 @@ export async function getAccessToken(userId: string): Promise<{ token: string; s
     throw new Error("Shopify is not connected");
   }
 
+  const decryptedSecret = decryptOrPlaintext(user.shopifyClientSecret);
+
   // Check if existing token is still valid (with 5-minute buffer)
   const bufferMs = 5 * 60 * 1000;
   if (
@@ -86,7 +89,7 @@ export async function getAccessToken(userId: string): Promise<{ token: string; s
   const tokenData = await exchangeForAccessToken(
     user.shopifyShopDomain,
     user.shopifyClientId,
-    user.shopifyClientSecret
+    decryptedSecret
   );
 
   const expiresAt = new Date(Date.now() + tokenData.expires_in * 1000);

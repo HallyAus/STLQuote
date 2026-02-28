@@ -58,11 +58,11 @@ export default function DashboardLayout({
   const breadcrumb = resolveBreadcrumb(pathname);
 
   return (
-    <div className="flex h-dvh overflow-hidden">
+    <div className="flex h-dvh min-h-0 overflow-hidden">
       <NavigationProgress />
       <DripEmailTrigger />
       <Sidebar open={sidebarOpen} onClose={() => setSidebarOpen(false)} />
-      <div className="flex flex-1 flex-col overflow-hidden">
+      <div className="flex min-h-0 min-w-0 flex-1 flex-col">
         <Header
           title={title}
           breadcrumb={breadcrumb}

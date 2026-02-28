@@ -3,6 +3,7 @@ import { cookies } from "next/headers";
 import { getSessionUser } from "@/lib/auth-helpers";
 import { prisma } from "@/lib/prisma";
 import { exchangeCodeForTokens, getXeroTenants } from "@/lib/xero";
+import { encrypt } from "@/lib/encryption";
 
 export async function GET(request: NextRequest) {
   const baseUrl = process.env.NEXT_PUBLIC_APP_URL || request.nextUrl.origin;
@@ -59,13 +60,13 @@ export async function GET(request: NextRequest) {
 
     const tenant = tenants[0];
 
-    // Store tokens on the user record
+    // Store encrypted tokens on the user record
     await prisma.user.update({
       where: { id: user.id },
       data: {
         xeroTenantId: tenant.tenantId,
-        xeroAccessToken: tokens.access_token,
-        xeroRefreshToken: tokens.refresh_token,
+        xeroAccessToken: encrypt(tokens.access_token),
+        xeroRefreshToken: encrypt(tokens.refresh_token),
         xeroTokenExpiresAt: new Date(Date.now() + tokens.expires_in * 1000),
         xeroConnectedAt: new Date(),
       },

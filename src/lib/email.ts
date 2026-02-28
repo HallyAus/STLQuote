@@ -1,5 +1,5 @@
 import { Resend } from "resend";
-import { createHmac } from "crypto";
+import { createHmac, timingSafeEqual } from "crypto";
 import { prisma } from "@/lib/prisma";
 
 // Lazy-init — Resend constructor throws if API key is missing (breaks Docker build)
@@ -19,7 +19,9 @@ const replyToAddress = process.env.RESEND_REPLY_TO || undefined;
 // ---------------------------------------------------------------------------
 
 function getUnsubscribeSecret(): string {
-  return process.env.NEXTAUTH_SECRET || process.env.AUTH_SECRET || "printforge-unsub-fallback";
+  const secret = process.env.NEXTAUTH_SECRET || process.env.AUTH_SECRET;
+  if (!secret) throw new Error("NEXTAUTH_SECRET or AUTH_SECRET must be configured for unsubscribe tokens");
+  return secret;
 }
 
 export function generateUnsubscribeToken(userId: string): string {
@@ -28,7 +30,17 @@ export function generateUnsubscribeToken(userId: string): string {
 
 export function verifyUnsubscribeToken(userId: string, token: string): boolean {
   const expected = generateUnsubscribeToken(userId);
-  return expected === token;
+  if (expected.length !== token.length) return false;
+  return timingSafeEqual(Buffer.from(expected), Buffer.from(token));
+}
+
+/** Escape HTML special characters to prevent injection in email templates. */
+export function escapeHtml(str: string): string {
+  return str
+    .replace(/&/g, "&amp;")
+    .replace(/</g, "&lt;")
+    .replace(/>/g, "&gt;")
+    .replace(/"/g, "&quot;");
 }
 
 export function getUnsubscribeUrl(userId: string): string {
@@ -194,6 +206,7 @@ export async function sendVerificationEmail(email: string, token: string, userId
 
 export async function sendWelcomeEmail(email: string, name: string, userId?: string): Promise<boolean> {
   const appUrl = process.env.NEXT_PUBLIC_APP_URL || "http://localhost:3000";
+  const safeName = escapeHtml(name);
 
   return sendEmail({
     to: email,
@@ -202,7 +215,7 @@ export async function sendWelcomeEmail(email: string, name: string, userId?: str
     userId,
     html: `
       <div style="font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; max-width: 600px; margin: 0 auto;">
-        <h2 style="color: #171717;">Welcome, ${name}!</h2>
+        <h2 style="color: #171717;">Welcome, ${safeName}!</h2>
         <p>Your Printforge account is ready. Here&rsquo;s what you can do:</p>
         <ul style="padding-left: 20px; color: #333;">
           <li><strong>Calculate costs</strong> — upload STL/G-code files and get instant estimates</li>
@@ -239,7 +252,7 @@ export async function sendAccountCreatedEmail(
     userId,
     html: `
       <div style="font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; max-width: 600px; margin: 0 auto;">
-        <h2 style="color: #171717;">Welcome to Printforge, ${name}!</h2>
+        <h2 style="color: #171717;">Welcome to Printforge, ${escapeHtml(name)}!</h2>
         <p>An account has been created for you on <strong>Printforge</strong> — the 3D print cost calculator and business management platform.</p>
         <p>To get started, set your password using the link below:</p>
         <p style="margin: 24px 0;">

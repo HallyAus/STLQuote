@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { verifyWebhookHmac, orderToJobNotes, findOrCreateShopifyClient } from "@/lib/shopify";
+import { decryptOrPlaintext } from "@/lib/encryption";
 import type { ShopifyOrder } from "@/lib/shopify";
 import { fireWebhooks } from "@/lib/webhooks";
 import { log } from "@/lib/logger";
@@ -31,12 +32,15 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ received: true });
     }
 
-    // Verify HMAC using user's client secret
-    if (hmac && user.shopifyClientSecret) {
-      if (!verifyWebhookHmac(rawBody, hmac, user.shopifyClientSecret)) {
-        log({ type: "system", level: "warn", message: "Shopify webhook HMAC verification failed", userId: user.id });
-        return NextResponse.json({ error: "Invalid signature" }, { status: 401 });
-      }
+    // Verify HMAC using user's client secret (reject if missing)
+    if (!hmac || !user.shopifyClientSecret) {
+      log({ type: "system", level: "warn", message: "Shopify webhook missing HMAC or client secret", userId: user.id });
+      return NextResponse.json({ error: "Missing signature" }, { status: 401 });
+    }
+    const decryptedSecret = decryptOrPlaintext(user.shopifyClientSecret);
+    if (!verifyWebhookHmac(rawBody, hmac, decryptedSecret)) {
+      log({ type: "system", level: "warn", message: "Shopify webhook HMAC verification failed", userId: user.id });
+      return NextResponse.json({ error: "Invalid signature" }, { status: 401 });
     }
 
     if (!user.shopifyAutoCreateJobs) {

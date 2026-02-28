@@ -29,6 +29,10 @@ import {
   Shield,
   Map,
   BookTemplate,
+  Cloud,
+  PenTool,
+  Mail,
+  HardDrive,
 } from "lucide-react";
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
@@ -90,6 +94,8 @@ const PHASES: RoadmapPhase[] = [
       { title: "STL & G-code Upload", description: "Upload STL files for dimension analysis, or G-code files for auto-extracted print settings from Bambu/Prusa/Cura.", icon: Upload, status: "shipped", version: "1.0" },
       { title: "Job Photo Gallery", description: "Upload progress and completion photos to jobs. Lightbox viewer, auth-checked serving.", icon: Briefcase, status: "shipped", version: "3.0" },
       { title: "Onboarding Guide", description: "Guided checklist for new users — 5 data-driven steps that auto-complete. Shown in sidebar for 14 days.", icon: Rocket, status: "shipped", version: "4.5" },
+      { title: "Design Studio", description: "Manage design projects with AI chat, reference image analysis, file versioning, revision timelines, and design briefs. Convert designs to quotes.", icon: PenTool, status: "shipped", version: "5.0", pro: true },
+      { title: "Onboarding Emails", description: "8-email drip sequence introducing new users to key features over their first week. Unsubscribe support and admin toggle.", icon: Mail, status: "shipped", version: "5.3" },
     ],
   },
   {
@@ -99,6 +105,7 @@ const PHASES: RoadmapPhase[] = [
       { title: "Shopify Sync", description: "Import unfulfilled orders as jobs, auto-create clients from Shopify customers. Webhook support for real-time order sync.", icon: ShoppingBag, status: "shipped", version: "4.4", pro: true },
       { title: "Xero Accounting", description: "OAuth2 connection to push invoices and contacts to your Xero account. Automatic sync.", icon: Globe, status: "shipped", version: "4.0", pro: true },
       { title: "Webhooks", description: "Send real-time notifications to any URL when jobs or quotes change status. Custom payloads.", icon: Plug, status: "shipped", version: "4.0", pro: true },
+      { title: "Cloud Storage", description: "Export design files, quotes, and invoices to Google Drive or OneDrive. Auto-creates organised folder structure. Per-user OAuth.", icon: Cloud, status: "shipped", version: "5.2", pro: true },
       { title: "Stripe Payments", description: "Accept card payments directly from client-facing invoices and quote portal. \"Pay now\" button.", icon: CreditCard, status: "planned", pro: true },
       { title: "Etsy Integration", description: "Import orders from your Etsy shop, auto-create jobs and clients. Similar workflow to Shopify sync.", icon: ShoppingBag, status: "exploring", pro: true },
       { title: "Slack / Discord", description: "Get notified in your team channels when jobs are completed, quotes are accepted, or stock runs low.", icon: MessageSquare, status: "exploring", pro: true },

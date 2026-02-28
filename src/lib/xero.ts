@@ -6,6 +6,7 @@
  */
 
 import { prisma } from "@/lib/prisma";
+import { encrypt, decryptOrPlaintext } from "@/lib/encryption";
 
 // ---------------------------------------------------------------------------
 // Constants
@@ -171,7 +172,7 @@ export async function getXeroClient(userId: string): Promise<XeroClient> {
     throw new Error("Xero is not connected for this user");
   }
 
-  let accessToken = user.xeroAccessToken;
+  let accessToken = decryptOrPlaintext(user.xeroAccessToken);
   const tenantId = user.xeroTenantId;
 
   // Refresh if expired (or within 60s of expiry)
@@ -179,15 +180,16 @@ export async function getXeroClient(userId: string): Promise<XeroClient> {
   const isExpired = Date.now() >= expiresAt - 60_000;
 
   if (isExpired) {
-    const tokens = await refreshAccessToken(user.xeroRefreshToken);
+    const decryptedRefresh = decryptOrPlaintext(user.xeroRefreshToken);
+    const tokens = await refreshAccessToken(decryptedRefresh);
     accessToken = tokens.access_token;
 
-    // Persist refreshed tokens
+    // Persist encrypted refreshed tokens
     await prisma.user.update({
       where: { id: userId },
       data: {
-        xeroAccessToken: tokens.access_token,
-        xeroRefreshToken: tokens.refresh_token,
+        xeroAccessToken: encrypt(tokens.access_token),
+        xeroRefreshToken: encrypt(tokens.refresh_token),
         xeroTokenExpiresAt: new Date(Date.now() + tokens.expires_in * 1000),
       },
     });

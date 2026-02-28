@@ -20,7 +20,9 @@ export default function LoginPage() {
 function LoginForm() {
   const router = useRouter();
   const searchParams = useSearchParams();
-  const callbackUrl = searchParams.get("callbackUrl") || "/dashboard";
+  const rawCallback = searchParams.get("callbackUrl") || "/dashboard";
+  // Prevent open redirect — only allow relative paths
+  const callbackUrl = rawCallback.startsWith("/") ? rawCallback : "/dashboard";
   const errorParam = searchParams.get("error");
 
   const [email, setEmail] = useState("");

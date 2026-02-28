@@ -32,6 +32,10 @@ import {
   X,
   Minus,
   Link2,
+  HardDrive,
+  Cloud,
+  PenTool,
+  Mail,
 } from "lucide-react";
 import { CalculatorDemo } from "@/components/landing/calculator-demo";
 
@@ -77,7 +81,7 @@ const FEATURES = [
     icon: Bot,
     title: "AI Quote Assistant",
     description:
-      "Describe a print job in plain English. Claude generates structured line items with material selection, cost estimates, and explanations. Pro feature.",
+      "Describe a print job in plain English — or upload a reference image. Claude generates structured line items with material selection, cost estimates, and feasibility notes. Pro feature.",
     badge: "Pro",
   },
   {
@@ -157,6 +161,20 @@ const FEATURES = [
       "Track nozzles, build plates, and other consumables. Stock alerts, reorder thresholds, and supplier links for one-click reordering.",
     badge: "Pro",
   },
+  {
+    icon: PenTool,
+    title: "Design Studio",
+    description:
+      "Manage design projects with AI chat, reference image analysis, file versioning, and revision timelines. Generate briefs and convert designs to quotes.",
+    badge: "Pro",
+  },
+  {
+    icon: Cloud,
+    title: "Cloud Storage",
+    description:
+      "Sync design files, quotes, and invoices to Google Drive or OneDrive. Auto-creates organised folder structure. Connect via OAuth in seconds.",
+    badge: "Pro",
+  },
 ];
 
 const INTEGRATIONS_ACTIVE = [
@@ -186,6 +204,20 @@ const INTEGRATIONS_ACTIVE = [
     name: "Webhooks",
     description:
       "Trigger external services on quote and job events — created, updated, accepted, completed. HMAC-signed payloads with test mode.",
+    status: "live" as const,
+  },
+  {
+    icon: HardDrive,
+    name: "Google Drive",
+    description:
+      "Export design files, quote PDFs, and invoices directly to Google Drive. Auto-creates Printforge CRM folder structure with organised sub-folders.",
+    status: "live" as const,
+  },
+  {
+    icon: Cloud,
+    name: "OneDrive",
+    description:
+      "Sync files to Microsoft OneDrive with the same organised folder structure. Each user connects their own account via OAuth.",
     status: "live" as const,
   },
 ];
@@ -229,6 +261,8 @@ const COMPARISON = [
   { feature: "Shopify / Xero sync", spreadsheet: false, printforge: true },
   { feature: "Customer upload links", spreadsheet: false, printforge: true },
   { feature: "AI quote drafting", spreadsheet: false, printforge: true },
+  { feature: "Design studio with AI", spreadsheet: false, printforge: true },
+  { feature: "Cloud storage sync", spreadsheet: false, printforge: true },
   { feature: "Multi-user with roles", spreadsheet: false, printforge: true },
 ];
 
@@ -258,6 +292,8 @@ const PRO_FEATURES = [
   "Webhooks & CSV export",
   "Job photos",
   "Bulk actions",
+  "Design Studio with AI",
+  "Cloud Storage (Google Drive, OneDrive)",
 ];
 
 interface PricingFeature {
@@ -289,6 +325,8 @@ const PRICING_COMPARE: PricingFeature[] = [
   { name: "Business logo on PDFs", free: false, pro: true },
   { name: "Job photos", free: false, pro: true },
   { name: "Bulk actions", free: false, pro: true },
+  { name: "Design Studio", free: false, pro: true },
+  { name: "Cloud Storage", free: false, pro: true },
 ];
 
 const FAQ = [
@@ -585,7 +623,7 @@ export default function LandingPage() {
               Connects to your existing tools
             </h2>
             <p className="mt-4 text-lg text-muted-foreground">
-              Pull orders from Shopify, sync accounting with Xero, draft quotes with AI, and trigger webhooks — all built in.
+              Pull orders from Shopify, sync accounting with Xero, export files to Google Drive or OneDrive, draft quotes with AI, and trigger webhooks — all built in.
             </p>
           </div>
 

@@ -50,7 +50,7 @@ export async function POST(request: NextRequest) {
     cookieStore.set("impersonate-user-id", userId, {
       httpOnly: true,
       secure: process.env.NODE_ENV === "production",
-      sameSite: "lax",
+      sameSite: "strict",
       path: "/",
       maxAge: 60 * 60, // 1 hour
     });

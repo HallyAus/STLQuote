@@ -67,7 +67,7 @@ export default auth((req) => {
   if (
     pathname.startsWith("/_next") ||
     pathname.startsWith("/favicon") ||
-    pathname.includes(".")
+    /\.\w{2,5}$/.test(pathname)
   ) {
     return NextResponse.next();
   }

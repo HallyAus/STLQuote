@@ -8,6 +8,7 @@ import {
   registerOrderWebhook,
 } from "@/lib/shopify";
 import { z } from "zod";
+import { encrypt } from "@/lib/encryption";
 
 const connectSchema = z.object({
   shopDomain: z.string().min(1, "Store URL is required"),
@@ -56,7 +57,7 @@ export async function POST(request: Request) {
       data: {
         shopifyShopDomain: shop.myshopify_domain || shopDomain,
         shopifyClientId: clientId,
-        shopifyClientSecret: clientSecret,
+        shopifyClientSecret: encrypt(clientSecret),
         shopifyAccessToken: tokenData.access_token,
         shopifyTokenExpiresAt: expiresAt,
         shopifyConnectedAt: new Date(),
