@@ -126,6 +126,7 @@ model User {
   modules            UserModule[]
   cloudConnections   CloudConnection[]
   dripEmails         DripEmailLog[]
+  partDrawings       PartDrawing[]
 }
 
 model Settings {
@@ -282,11 +283,12 @@ model Quote {
   createdAt   DateTime    @default(now())
   updatedAt   DateTime    @updatedAt
 
-  lineItems QuoteLineItem[]
-  jobs      Job[]
-  events    QuoteEvent[]
-  invoices  Invoice[]
-  designs   Design[]
+  lineItems    QuoteLineItem[]
+  jobs         Job[]
+  events       QuoteEvent[]
+  invoices     Invoice[]
+  designs      Design[]
+  partDrawings PartDrawing[]
 
   @@unique([userId, quoteNumber])
   @@index([userId])
@@ -852,6 +854,7 @@ model Design {
   messages        DesignMessage[]
   files           DesignFile[]
   revisions       DesignRevision[]
+  partDrawings    PartDrawing[]
 
   createdAt       DateTime     @default(now())
   updatedAt       DateTime     @updatedAt
@@ -907,6 +910,46 @@ model DesignRevision {
   createdAt   DateTime     @default(now())
 
   @@index([designId])
+}
+
+// --- Part Drawings ---
+
+model PartDrawing {
+  id             String   @id @default(cuid())
+  userId         String
+  user           User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  drawingNumber  String               // PD-YYYY-NNN (auto-generated)
+  title          String
+  notes          String?  @db.Text
+
+  // Source STL info
+  sourceFilename String               // original STL filename
+  sourceFileId   String?              // optional link to DesignFile
+
+  // Parsed dimensions (mm)
+  dimensionX     Float
+  dimensionY     Float
+  dimensionZ     Float
+  volumeCm3      Float
+  triangleCount  Int
+
+  // Generated view images (base64 PNG data URIs)
+  viewFront      String   @db.Text
+  viewSide       String   @db.Text
+  viewTop        String   @db.Text
+  viewIso        String   @db.Text
+
+  // Optional links
+  quoteId        String?
+  quote          Quote?   @relation(fields: [quoteId], references: [id], onDelete: SetNull)
+  designId       String?
+  design         Design?  @relation(fields: [designId], references: [id], onDelete: SetNull)
+
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
+
+  @@unique([userId, drawingNumber])
+  @@index([userId])
 }
 
 // --- Cloud Storage ---

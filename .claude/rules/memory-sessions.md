@@ -8,6 +8,10 @@
 
 <!-- Claude: add new entries at the top. Remove oldest when >20 entries. -->
 
+- [2026-03-01] v5.8.0 — Part Drawings feature: PartDrawing model (migration 0033), `part_drawings` Pro feature gate, offscreen Three.js renderer (front/side/top/iso orthographic + perspective views as PNG data URIs), CRUD API routes (/api/drawings, /api/drawings/[id]), 4 pages (list/new/detail/pdf), 4 components (drawings-page, new-drawing-form, drawing-detail, drawing-pdf with landscape A4 title block), new "Engineering" sidebar group, global search integration. Upload STL → parse → render 4 views → save → print PDF.
+
+<!-- Claude: add new entries at the top. Remove oldest when >20 entries. -->
+
 - [2026-02-28] v5.3.0 — Onboarding Drip Emails: DripEmailLog model + migration 0029; 8-email sequence (Day 0–7) — welcome from Daniel, then daily feature highlights (Calculator, Materials, Quotes, Invoicing, Jobs, Design Studio, Integrations); every email includes integrations badges (Xero, Shopify, Google Drive, OneDrive, Webhooks, CSV Export) + Pro trial countdown; check-on-login pattern via DripEmailTrigger component on dashboard mount, fire-and-forget POST to /api/drip-emails, sends at most 1 email per call.
 
 - [2026-02-28] v5.2.0 — Cloud Storage Integration (Google Drive + OneDrive): (1) CloudConnection + CloudSyncRecord Prisma models, migration 0028; (2) AES-256-GCM encryption for OAuth tokens (encryption.ts); (3) cloud_storage feature gate in tier.ts; (4) Google Drive OAuth + API client (google-drive.ts) — auth, folders, upload, download, list; (5) OneDrive/Microsoft Graph OAuth + API client (onedrive.ts) — same operations; (6) 8 API routes: connect/callback/disconnect for each provider, plus status/browse/import/export/folder-setup; (7) CloudFilePicker modal component (provider tabs, breadcrumb nav, file import); (8) CloudExportButton dropdown (Google Drive / OneDrive); (9) Wired into design-files "Import from Cloud", quote detail "Export to Cloud", invoice detail "Export to Cloud"; (10) Settings cards on integrations page for both providers. Middleware updated for OAuth callbacks.

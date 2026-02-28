@@ -2,7 +2,7 @@
 
 import { useState, useEffect, useRef } from "react";
 import { useRouter } from "next/navigation";
-import { Search, FileText, Users, Briefcase, Loader2, Receipt } from "lucide-react";
+import { Search, FileText, Users, Briefcase, Loader2, Receipt, PenTool } from "lucide-react";
 
 interface SearchResults {
   quotes: {
@@ -30,6 +30,12 @@ interface SearchResults {
     status: string;
     total: number;
     client: { name: string } | null;
+  }[];
+  drawings: {
+    id: string;
+    drawingNumber: string;
+    title: string;
+    sourceFilename: string;
   }[];
 }
 
@@ -92,7 +98,7 @@ export function GlobalSearch() {
 
   const hasResults =
     results &&
-    (results.quotes.length > 0 || results.clients.length > 0 || results.jobs.length > 0 || results.invoices.length > 0);
+    (results.quotes.length > 0 || results.clients.length > 0 || results.jobs.length > 0 || results.invoices.length > 0 || results.drawings.length > 0);
 
   return (
     <div className="relative hidden sm:block" ref={containerRef}>
@@ -203,6 +209,28 @@ export function GlobalSearch() {
                         <p className="font-medium">{inv.invoiceNumber}</p>
                         <p className="truncate text-xs text-muted-foreground">
                           {inv.client?.name ?? "No client"} — ${inv.total.toFixed(2)}
+                        </p>
+                      </div>
+                    </button>
+                  ))}
+                </div>
+              )}
+              {results.drawings.length > 0 && (
+                <div>
+                  <p className="px-3 py-1.5 text-[10px] font-semibold uppercase text-muted-foreground">
+                    Drawings
+                  </p>
+                  {results.drawings.map((d) => (
+                    <button
+                      key={d.id}
+                      onClick={() => navigate(`/drawings/${d.id}`)}
+                      className="flex w-full items-center gap-2 rounded-md px-3 py-2 text-sm hover:bg-accent"
+                    >
+                      <PenTool className="h-3.5 w-3.5 shrink-0 text-muted-foreground" />
+                      <div className="min-w-0 flex-1 text-left">
+                        <p className="font-medium">{d.drawingNumber}</p>
+                        <p className="truncate text-xs text-muted-foreground">
+                          {d.title} — {d.sourceFilename}
                         </p>
                       </div>
                     </button>

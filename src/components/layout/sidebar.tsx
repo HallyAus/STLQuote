@@ -30,6 +30,8 @@ import {
   ChevronRight,
   CreditCard,
   Boxes,
+  Ruler,
+  PenTool,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import {
@@ -92,6 +94,19 @@ const collapsibleGroups: CollapsibleGroup[] = [
       },
       { href: "/printers", label: "Printers", icon: Printer },
       { href: "/materials", label: "Materials", icon: Palette },
+    ],
+  },
+  {
+    key: "engineering",
+    label: "Engineering",
+    icon: Ruler,
+    items: [
+      {
+        href: "/drawings",
+        label: "Part Drawings",
+        icon: PenTool,
+        proOnly: true,
+      },
     ],
   },
   {
@@ -340,6 +355,7 @@ export function Sidebar({ open, onClose }: SidebarProps) {
         "/purchase-orders": "suppliers",
         "/integrations": "webhooks",
         "/designs": "design_studio",
+        "/drawings": "part_drawings",
       };
       const feature = featureMap[item.href];
       if (feature) {

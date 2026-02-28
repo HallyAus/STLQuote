@@ -24,7 +24,8 @@ export type Feature =
   | "shopify_sync"
   | "design_studio"
   | "cloud_storage"
-  | "asana_sync";
+  | "asana_sync"
+  | "part_drawings";
 
 const PRO_FEATURES: Set<Feature> = new Set([
   "client_portal",
@@ -43,6 +44,7 @@ const PRO_FEATURES: Set<Feature> = new Set([
   "design_studio",
   "cloud_storage",
   "asana_sync",
+  "part_drawings",
 ]);
 
 /** Check if a feature requires Pro */
@@ -115,6 +117,7 @@ export const PRO_FEATURE_LIST: { feature: Feature; label: string; description: s
   { feature: "design_studio", label: "Design Studio", description: "AI-powered product design planning and brainstorming" },
   { feature: "cloud_storage", label: "Cloud Storage", description: "Sync files with Google Drive and OneDrive" },
   { feature: "asana_sync", label: "Asana Integration", description: "Auto-create Asana tasks from quote requests" },
+  { feature: "part_drawings", label: "Part Drawings", description: "Generate technical drawings from STL files with orthographic views" },
 ];
 
 /** Check if user has access to a feature, considering per-user overrides */
