@@ -4,10 +4,10 @@ import { prisma } from "@/lib/prisma";
 import { requireFeature } from "@/lib/auth-helpers";
 
 const updateDrawingSchema = z.object({
-  title: z.string().min(1).optional(),
-  notes: z.string().optional().nullable(),
-  quoteId: z.string().optional().nullable(),
-  designId: z.string().optional().nullable(),
+  title: z.string().min(1).max(200).optional(),
+  notes: z.string().max(5000).optional().nullable(),
+  quoteId: z.string().max(100).optional().nullable(),
+  designId: z.string().max(100).optional().nullable(),
 });
 
 type RouteContext = { params: Promise<{ id: string }> };
@@ -58,6 +58,27 @@ export async function PUT(request: NextRequest, context: RouteContext) {
         { error: "Validation failed", details: parsed.error.flatten() },
         { status: 400 }
       );
+    }
+
+    // Validate ownership of linked quote/design
+    if (parsed.data.quoteId) {
+      const quote = await prisma.quote.findFirst({
+        where: { id: parsed.data.quoteId, userId: user.id },
+        select: { id: true },
+      });
+      if (!quote) {
+        return NextResponse.json({ error: "Quote not found" }, { status: 400 });
+      }
+    }
+
+    if (parsed.data.designId) {
+      const design = await prisma.design.findFirst({
+        where: { id: parsed.data.designId, userId: user.id },
+        select: { id: true },
+      });
+      if (!design) {
+        return NextResponse.json({ error: "Design not found" }, { status: 400 });
+      }
     }
 
     const drawing = await prisma.partDrawing.update({

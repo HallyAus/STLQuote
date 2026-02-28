@@ -2,23 +2,30 @@ import { NextRequest, NextResponse } from "next/server";
 import { z } from "zod";
 import { prisma } from "@/lib/prisma";
 import { requireFeature } from "@/lib/auth-helpers";
+import { rateLimit } from "@/lib/rate-limit";
+
+const pngDataUri = z
+  .string()
+  .min(1)
+  .max(2_000_000, "View image too large")
+  .refine((v) => v.startsWith("data:image/png;base64,"), "Must be a PNG data URI");
 
 const createDrawingSchema = z.object({
-  title: z.string().min(1, "Title is required"),
-  notes: z.string().optional().nullable(),
-  sourceFilename: z.string().min(1),
-  sourceFileId: z.string().optional().nullable(),
+  title: z.string().min(1, "Title is required").max(200),
+  notes: z.string().max(5000).optional().nullable(),
+  sourceFilename: z.string().min(1).max(500),
+  sourceFileId: z.string().max(100).optional().nullable(),
   dimensionX: z.number().min(0),
   dimensionY: z.number().min(0),
   dimensionZ: z.number().min(0),
   volumeCm3: z.number().min(0),
-  triangleCount: z.number().int().min(0),
-  viewFront: z.string().min(1),
-  viewSide: z.string().min(1),
-  viewTop: z.string().min(1),
-  viewIso: z.string().min(1),
-  quoteId: z.string().optional().nullable(),
-  designId: z.string().optional().nullable(),
+  triangleCount: z.number().int().min(0).max(10_000_000),
+  viewFront: pngDataUri,
+  viewSide: pngDataUri,
+  viewTop: pngDataUri,
+  viewIso: pngDataUri,
+  quoteId: z.string().max(100).optional().nullable(),
+  designId: z.string().max(100).optional().nullable(),
 });
 
 async function generateDrawingNumber(userId: string): Promise<string> {
@@ -69,7 +76,7 @@ export async function GET() {
         createdAt: true,
         updatedAt: true,
       },
-      take: 500,
+      take: 100,
     });
 
     return NextResponse.json(drawings);
@@ -84,6 +91,12 @@ export async function POST(request: NextRequest) {
   try {
     const user = await requireFeature("part_drawings");
 
+    // Rate limit: 30 drawings per 15 minutes
+    const rl = rateLimit(`create-drawing:${user.id}`, { windowMs: 15 * 60 * 1000, maxRequests: 30 });
+    if (rl.limited) {
+      return NextResponse.json({ error: "Too many requests" }, { status: 429 });
+    }
+
     const body = await request.json();
     const parsed = createDrawingSchema.safeParse(body);
 
@@ -92,6 +105,27 @@ export async function POST(request: NextRequest) {
         { error: "Validation failed", details: parsed.error.flatten() },
         { status: 400 }
       );
+    }
+
+    // Validate ownership of linked quote/design
+    if (parsed.data.quoteId) {
+      const quote = await prisma.quote.findFirst({
+        where: { id: parsed.data.quoteId, userId: user.id },
+        select: { id: true },
+      });
+      if (!quote) {
+        return NextResponse.json({ error: "Quote not found" }, { status: 400 });
+      }
+    }
+
+    if (parsed.data.designId) {
+      const design = await prisma.design.findFirst({
+        where: { id: parsed.data.designId, userId: user.id },
+        select: { id: true },
+      });
+      if (!design) {
+        return NextResponse.json({ error: "Design not found" }, { status: 400 });
+      }
     }
 
     const drawingNumber = await generateDrawingNumber(user.id);

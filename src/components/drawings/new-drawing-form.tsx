@@ -53,6 +53,11 @@ export function NewDrawingForm() {
         return;
       }
 
+      if (parsed.triangleCount > 5_000_000) {
+        setError("STL file too complex (max 5 million triangles)");
+        return;
+      }
+
       setFilename(file.name);
       setTitle(file.name.replace(/\.stl$/i, ""));
       setDimensions(parsed.dimensionsMm);

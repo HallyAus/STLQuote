@@ -12,8 +12,6 @@ export async function GET(request: NextRequest) {
       return NextResponse.json({ quotes: [], clients: [], jobs: [], invoices: [], designs: [], drawings: [] });
     }
 
-    const searchTerm = `%${q}%`;
-
     const [quotes, clients, jobs, invoices, designs, drawings] = await Promise.all([
       prisma.quote.findMany({
         where: {
