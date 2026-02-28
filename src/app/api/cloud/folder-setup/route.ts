@@ -27,7 +27,7 @@ export async function POST(request: NextRequest) {
       const accessToken = await googleDrive.getAccessToken(user.id);
 
       // Create root Printforge folder
-      const rootId = await googleDrive.createFolder(accessToken, "Printforge");
+      const rootId = await googleDrive.createFolder(accessToken, "Printforge CRM");
 
       // Create sub-folders
       for (const folder of subFolders) {
@@ -45,7 +45,7 @@ export async function POST(request: NextRequest) {
     // OneDrive
     const accessToken = await oneDrive.getAccessToken(user.id);
 
-    const rootId = await oneDrive.createFolder(accessToken, "Printforge");
+    const rootId = await oneDrive.createFolder(accessToken, "Printforge CRM");
 
     for (const folder of subFolders) {
       await oneDrive.createFolder(accessToken, folder, rootId);
