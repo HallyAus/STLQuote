@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { requireAdmin, isSuperAdminRole } from "@/lib/auth-helpers";
+import { rateLimit } from "@/lib/rate-limit";
 import { createPasswordResetToken } from "@/lib/tokens";
 import { sendAccountCreatedEmail } from "@/lib/email";
 import bcrypt from "bcryptjs";
@@ -17,6 +18,14 @@ const createUserSchema = z.object({
 export async function POST(request: Request) {
   try {
     const admin = await requireAdmin();
+
+    const rl = rateLimit(`admin-create-user:${admin.id}`, { windowMs: 15 * 60 * 1000, maxRequests: 10 });
+    if (rl.limited) {
+      return NextResponse.json(
+        { error: "Too many requests. Please try again later." },
+        { status: 429, headers: { "Retry-After": String(rl.retryAfterSeconds) } }
+      );
+    }
 
     const body = await request.json();
     const parsed = createUserSchema.safeParse(body);

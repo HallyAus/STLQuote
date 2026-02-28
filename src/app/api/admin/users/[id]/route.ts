@@ -3,6 +3,7 @@ import { z } from "zod";
 import bcrypt from "bcryptjs";
 import { prisma } from "@/lib/prisma";
 import { requireAdmin, isAdminRole, isSuperAdminRole } from "@/lib/auth-helpers";
+import { rateLimit } from "@/lib/rate-limit";
 
 const updateUserSchema = z.object({
   name: z.string().min(1).optional(),
@@ -20,6 +21,14 @@ export async function PUT(
   try {
     const admin = await requireAdmin();
     const { id } = await params;
+
+    const rl = rateLimit(`admin-user-mutate:${admin.id}`, { windowMs: 15 * 60 * 1000, maxRequests: 30 });
+    if (rl.limited) {
+      return NextResponse.json(
+        { error: "Too many requests. Please try again later." },
+        { status: 429, headers: { "Retry-After": String(rl.retryAfterSeconds) } }
+      );
+    }
 
     // Prevent admin from modifying themselves
     if (id === admin.id) {

@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { z } from "zod";
 import { prisma } from "@/lib/prisma";
 import { getSessionUser } from "@/lib/auth-helpers";
+import { rateLimit } from "@/lib/rate-limit";
 
 const updateSettingsSchema = z.object({
   timezone: z.string().min(1).optional(),
@@ -39,10 +40,12 @@ const updateSettingsSchema = z.object({
   businessLogoUrl: z.string().max(200000).nullable().optional().refine(
     (val) => {
       if (!val) return true;
-      // Allow data: URIs (base64 images) or https: URLs only
-      return val.startsWith("data:image/") || val.startsWith("https://");
+      if (val.startsWith("https://")) return true;
+      // Allow raster image data URIs only — block SVG (XSS vector)
+      const rasterPrefixes = ["data:image/png;", "data:image/jpeg;", "data:image/webp;", "data:image/gif;"];
+      return rasterPrefixes.some((p) => val.startsWith(p));
     },
-    { message: "Logo must be a base64 data URI or HTTPS URL" }
+    { message: "Logo must be a PNG/JPEG/WebP/GIF data URI or HTTPS URL" }
   ),
   bankName: z.string().nullable().optional(),
   bankBsb: z.string().nullable().optional(),
@@ -85,6 +88,14 @@ export async function PUT(request: NextRequest) {
   try {
     const user = await getSessionUser();
     if (!user) return NextResponse.json({ error: "Unauthorised" }, { status: 401 });
+
+    const rl = rateLimit(`settings:${user.id}`, { windowMs: 15 * 60 * 1000, maxRequests: 20 });
+    if (rl.limited) {
+      return NextResponse.json(
+        { error: "Too many requests. Please try again later." },
+        { status: 429, headers: { "Retry-After": String(rl.retryAfterSeconds) } }
+      );
+    }
 
     const body = await request.json();
     const parsed = updateSettingsSchema.safeParse(body);

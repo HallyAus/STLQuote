@@ -404,19 +404,21 @@ export function AdminSystem() {
         {logsOpen && (
           <CardContent>
             {/* Filters */}
-            <div className="mb-4 flex flex-wrap items-center gap-3">
-              <Select
-                options={LOG_TYPE_OPTIONS}
-                value={logType}
-                onChange={(e) => setLogType(e.target.value)}
-                className="w-36"
-              />
-              <Select
-                options={LOG_LEVEL_OPTIONS}
-                value={logLevel}
-                onChange={(e) => setLogLevel(e.target.value)}
-                className="w-32"
-              />
+            <div className="mb-4 flex flex-col gap-2 sm:flex-row sm:flex-wrap sm:items-center sm:gap-3">
+              <div className="flex items-center gap-2">
+                <Select
+                  options={LOG_TYPE_OPTIONS}
+                  value={logType}
+                  onChange={(e) => setLogType(e.target.value)}
+                  className="flex-1 sm:flex-none sm:w-36"
+                />
+                <Select
+                  options={LOG_LEVEL_OPTIONS}
+                  value={logLevel}
+                  onChange={(e) => setLogLevel(e.target.value)}
+                  className="flex-1 sm:flex-none sm:w-32"
+                />
+              </div>
               <Button
                 variant="secondary"
                 size="sm"

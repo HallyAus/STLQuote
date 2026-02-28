@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { z } from "zod";
 import { prisma } from "@/lib/prisma";
 import { getSessionUser } from "@/lib/auth-helpers";
+import { rateLimit } from "@/lib/rate-limit";
 import { log } from "@/lib/logger";
 
 const lineItemSchema = z.object({
@@ -84,6 +85,14 @@ export async function POST(request: NextRequest) {
   try {
     const user = await getSessionUser();
     if (!user) return NextResponse.json({ error: "Unauthorised" }, { status: 401 });
+
+    const rl = rateLimit(`quotes-create:${user.id}`, { windowMs: 15 * 60 * 1000, maxRequests: 30 });
+    if (rl.limited) {
+      return NextResponse.json(
+        { error: "Too many requests. Please try again later." },
+        { status: 429, headers: { "Retry-After": String(rl.retryAfterSeconds) } }
+      );
+    }
 
     const body = await request.json();
     const parsed = createQuoteSchema.safeParse(body);

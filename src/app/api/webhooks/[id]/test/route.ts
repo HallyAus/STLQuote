@@ -2,7 +2,8 @@ import { NextRequest, NextResponse } from "next/server";
 import crypto from "crypto";
 import { prisma } from "@/lib/prisma";
 import { getSessionUser } from "@/lib/auth-helpers";
-import { isPrivateUrl } from "@/lib/url-safety";
+import { isPrivateUrlStrict } from "@/lib/url-safety";
+import { rateLimit } from "@/lib/rate-limit";
 import { decryptOrPlaintext } from "@/lib/encryption";
 
 type RouteContext = { params: Promise<{ id: string }> };
@@ -14,6 +15,15 @@ export async function POST(_request: NextRequest, context: RouteContext) {
 
     const { id } = await context.params;
 
+    // Rate limit: 5 test calls per 15 min per user
+    const rl = rateLimit(`webhook-test:${user.id}`, { windowMs: 15 * 60 * 1000, maxRequests: 5 });
+    if (rl.limited) {
+      return NextResponse.json(
+        { error: "Too many test requests. Please try again later." },
+        { status: 429, headers: { "Retry-After": String(rl.retryAfterSeconds) } }
+      );
+    }
+
     const webhook = await prisma.webhook.findFirst({
       where: { id, userId: user.id },
     });
@@ -22,8 +32,8 @@ export async function POST(_request: NextRequest, context: RouteContext) {
       return NextResponse.json({ error: "Webhook not found" }, { status: 404 });
     }
 
-    // SSRF prevention
-    if (isPrivateUrl(webhook.url)) {
+    // SSRF prevention — async DNS resolution
+    if (await isPrivateUrlStrict(webhook.url)) {
       return NextResponse.json(
         { error: "Webhook URL points to a private network and cannot be tested" },
         { status: 400 }
@@ -79,7 +89,7 @@ export async function POST(_request: NextRequest, context: RouteContext) {
       return NextResponse.json({
         success: false,
         status: 0,
-        message: `Connection failed: ${error instanceof Error ? error.message : "Unknown error"}`,
+        message: "Connection failed. Check the webhook URL and try again.",
       });
     }
   } catch (error) {

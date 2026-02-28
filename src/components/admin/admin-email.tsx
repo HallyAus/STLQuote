@@ -241,7 +241,7 @@ export function AdminEmail() {
             }}
             className="space-y-4"
           >
-            <div className="flex gap-3">
+            <div className="flex flex-col gap-2 sm:flex-row sm:gap-3">
               <Input
                 type="email"
                 placeholder="Optional: recipient@example.com"
@@ -249,7 +249,7 @@ export function AdminEmail() {
                 onChange={(e) => setTestEmailTo(e.target.value)}
                 className="flex-1"
               />
-              <Button type="submit" size="sm" disabled={testEmailLoading}>
+              <Button type="submit" size="sm" disabled={testEmailLoading} className="shrink-0">
                 {testEmailLoading ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Send className="mr-2 h-4 w-4" />}
                 Send Test
               </Button>
@@ -274,7 +274,7 @@ export function AdminEmail() {
       {/* 2. Email Log */}
       <Card>
         <CardHeader>
-          <div className="flex items-center justify-between">
+          <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
             <CardTitle className="flex items-center gap-2 text-base">
               <Mail className="h-4 w-4" />
               Email Log
@@ -284,7 +284,7 @@ export function AdminEmail() {
                 options={EMAIL_TYPE_OPTIONS}
                 value={emailLogsFilter}
                 onChange={(e) => setEmailLogsFilter(e.target.value)}
-                className="h-8 w-40 text-xs"
+                className="h-8 flex-1 sm:flex-none sm:w-40 text-xs"
               />
               <Button
                 variant="ghost"

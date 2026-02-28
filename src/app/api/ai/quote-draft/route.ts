@@ -249,9 +249,7 @@ Return ONLY valid JSON (no markdown, no code fences) with this exact structure:
     log({ type: "system", level: "error", message: "AI quote draft failed", detail: errMsg });
     console.error("[AI Quote Draft]", err);
     return NextResponse.json({
-      error: process.env.NODE_ENV === "development"
-        ? `AI draft failed: ${errMsg}`
-        : "Failed to generate quote draft.",
+      error: "Failed to generate quote draft.",
     }, { status: 500 });
   }
 }

@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { getSessionUser } from "@/lib/auth-helpers";
+import { rateLimit } from "@/lib/rate-limit";
 import { generateToken } from "@/lib/tokens";
 
 // GET — list user's upload links
@@ -29,6 +30,14 @@ export async function POST(request: NextRequest) {
   try {
     const user = await getSessionUser();
     if (!user) return NextResponse.json({ error: "Unauthorised" }, { status: 401 });
+
+    const rl = rateLimit(`upload-links:${user.id}`, { windowMs: 15 * 60 * 1000, maxRequests: 10 });
+    if (rl.limited) {
+      return NextResponse.json(
+        { error: "Too many requests. Please try again later." },
+        { status: 429, headers: { "Retry-After": String(rl.retryAfterSeconds) } }
+      );
+    }
 
     const body = await request.json().catch(() => ({}));
     const label = (body.label || "Default").trim().slice(0, 100);

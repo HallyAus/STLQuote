@@ -49,6 +49,13 @@ function formatDateLabel(dateStr: string): string {
   return d.toLocaleDateString("en-AU", { day: "numeric", month: "short" });
 }
 
+const METRIC_STYLES = [
+  { bg: "bg-blue-500/10", text: "text-blue-600 dark:text-blue-400", Icon: Users },
+  { bg: "bg-emerald-500/10", text: "text-emerald-600 dark:text-emerald-400", Icon: FileText },
+  { bg: "bg-amber-500/10", text: "text-amber-600 dark:text-amber-400", Icon: Briefcase },
+  { bg: "bg-violet-500/10", text: "text-violet-600 dark:text-violet-400", Icon: Upload },
+] as const;
+
 export function AdminOverview() {
   const [data, setData] = useState<AnalyticsData | null>(null);
   const [loading, setLoading] = useState(true);
@@ -79,66 +86,41 @@ export function AdminOverview() {
 
   const { overview, charts, topUsers, system, recentLogs } = data;
 
+  const metrics = [
+    { label: "Total users", value: overview.totalUsers, sub: overview.newUsersThisWeek > 0 ? `+${overview.newUsersThisWeek} this week` : undefined, subIcon: TrendingUp },
+    { label: "Quotes this month", value: overview.quotesThisMonth, sub: `${overview.conversionRate}% conversion` },
+    { label: "Active jobs", value: overview.activeJobs },
+    { label: "Pending requests", value: overview.pendingRequests },
+  ];
+
   return (
     <div className="space-y-6">
       {/* Metric cards */}
-      <div className="grid grid-cols-2 gap-4 md:grid-cols-4">
-        <Card>
-          <CardContent className="p-4">
-            <div className="flex items-center justify-between">
-              <div>
-                <div className="text-2xl font-bold">{overview.totalUsers}</div>
-                <div className="text-sm text-muted-foreground">Total users</div>
-              </div>
-              <Users className="h-5 w-5 text-muted-foreground" />
-            </div>
-            {overview.newUsersThisWeek > 0 && (
-              <div className="mt-2 flex items-center gap-1 text-xs text-emerald-600 dark:text-emerald-400">
-                <TrendingUp className="h-3 w-3" />
-                +{overview.newUsersThisWeek} this week
-              </div>
-            )}
-          </CardContent>
-        </Card>
-
-        <Card>
-          <CardContent className="p-4">
-            <div className="flex items-center justify-between">
-              <div>
-                <div className="text-2xl font-bold">{overview.quotesThisMonth}</div>
-                <div className="text-sm text-muted-foreground">Quotes this month</div>
-              </div>
-              <FileText className="h-5 w-5 text-muted-foreground" />
-            </div>
-            <div className="mt-2 text-xs text-muted-foreground">
-              {overview.conversionRate}% conversion rate
-            </div>
-          </CardContent>
-        </Card>
-
-        <Card>
-          <CardContent className="p-4">
-            <div className="flex items-center justify-between">
-              <div>
-                <div className="text-2xl font-bold">{overview.activeJobs}</div>
-                <div className="text-sm text-muted-foreground">Active jobs</div>
-              </div>
-              <Briefcase className="h-5 w-5 text-muted-foreground" />
-            </div>
-          </CardContent>
-        </Card>
-
-        <Card>
-          <CardContent className="p-4">
-            <div className="flex items-center justify-between">
-              <div>
-                <div className="text-2xl font-bold">{overview.pendingRequests}</div>
-                <div className="text-sm text-muted-foreground">Pending requests</div>
-              </div>
-              <Upload className="h-5 w-5 text-muted-foreground" />
-            </div>
-          </CardContent>
-        </Card>
+      <div className="grid grid-cols-2 gap-3 md:gap-4 md:grid-cols-4">
+        {metrics.map((m, i) => {
+          const style = METRIC_STYLES[i];
+          return (
+            <Card key={m.label}>
+              <CardContent className="p-4">
+                <div className="flex items-start justify-between gap-2">
+                  <div className="min-w-0">
+                    <div className="text-2xl font-bold tabular-nums">{m.value}</div>
+                    <div className="text-xs text-muted-foreground mt-0.5 leading-tight">{m.label}</div>
+                  </div>
+                  <div className={cn("flex h-9 w-9 shrink-0 items-center justify-center rounded-lg", style.bg)}>
+                    <style.Icon className={cn("h-4.5 w-4.5", style.text)} />
+                  </div>
+                </div>
+                {m.sub && (
+                  <div className="mt-2 flex items-center gap-1 text-xs text-emerald-600 dark:text-emerald-400">
+                    {m.subIcon && <m.subIcon className="h-3 w-3" />}
+                    {m.sub}
+                  </div>
+                )}
+              </CardContent>
+            </Card>
+          );
+        })}
       </div>
 
       {/* Charts */}
@@ -238,7 +220,7 @@ export function AdminOverview() {
         </Card>
       </div>
 
-      {/* Bottom row: Top users + Recent activity + System health */}
+      {/* Bottom row: Top users + System health */}
       <div className="grid gap-6 lg:grid-cols-3">
         {/* Top users */}
         <Card className="lg:col-span-2">
@@ -252,37 +234,65 @@ export function AdminOverview() {
             {topUsers.length === 0 ? (
               <p className="py-4 text-center text-sm text-muted-foreground">No user data yet.</p>
             ) : (
-              <div className="overflow-x-auto">
-                <table className="w-full text-sm">
-                  <thead>
-                    <tr className="border-b border-border text-left text-muted-foreground">
-                      <th className="pb-2 pr-4 font-medium">User</th>
-                      <th className="pb-2 pr-4 font-medium text-right">Quotes</th>
-                      <th className="pb-2 pr-4 font-medium text-right">Jobs</th>
-                      <th className="pb-2 pr-4 font-medium text-right">Storage</th>
-                      <th className="pb-2 font-medium text-right">Last Active</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {topUsers.map((user) => (
-                      <tr key={user.id} className="border-b border-border/50 last:border-0">
-                        <td className="py-2 pr-4">
-                          <div className="font-medium">{user.name || "—"}</div>
-                          <div className="text-xs text-muted-foreground">{user.email}</div>
-                        </td>
-                        <td className="py-2 pr-4 text-right tabular-nums">{user.quotesCount}</td>
-                        <td className="py-2 pr-4 text-right tabular-nums">{user.jobsCount}</td>
-                        <td className="py-2 pr-4 text-right text-muted-foreground">
-                          {formatBytes(user.storage.totalBytes)}
-                        </td>
-                        <td className="py-2 text-right text-muted-foreground whitespace-nowrap">
-                          {user.lastLogin ? formatRelativeTime(user.lastLogin) : "Never"}
-                        </td>
+              <>
+                {/* Desktop table */}
+                <div className="hidden md:block overflow-x-auto">
+                  <table className="w-full text-sm">
+                    <thead>
+                      <tr className="border-b border-border text-left text-muted-foreground">
+                        <th className="pb-2 pr-4 font-medium">User</th>
+                        <th className="pb-2 pr-4 font-medium text-right">Quotes</th>
+                        <th className="pb-2 pr-4 font-medium text-right">Jobs</th>
+                        <th className="pb-2 pr-4 font-medium text-right">Storage</th>
+                        <th className="pb-2 font-medium text-right">Last Active</th>
                       </tr>
-                    ))}
-                  </tbody>
-                </table>
-              </div>
+                    </thead>
+                    <tbody>
+                      {topUsers.map((user) => (
+                        <tr key={user.id} className="border-b border-border/50 last:border-0">
+                          <td className="py-2 pr-4">
+                            <div className="font-medium">{user.name || "—"}</div>
+                            <div className="text-xs text-muted-foreground">{user.email}</div>
+                          </td>
+                          <td className="py-2 pr-4 text-right tabular-nums">{user.quotesCount}</td>
+                          <td className="py-2 pr-4 text-right tabular-nums">{user.jobsCount}</td>
+                          <td className="py-2 pr-4 text-right text-muted-foreground">
+                            {formatBytes(user.storage.totalBytes)}
+                          </td>
+                          <td className="py-2 text-right text-muted-foreground whitespace-nowrap">
+                            {user.lastLogin ? formatRelativeTime(user.lastLogin) : "Never"}
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+
+                {/* Mobile cards */}
+                <div className="space-y-2 md:hidden">
+                  {topUsers.map((user) => (
+                    <div key={user.id} className="flex items-center gap-3 rounded-lg border border-border/50 p-3">
+                      <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-primary/10 text-xs font-bold text-primary">
+                        {(user.name || user.email)?.[0]?.toUpperCase() || "?"}
+                      </div>
+                      <div className="min-w-0 flex-1">
+                        <div className="text-sm font-medium truncate">{user.name || "—"}</div>
+                        <div className="text-xs text-muted-foreground truncate">{user.email}</div>
+                      </div>
+                      <div className="flex shrink-0 gap-3 text-xs text-muted-foreground">
+                        <div className="text-center">
+                          <div className="font-semibold text-foreground tabular-nums">{user.quotesCount}</div>
+                          <div>quotes</div>
+                        </div>
+                        <div className="text-center">
+                          <div className="font-semibold text-foreground tabular-nums">{user.jobsCount}</div>
+                          <div>jobs</div>
+                        </div>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </>
             )}
           </CardContent>
         </Card>
@@ -322,7 +332,8 @@ export function AdminOverview() {
             </CardTitle>
           </CardHeader>
           <CardContent>
-            <div className="space-y-2">
+            {/* Desktop: inline layout */}
+            <div className="hidden md:block space-y-2">
               {recentLogs.map((log) => (
                 <div key={log.id} className="flex items-center gap-3 text-sm">
                   <span
@@ -344,6 +355,35 @@ export function AdminOverview() {
                   <span className="shrink-0 text-xs text-muted-foreground/60 whitespace-nowrap">
                     {formatRelativeTime(log.createdAt)}
                   </span>
+                </div>
+              ))}
+            </div>
+
+            {/* Mobile: stacked layout */}
+            <div className="space-y-3 md:hidden">
+              {recentLogs.map((log) => (
+                <div key={log.id} className="rounded-lg border border-border/50 p-3">
+                  <div className="flex items-center gap-2">
+                    <span
+                      className={cn(
+                        "inline-flex h-5 items-center justify-center rounded-full px-2 text-[10px] font-semibold uppercase tracking-wider",
+                        log.level === "info"
+                          ? "bg-success/15 text-success-foreground"
+                          : log.level === "warn"
+                            ? "bg-amber-500/15 text-amber-600 dark:text-amber-400"
+                            : "bg-destructive/10 text-destructive-foreground"
+                      )}
+                    >
+                      {log.level}
+                    </span>
+                    <span className="inline-flex rounded-full bg-muted px-2 py-0.5 text-[10px] font-medium text-muted-foreground uppercase tracking-wider">
+                      {log.type.replace(/_/g, " ")}
+                    </span>
+                    <span className="ml-auto text-[10px] text-muted-foreground/60">
+                      {formatRelativeTime(log.createdAt)}
+                    </span>
+                  </div>
+                  <p className="mt-1.5 text-sm text-muted-foreground leading-snug">{log.message}</p>
                 </div>
               ))}
             </div>

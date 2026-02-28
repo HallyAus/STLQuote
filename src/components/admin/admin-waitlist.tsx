@@ -179,61 +179,65 @@ export function AdminWaitlist() {
             </div>
 
             {/* Mobile cards */}
-            <div className="space-y-3 md:hidden">
+            <div className="space-y-2 md:hidden">
               {waitlistEntries.map((entry) => (
-                <div key={entry.id} className="rounded-lg border border-border p-3 space-y-2">
-                  <div className="flex items-start justify-between gap-2">
-                    <div className="min-w-0 flex-1">
-                      <p className="font-medium text-sm">{entry.name}</p>
-                      {entry.businessName && (
-                        <p className="text-xs text-muted-foreground">{entry.businessName}</p>
-                      )}
-                      <p className="text-xs text-muted-foreground truncate">{entry.email}</p>
-                    </div>
-                    <span
-                      className={cn(
-                        "inline-flex items-center rounded-full px-2 py-0.5 text-xs font-medium shrink-0",
-                        entry.status === "pending"
-                          ? "bg-amber-500/15 text-amber-600 dark:text-amber-400"
-                          : entry.status === "approved"
-                            ? "bg-success/15 text-success-foreground"
-                            : "bg-destructive/10 text-destructive-foreground"
-                      )}
-                    >
-                      {entry.status}
-                    </span>
+                <div key={entry.id} className="flex items-center gap-3 rounded-lg border border-border/50 p-3">
+                  <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-primary/10 text-xs font-bold text-primary">
+                    {(entry.name || entry.email)?.[0]?.toUpperCase() || "?"}
                   </div>
-                  <div className="text-xs text-muted-foreground">
-                    {formatRelativeTime(entry.createdAt)}
+                  <div className="min-w-0 flex-1">
+                    <div className="flex items-center gap-2">
+                      <span className="text-sm font-medium truncate">{entry.name}</span>
+                      <span
+                        className={cn(
+                          "inline-flex items-center rounded-full px-1.5 py-0.5 text-[10px] font-medium shrink-0",
+                          entry.status === "pending"
+                            ? "bg-amber-500/15 text-amber-600 dark:text-amber-400"
+                            : entry.status === "approved"
+                              ? "bg-success/15 text-success-foreground"
+                              : "bg-destructive/10 text-destructive-foreground"
+                        )}
+                      >
+                        {entry.status}
+                      </span>
+                    </div>
+                    <div className="text-xs text-muted-foreground truncate">{entry.email}</div>
+                    {entry.businessName && (
+                      <div className="text-xs text-muted-foreground">{entry.businessName}</div>
+                    )}
+                    <div className="text-[10px] text-muted-foreground/60 mt-0.5">
+                      {formatRelativeTime(entry.createdAt)}
+                    </div>
                   </div>
                   {entry.status === "pending" && (
-                    <div className="flex items-center gap-2 pt-1">
+                    <div className="flex shrink-0 gap-1">
                       <Button
-                        variant="secondary"
+                        variant="ghost"
                         size="sm"
                         onClick={() => handleWaitlistApprove(entry.id)}
                         disabled={waitlistActionLoading === entry.id + "-approve"}
+                        title="Approve"
+                        className="h-8 w-8 p-0 text-emerald-600 hover:text-emerald-600 hover:bg-emerald-500/10"
                       >
                         {waitlistActionLoading === entry.id + "-approve" ? (
-                          <Loader2 className="mr-1 h-3 w-3 animate-spin" />
+                          <Loader2 className="h-4 w-4 animate-spin" />
                         ) : (
-                          <Check className="mr-1 h-3 w-3" />
+                          <Check className="h-4 w-4" />
                         )}
-                        Approve
                       </Button>
                       <Button
-                        variant="secondary"
+                        variant="ghost"
                         size="sm"
                         onClick={() => handleWaitlistReject(entry.id)}
                         disabled={waitlistActionLoading === entry.id + "-reject"}
-                        className="text-destructive-foreground"
+                        title="Reject"
+                        className="h-8 w-8 p-0 text-destructive hover:text-destructive hover:bg-destructive/10"
                       >
                         {waitlistActionLoading === entry.id + "-reject" ? (
-                          <Loader2 className="mr-1 h-3 w-3 animate-spin" />
+                          <Loader2 className="h-4 w-4 animate-spin" />
                         ) : (
-                          <Ban className="mr-1 h-3 w-3" />
+                          <Ban className="h-4 w-4" />
                         )}
-                        Reject
                       </Button>
                     </div>
                   )}

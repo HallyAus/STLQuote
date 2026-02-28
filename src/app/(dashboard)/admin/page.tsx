@@ -10,6 +10,7 @@ import {
   Mail,
   CreditCard,
   Loader2,
+  ChevronDown,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { AdminOverview } from "@/components/admin/admin-overview";
@@ -31,9 +32,10 @@ const TABS: { key: Tab; icon: typeof LayoutDashboard; label: string }[] = [
 ];
 
 export default function AdminPage() {
-  const { data: session, status } = useSession();
+  const { status } = useSession();
   const [activeTab, setActiveTab] = useState<Tab>("overview");
   const [waitlistPendingCount, setWaitlistPendingCount] = useState(0);
+  const [mobileNavOpen, setMobileNavOpen] = useState(false);
 
   // Fetch waitlist count for badge
   const fetchWaitlistCount = useCallback(async () => {
@@ -72,27 +74,79 @@ export default function AdminPage() {
     );
   }
 
+  const activeTabData = TABS.find((t) => t.key === activeTab)!;
+  const ActiveIcon = activeTabData.icon;
+
   return (
     <div className="space-y-6">
-      {/* Tabs */}
-      <div className="flex gap-1 overflow-x-auto border-b border-border">
+      {/* Mobile: dropdown-style tab selector */}
+      <div className="md:hidden">
+        <button
+          onClick={() => setMobileNavOpen(!mobileNavOpen)}
+          className="flex w-full items-center justify-between rounded-lg border border-border bg-card px-4 py-3"
+        >
+          <span className="flex items-center gap-2.5">
+            <span className="flex h-8 w-8 items-center justify-center rounded-md bg-primary/10">
+              <ActiveIcon className="h-4 w-4 text-primary" />
+            </span>
+            <span className="font-medium text-foreground">{activeTabData.label}</span>
+          </span>
+          <ChevronDown className={cn(
+            "h-4 w-4 text-muted-foreground transition-transform",
+            mobileNavOpen && "rotate-180"
+          )} />
+        </button>
+
+        {mobileNavOpen && (
+          <div className="mt-2 grid grid-cols-3 gap-2">
+            {TABS.map((tab) => {
+              const isActive = activeTab === tab.key;
+              const showBadge = tab.key === "waitlist" && waitlistPendingCount > 0;
+              return (
+                <button
+                  key={tab.key}
+                  onClick={() => { setActiveTab(tab.key); setMobileNavOpen(false); }}
+                  className={cn(
+                    "relative flex flex-col items-center gap-1.5 rounded-lg border p-3 transition-colors",
+                    isActive
+                      ? "border-primary bg-primary/5 text-primary"
+                      : "border-border bg-card text-muted-foreground active:bg-muted"
+                  )}
+                >
+                  <tab.icon className="h-5 w-5" />
+                  <span className="text-xs font-medium">{tab.label}</span>
+                  {showBadge && (
+                    <span className="absolute -top-1 -right-1 flex h-5 min-w-5 items-center justify-center rounded-full bg-primary px-1 text-[10px] font-bold text-primary-foreground">
+                      {waitlistPendingCount}
+                    </span>
+                  )}
+                </button>
+              );
+            })}
+          </div>
+        )}
+      </div>
+
+      {/* Desktop: horizontal pill tabs */}
+      <div className="hidden md:flex items-center gap-1 rounded-lg border border-border bg-card/50 p-1">
         {TABS.map((tab) => {
+          const isActive = activeTab === tab.key;
           const showBadge = tab.key === "waitlist" && waitlistPendingCount > 0;
           return (
             <button
               key={tab.key}
               onClick={() => setActiveTab(tab.key)}
               className={cn(
-                "flex shrink-0 items-center gap-1.5 px-4 py-2 text-sm font-medium border-b-2 -mb-px transition-colors",
-                activeTab === tab.key
-                  ? "border-primary text-primary"
-                  : "border-transparent text-muted-foreground hover:text-foreground"
+                "flex items-center gap-1.5 rounded-md px-3.5 py-2 text-sm font-medium transition-all",
+                isActive
+                  ? "bg-background text-foreground shadow-sm"
+                  : "text-muted-foreground hover:text-foreground hover:bg-muted/50"
               )}
             >
               <tab.icon className="h-4 w-4" />
               {tab.label}
               {showBadge && (
-                <span className="ml-1 inline-flex h-5 min-w-5 items-center justify-center rounded-full bg-primary px-1.5 text-[10px] font-bold text-primary-foreground">
+                <span className="ml-0.5 inline-flex h-5 min-w-5 items-center justify-center rounded-full bg-primary px-1.5 text-[10px] font-bold text-primary-foreground">
                   {waitlistPendingCount}
                 </span>
               )}

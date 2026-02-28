@@ -240,9 +240,7 @@ Return ONLY valid JSON (no markdown, no code fences):
     log({ type: "system", level: "error", message: "AI invoice parse failed", detail: errMsg });
     console.error("[AI Invoice Parse]", err);
     return NextResponse.json({
-      error: process.env.NODE_ENV === "development"
-        ? `AI parse failed: ${errMsg}`
-        : "Failed to parse invoice.",
+      error: "Failed to parse invoice.",
     }, { status: 500 });
   }
 }

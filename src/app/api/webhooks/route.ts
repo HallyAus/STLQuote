@@ -3,7 +3,8 @@ import { z } from "zod";
 import crypto from "crypto";
 import { prisma } from "@/lib/prisma";
 import { requireFeature } from "@/lib/auth-helpers";
-import { isPrivateUrl } from "@/lib/url-safety";
+import { isPrivateUrlStrict } from "@/lib/url-safety";
+import { rateLimit } from "@/lib/rate-limit";
 import { encrypt } from "@/lib/encryption";
 
 const createWebhookSchema = z.object({
@@ -52,8 +53,8 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    // Block private/internal URLs (SSRF prevention)
-    if (isPrivateUrl(parsed.data.url)) {
+    // Block private/internal URLs (SSRF prevention — async DNS resolution)
+    if (await isPrivateUrlStrict(parsed.data.url)) {
       return NextResponse.json(
         { error: "Webhook URL cannot point to private or internal networks" },
         { status: 400 }

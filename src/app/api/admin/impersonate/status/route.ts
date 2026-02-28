@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { cookies } from "next/headers";
 import { prisma } from "@/lib/prisma";
 import { auth } from "@/lib/auth";
+import { verifyImpersonation } from "@/lib/impersonation";
 
 export async function GET() {
   try {
@@ -13,14 +14,20 @@ export async function GET() {
     }
 
     const cookieStore = await cookies();
-    const impUserId = cookieStore.get("impersonate-user-id")?.value;
+    const rawCookie = cookieStore.get("impersonate-user-id")?.value;
 
-    if (!impUserId) {
+    if (!rawCookie) {
+      return NextResponse.json({ impersonating: false });
+    }
+
+    // Verify HMAC signature before trusting the cookie
+    const targetId = verifyImpersonation(rawCookie, session.user.id);
+    if (!targetId) {
       return NextResponse.json({ impersonating: false });
     }
 
     const target = await prisma.user.findUnique({
-      where: { id: impUserId },
+      where: { id: targetId },
       select: { name: true, email: true },
     });
 

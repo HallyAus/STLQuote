@@ -330,25 +330,25 @@ export function AdminUsers() {
       {/* Users table */}
       <Card>
         <CardHeader>
-          <div className="flex items-center justify-between gap-4">
+          <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
             <CardTitle className="flex items-center gap-2">
               <Users className="h-5 w-5" />
               Users
             </CardTitle>
             <div className="flex items-center gap-2">
-              <div className="relative">
+              <div className="relative flex-1 sm:flex-initial">
                 <Search className="absolute left-2.5 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
                 <input
                   type="text"
                   placeholder="Search users..."
                   value={searchQuery}
                   onChange={(e) => setSearchQuery(e.target.value)}
-                  className="h-9 rounded-md border border-input bg-background pl-9 pr-3 text-sm text-foreground placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring w-48"
+                  className="h-9 w-full rounded-md border border-input bg-background pl-9 pr-3 text-sm text-foreground placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring sm:w-48"
                 />
               </div>
-              <Button size="sm" onClick={() => setShowCreateModal(true)}>
-                <UserPlus className="mr-1.5 h-4 w-4" />
-                Create User
+              <Button size="sm" onClick={() => setShowCreateModal(true)} className="shrink-0">
+                <UserPlus className="h-4 w-4 sm:mr-1.5" />
+                <span className="hidden sm:inline">Create User</span>
               </Button>
             </div>
           </div>
@@ -530,73 +530,80 @@ export function AdminUsers() {
           </div>
 
           {/* Mobile cards */}
-          <div className="space-y-3 md:hidden">
+          <div className="space-y-2 md:hidden">
             {filteredUsers.map((user) => (
-              <div key={user.id} className="rounded-lg border border-border p-4 space-y-3">
-                <div className="flex items-start justify-between">
-                  <div>
-                    <div className="font-medium">{user.name || "No name"}</div>
-                    <div className="text-sm text-muted-foreground">{user.email}</div>
+              <div key={user.id} className="rounded-lg border border-border p-3 space-y-2.5">
+                {/* Header row: avatar + name + badges */}
+                <div className="flex items-center gap-3">
+                  <div className={cn(
+                    "flex h-9 w-9 shrink-0 items-center justify-center rounded-full text-xs font-bold",
+                    user.disabled ? "bg-muted text-muted-foreground" : "bg-primary/10 text-primary"
+                  )}>
+                    {(user.name || user.email)?.[0]?.toUpperCase() || "?"}
                   </div>
-                  <div className="flex gap-1">
-                    <span
-                      className={cn(
-                        "inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-xs font-medium",
-                        user.role === "SUPER_ADMIN"
-                          ? "bg-amber-500/15 text-amber-500"
-                          : user.role === "ADMIN"
-                            ? "bg-primary/10 text-primary"
-                            : "bg-muted text-muted-foreground"
+                  <div className="min-w-0 flex-1">
+                    <div className="flex items-center gap-1.5">
+                      <span className="text-sm font-medium truncate">{user.name || "No name"}</span>
+                      <span
+                        className={cn(
+                          "inline-flex shrink-0 items-center rounded-full px-1.5 py-0.5 text-[10px] font-medium",
+                          user.role === "SUPER_ADMIN"
+                            ? "bg-amber-500/15 text-amber-500"
+                            : user.role === "ADMIN"
+                              ? "bg-primary/10 text-primary"
+                              : "bg-muted text-muted-foreground"
+                        )}
+                      >
+                        {user.role === "SUPER_ADMIN" ? "Super" : user.role === "ADMIN" ? "Admin" : "User"}
+                      </span>
+                      {user.disabled && (
+                        <span className="inline-flex shrink-0 rounded-full bg-destructive/10 px-1.5 py-0.5 text-[10px] font-medium text-destructive-foreground">
+                          Disabled
+                        </span>
                       )}
-                    >
-                      {user.role === "SUPER_ADMIN" ? "Super Admin" : user.role === "ADMIN" ? "Admin" : "User"}
-                    </span>
-                    <span
-                      className={cn(
-                        "inline-flex rounded-full px-2 py-0.5 text-xs font-medium",
-                        user.disabled
-                          ? "bg-destructive/10 text-destructive-foreground"
-                          : "bg-success/15 text-success-foreground"
-                      )}
-                    >
-                      {user.disabled ? "Disabled" : "Active"}
-                    </span>
+                    </div>
+                    <div className="text-xs text-muted-foreground truncate">{user.email}</div>
                   </div>
                 </div>
-                <div className="flex flex-wrap items-center gap-x-4 gap-y-1 text-sm text-muted-foreground">
-                  <span>Joined {new Date(user.createdAt).toLocaleDateString("en-AU", { day: "2-digit", month: "2-digit", year: "numeric" })}</span>
-                  <span>Login {user.lastLogin ? formatRelativeTime(user.lastLogin) : "never"}</span>
+
+                {/* Stats row */}
+                <div className="flex items-center gap-3 text-xs text-muted-foreground pl-12">
                   <span>{user._count.quotes} quotes</span>
+                  <span className="text-border">|</span>
                   <span>{user._count.jobs} jobs</span>
+                  <span className="text-border">|</span>
+                  <span>{user.lastLogin ? formatRelativeTime(user.lastLogin) : "Never logged in"}</span>
                 </div>
-                <div className="flex flex-wrap items-center gap-2">
+
+                {/* Actions row — icon buttons for compactness */}
+                <div className="flex items-center gap-1 pl-12">
                   {canModifyUser(user) && (
                     <>
-                      <Button variant="secondary" size="sm" onClick={() => openEditModal(user)}>
-                        <Pencil className="mr-1 h-3 w-3" />Edit
+                      <Button variant="ghost" size="sm" onClick={() => openEditModal(user)} title="Edit">
+                        <Pencil className="h-3.5 w-3.5" />
                       </Button>
                       {isSuperAdmin && (
-                        <Button variant="secondary" size="sm" onClick={() => toggleRole(user)} disabled={actionLoading === user.id + "-role"}>
-                          {user.role === "ADMIN" ? <><ShieldOff className="mr-1 h-3 w-3" />Demote</> : <><Shield className="mr-1 h-3 w-3" />Promote</>}
+                        <Button variant="ghost" size="sm" onClick={() => toggleRole(user)} disabled={actionLoading === user.id + "-role"} title={user.role === "ADMIN" ? "Demote" : "Promote"}>
+                          {actionLoading === user.id + "-role" ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : user.role === "ADMIN" ? <ShieldOff className="h-3.5 w-3.5" /> : <Shield className="h-3.5 w-3.5" />}
                         </Button>
                       )}
-                      <Button variant="secondary" size="sm" onClick={() => toggleDisabled(user)} disabled={actionLoading === user.id + "-disabled"}>
-                        {user.disabled ? <><UserCheck className="mr-1 h-3 w-3" />Enable</> : <><UserX className="mr-1 h-3 w-3" />Disable</>}
+                      <Button variant="ghost" size="sm" onClick={() => toggleDisabled(user)} disabled={actionLoading === user.id + "-disabled"} title={user.disabled ? "Enable" : "Disable"}>
+                        {actionLoading === user.id + "-disabled" ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : user.disabled ? <UserCheck className="h-3.5 w-3.5" /> : <UserX className="h-3.5 w-3.5" />}
                       </Button>
                     </>
                   )}
                   {user.role !== "SUPER_ADMIN" && (
-                    <Button variant="secondary" size="sm" onClick={() => impersonate(user)} disabled={actionLoading === user.id + "-impersonate"}>
-                      <Eye className="mr-1 h-3 w-3" />Impersonate
+                    <Button variant="ghost" size="sm" onClick={() => impersonate(user)} disabled={actionLoading === user.id + "-impersonate"} title="Impersonate">
+                      {actionLoading === user.id + "-impersonate" ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Eye className="h-3.5 w-3.5" />}
                     </Button>
                   )}
                   {canModifyUser(user) && (
                     <>
-                      <Button variant="secondary" size="sm" onClick={() => resendWelcome(user)} disabled={actionLoading === user.id + "-welcome"}>
-                        <Mail className="mr-1 h-3 w-3" />Resend Welcome
+                      <Button variant="ghost" size="sm" onClick={() => resendWelcome(user)} disabled={actionLoading === user.id + "-welcome"} title="Resend welcome">
+                        {actionLoading === user.id + "-welcome" ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Mail className="h-3.5 w-3.5" />}
                       </Button>
-                      <Button variant="secondary" size="sm" onClick={() => setDeleteUser(user)} className="text-destructive-foreground">
-                        <Trash2 className="mr-1 h-3 w-3" />Delete
+                      <Button variant="ghost" size="sm" onClick={() => setDeleteUser(user)} title="Delete" className="text-destructive-foreground hover:text-destructive-foreground ml-auto">
+                        <Trash2 className="h-3.5 w-3.5" />
                       </Button>
                     </>
                   )}

@@ -125,14 +125,19 @@ export function AdminBilling() {
         </CardHeader>
         <CardContent className="space-y-2">
           {configItems.map((item) => (
-            <div key={item.label} className="flex items-center gap-2 text-sm">
-              {item.ok ? (
-                <CircleCheck className="h-4 w-4 text-emerald-500" />
-              ) : (
-                <CircleX className="h-4 w-4 text-destructive" />
-              )}
-              <span className="font-medium">{item.label}</span>
-              <span className="text-muted-foreground">— {item.hint}</span>
+            <div key={item.label} className="flex items-start gap-2 text-sm">
+              <div className="shrink-0 mt-0.5">
+                {item.ok ? (
+                  <CircleCheck className="h-4 w-4 text-emerald-500" />
+                ) : (
+                  <CircleX className="h-4 w-4 text-destructive" />
+                )}
+              </div>
+              <div className="min-w-0">
+                <span className="font-medium">{item.label}</span>
+                <span className="text-muted-foreground hidden sm:inline"> — {item.hint}</span>
+                <p className="text-xs text-muted-foreground truncate sm:hidden">{item.hint}</p>
+              </div>
             </div>
           ))}
           {billingData.config.appUrl && (
@@ -206,7 +211,8 @@ export function AdminBilling() {
             <CardTitle className="text-sm font-medium text-muted-foreground">Stripe Subscribers</CardTitle>
           </CardHeader>
           <CardContent>
-            <div className="overflow-x-auto">
+            {/* Desktop table */}
+            <div className="hidden md:block overflow-x-auto">
               <table className="w-full text-sm">
                 <thead>
                   <tr className="border-b border-border text-left text-muted-foreground">
@@ -250,6 +256,40 @@ export function AdminBilling() {
                 </tbody>
               </table>
             </div>
+
+            {/* Mobile cards */}
+            <div className="space-y-2 md:hidden">
+              {billingData.stripeSubscribers.map((sub) => (
+                <div key={sub.id} className="flex items-center gap-3 rounded-lg border border-border/50 p-3">
+                  <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-primary/10 text-xs font-bold text-primary">
+                    {(sub.name || sub.email)?.[0]?.toUpperCase() || "?"}
+                  </div>
+                  <div className="min-w-0 flex-1">
+                    <div className="flex items-center gap-2">
+                      <span className="text-sm font-medium truncate">{sub.name || "—"}</span>
+                      <span
+                        className={cn(
+                          "inline-flex items-center rounded-full px-1.5 py-0.5 text-[10px] font-medium shrink-0",
+                          sub.subscriptionStatus === "active"
+                            ? "bg-success/15 text-success-foreground"
+                            : sub.subscriptionStatus === "past_due"
+                              ? "bg-amber-500/15 text-amber-600 dark:text-amber-400"
+                              : "bg-muted text-muted-foreground"
+                        )}
+                      >
+                        {sub.subscriptionStatus}
+                      </span>
+                    </div>
+                    <div className="text-xs text-muted-foreground truncate">{sub.email}</div>
+                    <div className="text-[10px] text-muted-foreground/60 mt-0.5">
+                      {sub.subscriptionEndsAt
+                        ? `Ends ${new Date(sub.subscriptionEndsAt).toLocaleDateString("en-AU")}`
+                        : "No end date"}
+                    </div>
+                  </div>
+                </div>
+              ))}
+            </div>
           </CardContent>
         </Card>
       )}
@@ -263,31 +303,63 @@ export function AdminBilling() {
           {billingData.events.length === 0 ? (
             <p className="py-4 text-center text-sm text-muted-foreground">No subscription events yet.</p>
           ) : (
-            <div className="space-y-2">
-              {billingData.events.map((evt) => (
-                <div key={evt.id} className="flex items-center gap-3 text-sm">
-                  <span
-                    className={cn(
-                      "inline-flex h-5 min-w-[44px] items-center justify-center rounded-full px-2 text-[10px] font-semibold uppercase tracking-wider",
-                      ["upgrade", "grant"].includes(evt.action)
-                        ? "bg-success/15 text-success-foreground"
-                        : ["cancel", "revoke", "failed"].includes(evt.action)
-                          ? "bg-destructive/10 text-destructive-foreground"
-                          : "bg-muted text-muted-foreground"
+            <>
+              {/* Desktop: inline layout */}
+              <div className="hidden md:block space-y-2">
+                {billingData.events.map((evt) => (
+                  <div key={evt.id} className="flex items-center gap-3 text-sm">
+                    <span
+                      className={cn(
+                        "inline-flex h-5 min-w-[44px] items-center justify-center rounded-full px-2 text-[10px] font-semibold uppercase tracking-wider",
+                        ["upgrade", "grant"].includes(evt.action)
+                          ? "bg-success/15 text-success-foreground"
+                          : ["cancel", "revoke", "failed"].includes(evt.action)
+                            ? "bg-destructive/10 text-destructive-foreground"
+                            : "bg-muted text-muted-foreground"
+                      )}
+                    >
+                      {evt.action}
+                    </span>
+                    <span className="font-medium">{evt.user?.name || evt.user?.email || "Unknown"}</span>
+                    {evt.detail && (
+                      <span className="flex-1 truncate text-muted-foreground">{evt.detail}</span>
                     )}
-                  >
-                    {evt.action}
-                  </span>
-                  <span className="font-medium">{evt.user?.name || evt.user?.email || "Unknown"}</span>
-                  {evt.detail && (
-                    <span className="flex-1 truncate text-muted-foreground">{evt.detail}</span>
-                  )}
-                  <span className="shrink-0 text-xs text-muted-foreground/60 whitespace-nowrap">
-                    {formatRelativeTime(evt.createdAt)}
-                  </span>
-                </div>
-              ))}
-            </div>
+                    <span className="shrink-0 text-xs text-muted-foreground/60 whitespace-nowrap">
+                      {formatRelativeTime(evt.createdAt)}
+                    </span>
+                  </div>
+                ))}
+              </div>
+
+              {/* Mobile: stacked cards */}
+              <div className="space-y-2 md:hidden">
+                {billingData.events.map((evt) => (
+                  <div key={evt.id} className="rounded-lg border border-border/50 p-3">
+                    <div className="flex items-center gap-2">
+                      <span
+                        className={cn(
+                          "inline-flex h-5 items-center justify-center rounded-full px-2 text-[10px] font-semibold uppercase tracking-wider",
+                          ["upgrade", "grant"].includes(evt.action)
+                            ? "bg-success/15 text-success-foreground"
+                            : ["cancel", "revoke", "failed"].includes(evt.action)
+                              ? "bg-destructive/10 text-destructive-foreground"
+                              : "bg-muted text-muted-foreground"
+                        )}
+                      >
+                        {evt.action}
+                      </span>
+                      <span className="text-sm font-medium truncate">{evt.user?.name || evt.user?.email || "Unknown"}</span>
+                      <span className="ml-auto text-[10px] text-muted-foreground/60 shrink-0">
+                        {formatRelativeTime(evt.createdAt)}
+                      </span>
+                    </div>
+                    {evt.detail && (
+                      <p className="mt-1 text-xs text-muted-foreground leading-snug">{evt.detail}</p>
+                    )}
+                  </div>
+                ))}
+              </div>
+            </>
           )}
         </CardContent>
       </Card>
