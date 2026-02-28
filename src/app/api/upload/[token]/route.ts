@@ -4,6 +4,8 @@ import { writeFile, mkdir, access } from "fs/promises";
 import { constants } from "fs";
 import path from "path";
 import crypto from "crypto";
+import { sendEmail, escapeHtml } from "@/lib/email";
+import { createQuoteRequestTask } from "@/lib/asana";
 
 const ALLOWED_EXTENSIONS = new Set(["stl", "3mf", "step", "stp", "obj", "gcode", "gco", "g"]);
 const MAX_FILE_SIZE = 50 * 1024 * 1024; // 50MB
@@ -161,6 +163,15 @@ export async function POST(
       return NextResponse.json({ error: "Name is required" }, { status: 400 });
     }
 
+    if (!clientEmail) {
+      return NextResponse.json({ error: "Email is required" }, { status: 400 });
+    }
+
+    // Basic email format check
+    if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(clientEmail)) {
+      return NextResponse.json({ error: "Invalid email address" }, { status: 400 });
+    }
+
     // Validate file size
     if (file.size > Math.min(link.maxFileSize, MAX_FILE_SIZE)) {
       return NextResponse.json(
@@ -252,6 +263,69 @@ export async function POST(
         mimeType: file.type || null,
       },
     });
+
+    // Send confirmation email to customer (non-blocking)
+    const ownerSettings = await prisma.settings.findUnique({
+      where: { userId: link.userId },
+      select: {
+        businessName: true,
+        businessEmail: true,
+        businessPhone: true,
+        businessAddress: true,
+        businessLogoUrl: true,
+      },
+    });
+    const linkOwner = await prisma.user.findUnique({
+      where: { id: link.userId },
+      select: { name: true, email: true },
+    });
+
+    const biz = ownerSettings;
+    const bizName = biz?.businessName || linkOwner?.name || "our team";
+    const safeClientName = escapeHtml(clientName);
+    const safeBizName = escapeHtml(bizName);
+    const safeFileName = escapeHtml(file.name);
+    const fileSizeMB = (file.size / 1024 / 1024).toFixed(1);
+
+    const contactLines: string[] = [];
+    if (biz?.businessEmail) contactLines.push(`Email: <a href="mailto:${escapeHtml(biz.businessEmail)}" style="color: #2563eb;">${escapeHtml(biz.businessEmail)}</a>`);
+    if (biz?.businessPhone) contactLines.push(`Phone: ${escapeHtml(biz.businessPhone)}`);
+    if (biz?.businessAddress) contactLines.push(`Address: ${escapeHtml(biz.businessAddress)}`);
+
+    sendEmail({
+      to: clientEmail,
+      subject: `We've received your file — ${safeBizName}`,
+      type: "quote_request_confirmation",
+      html: `<div style="font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; max-width: 600px; margin: 0 auto;">
+        ${biz?.businessLogoUrl ? `<img src="${biz.businessLogoUrl}" alt="" style="height: 40px; margin-bottom: 16px;" />` : ""}
+        <h2 style="color: #171717;">Thanks, ${safeClientName}!</h2>
+        <p>We've received your file and will review it shortly. You can expect a quote from us soon.</p>
+        <div style="background: #f5f5f5; border-radius: 8px; padding: 16px; margin: 16px 0;">
+          <p style="margin: 0 0 4px; font-size: 12px; color: #666; text-transform: uppercase; letter-spacing: 0.05em;">File received</p>
+          <p style="margin: 0; font-weight: 600; color: #171717;">${safeFileName}</p>
+          <p style="margin: 4px 0 0; font-size: 13px; color: #666;">${fileSizeMB} MB</p>
+        </div>
+        ${description ? `<p style="color: #666; font-size: 14px;"><strong>Your notes:</strong> ${escapeHtml(description)}</p>` : ""}
+        <p style="color: #333; font-size: 14px;">If you have any questions in the meantime, don&rsquo;t hesitate to reach out.</p>
+        ${contactLines.length > 0 ? `
+        <div style="background: #fafafa; border-radius: 8px; padding: 16px; margin: 16px 0; border: 1px solid #e5e5e5;">
+          <p style="margin: 0 0 8px; font-size: 12px; color: #666; text-transform: uppercase; letter-spacing: 0.05em;">Contact us</p>
+          ${contactLines.map((l) => `<p style="margin: 2px 0; font-size: 14px; color: #333;">${l}</p>`).join("")}
+        </div>` : ""}
+        <hr style="border: none; border-top: 1px solid #e5e5e5; margin: 24px 0;" />
+        <p style="color: #999; font-size: 12px;">${safeBizName} — Powered by Printforge</p>
+      </div>`,
+    }).catch(() => {});
+
+    // Create Asana task if owner has it configured (non-blocking)
+    createQuoteRequestTask(link.userId, {
+      clientName,
+      clientEmail,
+      fileName: file.name,
+      fileSize: file.size,
+      description: description || null,
+      linkLabel: link.label,
+    }).catch(() => {});
 
     return NextResponse.json(
       { id: quoteRequest.id, message: "File uploaded successfully" },

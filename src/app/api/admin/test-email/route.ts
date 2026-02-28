@@ -16,11 +16,11 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    const { to } = await request.json();
-    const email = to || admin.email;
+    // Always send to the admin's own email to prevent abuse as a spam relay
+    const email = admin.email;
 
     if (!email) {
-      return NextResponse.json({ error: "No email address provided" }, { status: 400 });
+      return NextResponse.json({ error: "No email address on your account" }, { status: 400 });
     }
 
     const sent = await sendEmail({

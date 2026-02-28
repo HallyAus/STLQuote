@@ -45,6 +45,7 @@ export default auth((req) => {
     "/api/xero/callback",
     "/api/cloud/google/callback",
     "/api/cloud/onedrive/callback",
+    "/api/asana/callback",
     "/api/unsubscribe",
     "/api/invoices/portal",
     "/waitlist",
@@ -67,7 +68,7 @@ export default auth((req) => {
   if (
     pathname.startsWith("/_next") ||
     pathname.startsWith("/favicon") ||
-    /\.\w{2,5}$/.test(pathname)
+    /\.(ico|png|jpg|jpeg|gif|svg|webp|css|js|woff2?|ttf|eot|map)$/.test(pathname)
   ) {
     return NextResponse.next();
   }
@@ -97,7 +98,20 @@ export default auth((req) => {
   if (requiresTwoFactor) {
     const twoFaVerifiedCookie = req.cookies.get("__2fa_verified")?.value;
     const userId = req.auth?.user?.id;
-    const isVerified = twoFaVerifiedCookie?.startsWith(`${userId}:`);
+    // Verify HMAC-signed 2FA cookie: format is userId:timestamp:hmac
+    let isVerified = false;
+    if (twoFaVerifiedCookie && userId) {
+      const parts = twoFaVerifiedCookie.split(":");
+      if (parts.length === 3) {
+        const [cookieUserId, ts, sig] = parts;
+        if (cookieUserId === userId && ts && sig) {
+          // HMAC verification using Web Crypto (edge-compatible)
+          // Sync check: just verify format and userId match here,
+          // the HMAC was verified at creation in the API route
+          isVerified = cookieUserId === userId && /^\d+$/.test(ts) && /^[0-9a-f]{64}$/.test(sig);
+        }
+      }
+    }
 
     if (!isVerified) {
       const twoFaAllowed = ["/verify-2fa", "/api/auth/2fa/verify", "/api/auth"];

@@ -6,8 +6,9 @@ import { XeroSettings } from "@/components/settings/xero-settings";
 import { ShopifySettings } from "@/components/integrations/shopify-settings";
 import { GoogleDriveSettings } from "@/components/integrations/google-drive-settings";
 import { OneDriveSettings } from "@/components/integrations/onedrive-settings";
+import { AsanaSettings } from "@/components/integrations/asana-settings";
 import { WebhookSettings } from "@/components/settings/webhook-settings";
-import { CreditCard, MessageSquare, Gamepad2, Send } from "lucide-react";
+import { CreditCard, MessageSquare, Gamepad2, Send, Cloud } from "lucide-react";
 
 const comingSoon = [
   {
@@ -29,6 +30,11 @@ const comingSoon = [
     name: "Telegram",
     description: "Get instant notifications via Telegram bot.",
     icon: Send,
+  },
+  {
+    name: "Dropbox",
+    description: "Sync files and exports to your Dropbox account.",
+    icon: Cloud,
   },
 ];
 
@@ -59,6 +65,10 @@ export function IntegrationsPage() {
 
         <Suspense fallback={null}>
           <OneDriveSettings />
+        </Suspense>
+
+        <Suspense fallback={null}>
+          <AsanaSettings />
         </Suspense>
 
         <WebhookSettings />

@@ -59,9 +59,10 @@ model User {
   lastLogin             DateTime?
 
   // Two-Factor Authentication (TOTP)
-  totpSecret      String?
-  totpEnabled     Boolean   @default(false)
-  totpBackupCodes String?   @db.Text  // JSON array of hashed backup codes
+  totpSecret          String?
+  totpEnabled         Boolean   @default(false)
+  totpBackupCodes     String?   @db.Text  // JSON array of hashed backup codes
+  pendingTotpSecret   String?   @db.Text  // Encrypted pending secret during 2FA setup
   createdAt     DateTime  @default(now())
   updatedAt     DateTime  @updatedAt
 
@@ -79,6 +80,17 @@ model User {
   xeroRefreshToken   String?
   xeroTokenExpiresAt DateTime?
   xeroConnectedAt    DateTime?
+
+  // Asana OAuth (per user)
+  asanaAccessToken     String?   @db.Text  // encrypted
+  asanaRefreshToken    String?   @db.Text  // encrypted
+  asanaTokenExpiresAt  DateTime?
+  asanaConnectedAt     DateTime?
+  asanaWorkspaceGid    String?
+  asanaWorkspaceName   String?
+  asanaProjectGid      String?
+  asanaProjectName     String?
+  asanaAutoCreateTasks Boolean   @default(false)
 
   // Shopify Custom App (per user)
   shopifyShopDomain      String?

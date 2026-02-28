@@ -51,7 +51,7 @@ export default function PublicUploadPage() {
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
-    if (!file || !clientName.trim()) return;
+    if (!file || !clientName.trim() || !clientEmail.trim()) return;
 
     try {
       setUploading(true);
@@ -60,7 +60,7 @@ export default function PublicUploadPage() {
       const formData = new FormData();
       formData.append("file", file);
       formData.append("clientName", clientName.trim());
-      if (clientEmail.trim()) formData.append("clientEmail", clientEmail.trim());
+      formData.append("clientEmail", clientEmail.trim());
       if (description.trim()) formData.append("description", description.trim());
 
       const res = await fetch(`/api/upload/${token}`, {
@@ -238,13 +238,14 @@ export default function PublicUploadPage() {
             />
           </div>
 
-          {/* Email (optional) */}
+          {/* Email (required) */}
           <div>
             <label className="mb-1 block text-sm font-medium text-neutral-700 dark:text-neutral-300">
-              Email <span className="text-neutral-400">(optional)</span>
+              Email *
             </label>
             <input
               type="email"
+              required
               value={clientEmail}
               onChange={(e) => setClientEmail(e.target.value)}
               placeholder="john@example.com"
@@ -269,7 +270,7 @@ export default function PublicUploadPage() {
           {/* Submit */}
           <button
             type="submit"
-            disabled={uploading || !file || !clientName.trim()}
+            disabled={uploading || !file || !clientName.trim() || !clientEmail.trim()}
             className="w-full rounded-lg bg-blue-600 px-4 py-2.5 text-sm font-medium text-white transition-colors hover:bg-blue-700 disabled:cursor-not-allowed disabled:opacity-50 dark:bg-blue-500 dark:hover:bg-blue-600"
           >
             {uploading ? (
@@ -283,7 +284,7 @@ export default function PublicUploadPage() {
           </button>
 
           <p className="text-center text-xs text-neutral-400 dark:text-neutral-500">
-            Your file will be securely uploaded and reviewed for quoting.
+            Your file will be securely uploaded and reviewed for quoting. You&apos;ll receive a confirmation email.
           </p>
         </form>
       </div>

@@ -144,6 +144,21 @@ export async function POST(request: NextRequest) {
       mimeType = "application/pdf";
       targetFolder = "Invoices";
 
+    } else if (fileType === "quote_request_file") {
+      // Export a quote request uploaded file
+      const quoteRequest = await prisma.quoteRequest.findFirst({
+        where: { id: fileId, userId: user.id },
+      });
+      if (!quoteRequest) {
+        return NextResponse.json({ error: "Quote request not found" }, { status: 404 });
+      }
+
+      const requestFilePath = path.join(process.cwd(), quoteRequest.filePath);
+      fileBuffer = await fs.readFile(requestFilePath);
+      fileName = quoteRequest.originalName;
+      mimeType = quoteRequest.mimeType || "application/octet-stream";
+      targetFolder = "Quote Requests";
+
     } else {
       return NextResponse.json({ error: "Invalid file type" }, { status: 400 });
     }

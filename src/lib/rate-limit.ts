@@ -37,14 +37,17 @@ function startCleanup(windowMs: number) {
 
 export function getClientIp(request: Request): string {
   const headers = new Headers(request.headers);
-  // Cloudflare / reverse proxy chain
+  // Cloudflare sets this — cannot be spoofed by the client
+  const cfIp = headers.get("cf-connecting-ip");
+  if (cfIp) return cfIp.trim();
+  // Trusted reverse proxy header
+  const realIp = headers.get("x-real-ip");
+  if (realIp) return realIp.trim();
+  // Fallback: rightmost IP from X-Forwarded-For (added by outermost trusted proxy)
   const forwarded = headers.get("x-forwarded-for");
   if (forwarded) {
-    return forwarded.split(",")[0].trim();
-  }
-  const realIp = headers.get("x-real-ip");
-  if (realIp) {
-    return realIp.trim();
+    const ips = forwarded.split(",").map((ip) => ip.trim());
+    return ips[ips.length - 1];
   }
   return "unknown";
 }

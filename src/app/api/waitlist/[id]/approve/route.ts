@@ -5,6 +5,15 @@ import { prisma } from "@/lib/prisma";
 import { requireAdmin } from "@/lib/auth-helpers";
 import { sendEmail } from "@/lib/email";
 
+function escapeHtml(str: string): string {
+  return str
+    .replace(/&/g, "&amp;")
+    .replace(/</g, "&lt;")
+    .replace(/>/g, "&gt;")
+    .replace(/"/g, "&quot;")
+    .replace(/'/g, "&#039;");
+}
+
 export async function POST(
   _request: NextRequest,
   { params }: { params: Promise<{ id: string }> }
@@ -102,7 +111,7 @@ export async function POST(
       type: "waitlist_approved",
       userId: user.id,
       html: `<div style="font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; max-width: 600px; margin: 0 auto;">
-        <h2 style="color: #171717;">Welcome, ${entry.name}!</h2>${entry.businessName ? `\n        <p style="color: #666; font-size: 14px;">Business: ${entry.businessName}</p>` : ""}
+        <h2 style="color: #171717;">Welcome, ${escapeHtml(entry.name)}!</h2>${entry.businessName ? `\n        <p style="color: #666; font-size: 14px;">Business: ${escapeHtml(entry.businessName)}</p>` : ""}
         <p>Great news — your Printforge account has been approved!</p>
         <p>Sign in with your temporary password below. You'll be asked to set a new password on first login.</p>
         <div style="background: #f5f5f5; border-radius: 8px; padding: 16px; margin: 16px 0; text-align: center;">

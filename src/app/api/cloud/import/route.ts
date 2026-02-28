@@ -6,8 +6,9 @@ import * as oneDrive from "@/lib/onedrive";
 import path from "path";
 import fs from "fs/promises";
 
+const MAX_FILE_SIZE = 50 * 1024 * 1024; // 50MB
 const ALLOWED_EXTENSIONS = new Set([
-  "jpg", "jpeg", "png", "gif", "webp", "bmp", "svg",
+  "jpg", "jpeg", "png", "gif", "webp", "bmp",
   "stl", "3mf", "step", "stp", "obj", "gcode",
   "pdf", "doc", "docx", "txt",
 ]);
@@ -30,7 +31,7 @@ const MAGIC_BYTES: Record<string, (buf: Buffer) => boolean> = {
 };
 
 function getFileType(ext: string): string {
-  const imageExts = new Set(["jpg", "jpeg", "png", "gif", "webp", "bmp", "svg"]);
+  const imageExts = new Set(["jpg", "jpeg", "png", "gif", "webp", "bmp"]);
   const cadExts: Record<string, string> = { stl: "stl", "3mf": "3mf", step: "step", stp: "step", obj: "obj", gcode: "gcode" };
   if (imageExts.has(ext)) return "reference_image";
   if (cadExts[ext]) return cadExts[ext];
@@ -80,6 +81,14 @@ export async function POST(request: NextRequest) {
       const metadata = await oneDrive.getFileMetadata(accessToken, cloudFileId);
       mimeType = metadata.file?.mimeType || mimeType;
       fileBuffer = await oneDrive.downloadFile(accessToken, cloudFileId);
+    }
+
+    // Enforce file size limit
+    if (fileBuffer.length > MAX_FILE_SIZE) {
+      return NextResponse.json(
+        { error: "File too large (max 50MB)" },
+        { status: 400 }
+      );
     }
 
     // Validate content matches claimed extension (magic bytes check)

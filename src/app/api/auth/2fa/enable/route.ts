@@ -5,9 +5,9 @@ import bcrypt from "bcryptjs";
 import crypto from "crypto";
 import { prisma } from "@/lib/prisma";
 import { requireAuth } from "@/lib/auth-helpers";
+import { encrypt, decrypt } from "@/lib/encryption";
 
 const schema = z.object({
-  secret: z.string().min(1, "Secret is required"),
   code: z.string().length(6, "Code must be 6 digits"),
 });
 
@@ -25,12 +25,27 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    const { secret, code } = parsed.data;
+    const { code } = parsed.data;
 
-    // Validate the TOTP code against the provided secret
+    // Read pending secret from server-side storage (not from client)
+    const dbUser = await prisma.user.findUnique({
+      where: { id: user.id },
+      select: { pendingTotpSecret: true, email: true },
+    });
+
+    if (!dbUser?.pendingTotpSecret) {
+      return NextResponse.json(
+        { error: "No pending 2FA setup found. Run setup first." },
+        { status: 400 }
+      );
+    }
+
+    const secret = decrypt(dbUser.pendingTotpSecret);
+
+    // Validate the TOTP code against the server-stored secret
     const totp = new OTPAuth.TOTP({
       issuer: "Printforge",
-      label: user.email ?? "user",
+      label: dbUser.email ?? "user",
       algorithm: "SHA1",
       digits: 6,
       period: 30,
@@ -56,13 +71,14 @@ export async function POST(request: NextRequest) {
       hashedCodes.push(hashed);
     }
 
-    // Store secret, enable 2FA, and save hashed backup codes
+    // Store encrypted secret, enable 2FA, save hashed backup codes, clear pending
     await prisma.user.update({
       where: { id: user.id },
       data: {
-        totpSecret: secret,
+        totpSecret: encrypt(secret),
         totpEnabled: true,
         totpBackupCodes: JSON.stringify(hashedCodes),
+        pendingTotpSecret: null,
       },
     });
 

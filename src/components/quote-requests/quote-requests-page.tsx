@@ -22,6 +22,8 @@ import {
   ToggleLeft,
   ToggleRight,
   User,
+  Cloud,
+  Loader2,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 
@@ -73,15 +75,21 @@ export function QuoteRequestsPage() {
   // Copied token state
   const [copiedId, setCopiedId] = useState<string | null>(null);
 
+  // Cloud export
+  const [cloudConnections, setCloudConnections] = useState<{ google_drive: boolean; onedrive: boolean }>({ google_drive: false, onedrive: false });
+  const [exportingId, setExportingId] = useState<string | null>(null);
+  const [cloudMenuId, setCloudMenuId] = useState<string | null>(null);
+
   // --- Fetch data ---
 
   const fetchData = useCallback(async () => {
     try {
       setLoading(true);
       setError(null);
-      const [reqRes, linkRes] = await Promise.all([
+      const [reqRes, linkRes, cloudRes] = await Promise.all([
         fetch("/api/quote-requests"),
         fetch("/api/upload-links"),
+        fetch("/api/cloud/status").catch(() => null),
       ]);
 
       if (!reqRes.ok) throw new Error("Failed to fetch quote requests");
@@ -94,6 +102,14 @@ export function QuoteRequestsPage() {
 
       setRequests(reqData);
       setUploadLinks(linkData);
+
+      if (cloudRes?.ok) {
+        const cloudData = await cloudRes.json();
+        setCloudConnections({
+          google_drive: !!cloudData.connections?.find((c: { provider: string }) => c.provider === "google_drive"),
+          onedrive: !!cloudData.connections?.find((c: { provider: string }) => c.provider === "onedrive"),
+        });
+      }
     } catch (err) {
       setError(err instanceof Error ? err.message : "Unknown error");
     } finally {
@@ -243,6 +259,32 @@ export function QuoteRequestsPage() {
       setError(err instanceof Error ? err.message : "Failed to delete");
     }
   }
+
+  async function handleCloudExport(requestId: string, provider: "google_drive" | "onedrive") {
+    try {
+      setExportingId(requestId);
+      setCloudMenuId(null);
+      setError(null);
+      const res = await fetch("/api/cloud/export", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ provider, fileType: "quote_request_file", fileId: requestId }),
+      });
+      if (!res.ok) {
+        const data = await res.json().catch(() => null);
+        throw new Error(data?.error || "Export failed");
+      }
+      // Brief success indication (reuse copiedId pattern)
+      setCopiedId(`cloud-${requestId}`);
+      setTimeout(() => setCopiedId(null), 2000);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Cloud export failed");
+    } finally {
+      setExportingId(null);
+    }
+  }
+
+  const hasCloudConnection = cloudConnections.google_drive || cloudConnections.onedrive;
 
   function copyLink(link: UploadLink) {
     const url = `${window.location.origin}/upload/${link.token}`;
@@ -478,6 +520,45 @@ export function QuoteRequestsPage() {
                             >
                               <Download className="h-3.5 w-3.5" />
                             </Button>
+                            {hasCloudConnection && (
+                              <div className="relative">
+                                <Button
+                                  variant="ghost"
+                                  size="sm"
+                                  onClick={() => setCloudMenuId(cloudMenuId === req.id ? null : req.id)}
+                                  title="Save to cloud"
+                                  disabled={exportingId === req.id}
+                                >
+                                  {exportingId === req.id ? (
+                                    <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                                  ) : copiedId === `cloud-${req.id}` ? (
+                                    <Check className="h-3.5 w-3.5 text-green-500" />
+                                  ) : (
+                                    <Cloud className="h-3.5 w-3.5" />
+                                  )}
+                                </Button>
+                                {cloudMenuId === req.id && (
+                                  <div className="absolute right-0 top-full z-20 mt-1 w-40 rounded-md border border-border bg-popover shadow-md">
+                                    {cloudConnections.google_drive && (
+                                      <button
+                                        onClick={() => handleCloudExport(req.id, "google_drive")}
+                                        className="block w-full px-3 py-2 text-left text-xs hover:bg-muted transition-colors"
+                                      >
+                                        Google Drive
+                                      </button>
+                                    )}
+                                    {cloudConnections.onedrive && (
+                                      <button
+                                        onClick={() => handleCloudExport(req.id, "onedrive")}
+                                        className="block w-full px-3 py-2 text-left text-xs hover:bg-muted transition-colors"
+                                      >
+                                        OneDrive
+                                      </button>
+                                    )}
+                                  </div>
+                                )}
+                              </div>
+                            )}
                             <Button
                               variant="ghost"
                               size="sm"
@@ -566,6 +647,44 @@ export function QuoteRequestsPage() {
                       >
                         <Download className="h-3.5 w-3.5" />
                       </Button>
+                      {hasCloudConnection && (
+                        <div className="relative">
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                            onClick={() => setCloudMenuId(cloudMenuId === req.id ? null : req.id)}
+                            disabled={exportingId === req.id}
+                          >
+                            {exportingId === req.id ? (
+                              <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                            ) : copiedId === `cloud-${req.id}` ? (
+                              <Check className="h-3.5 w-3.5 text-green-500" />
+                            ) : (
+                              <Cloud className="h-3.5 w-3.5" />
+                            )}
+                          </Button>
+                          {cloudMenuId === req.id && (
+                            <div className="absolute right-0 top-full z-20 mt-1 w-40 rounded-md border border-border bg-popover shadow-md">
+                              {cloudConnections.google_drive && (
+                                <button
+                                  onClick={() => handleCloudExport(req.id, "google_drive")}
+                                  className="block w-full px-3 py-2 text-left text-xs hover:bg-muted transition-colors"
+                                >
+                                  Google Drive
+                                </button>
+                              )}
+                              {cloudConnections.onedrive && (
+                                <button
+                                  onClick={() => handleCloudExport(req.id, "onedrive")}
+                                  className="block w-full px-3 py-2 text-left text-xs hover:bg-muted transition-colors"
+                                >
+                                  OneDrive
+                                </button>
+                              )}
+                            </div>
+                          )}
+                        </div>
+                      )}
                       <Button
                         variant="ghost"
                         size="sm"

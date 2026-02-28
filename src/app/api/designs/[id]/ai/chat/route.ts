@@ -7,7 +7,7 @@ import { z } from "zod";
 
 const requestSchema = z.object({
   message: z.string().min(1).max(5000),
-  imageData: z.string().optional().nullable(),
+  imageData: z.string().max(500_000).optional().nullable(),
 });
 
 export async function POST(

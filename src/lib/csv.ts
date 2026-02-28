@@ -10,9 +10,15 @@ export function generateCsv(
 
   function escapeCell(value: string | number | null | undefined): string {
     if (value === null || value === undefined) return "";
-    const str = String(value);
-    // Escape if contains comma, quote, or newline
-    if (str.includes(",") || str.includes('"') || str.includes("\n") || str.includes("\r")) {
+    let str = String(value);
+
+    // Prevent formula injection in spreadsheet applications
+    if (/^[=+\-@\t\r]/.test(str)) {
+      str = `'${str}`;
+    }
+
+    // Escape if contains comma, quote, newline, or single quote (from formula prefix)
+    if (str.includes(",") || str.includes('"') || str.includes("\n") || str.includes("\r") || str.includes("'")) {
       return `"${str.replace(/"/g, '""')}"`;
     }
     return str;

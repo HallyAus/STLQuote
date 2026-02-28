@@ -2,14 +2,23 @@ import { NextRequest, NextResponse } from "next/server";
 import { z } from "zod";
 import * as OTPAuth from "otpauth";
 import bcrypt from "bcryptjs";
+import { createHmac } from "crypto";
 import { prisma } from "@/lib/prisma";
 import { auth } from "@/lib/auth";
 import { rateLimit, getClientIp } from "@/lib/rate-limit";
 import { log } from "@/lib/logger";
+import { decryptOrPlaintext } from "@/lib/encryption";
 
 const schema = z.object({
   code: z.string().min(1, "Code is required"),
 });
+
+function signCookie(userId: string, timestamp: number): string {
+  const secret = process.env.NEXTAUTH_SECRET || process.env.AUTH_SECRET || "fallback";
+  const payload = `${userId}:${timestamp}`;
+  const sig = createHmac("sha256", secret).update(payload).digest("hex");
+  return `${payload}:${sig}`;
+}
 
 export async function POST(request: NextRequest) {
   try {
@@ -74,6 +83,9 @@ export async function POST(request: NextRequest) {
     let verified = false;
     let backupCodeUsed = false;
 
+    // Decrypt the TOTP secret (handles both encrypted and legacy plaintext)
+    const decryptedSecret = decryptOrPlaintext(dbUser.totpSecret);
+
     // Try TOTP code first (6-digit codes)
     if (/^\d{6}$/.test(code)) {
       const totp = new OTPAuth.TOTP({
@@ -82,7 +94,7 @@ export async function POST(request: NextRequest) {
         algorithm: "SHA1",
         digits: 6,
         period: 30,
-        secret: OTPAuth.Secret.fromBase32(dbUser.totpSecret),
+        secret: OTPAuth.Secret.fromBase32(decryptedSecret),
       });
 
       const delta = totp.validate({ token: code, window: 1 });
@@ -132,9 +144,9 @@ export async function POST(request: NextRequest) {
       });
     }
 
-    // Set HttpOnly cookie to signal 2FA verification to middleware
+    // Set HMAC-signed HttpOnly cookie to signal 2FA verification to middleware
     const timestamp = Date.now();
-    const cookieValue = `${session.user.id}:${timestamp}`;
+    const cookieValue = signCookie(session.user.id, timestamp);
 
     const response = NextResponse.json({
       verified: true,

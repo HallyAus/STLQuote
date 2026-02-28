@@ -64,13 +64,14 @@ export async function PUT(request: NextRequest) {
 
     if (name !== undefined) data.name = name;
 
-    // Email change — check uniqueness
+    // Email change — check uniqueness and reset verification
     if (email !== undefined && email !== user.email) {
       const existing = await prisma.user.findUnique({ where: { email } });
       if (existing) {
         return NextResponse.json({ error: "Email is already in use" }, { status: 409 });
       }
       data.email = email;
+      data.emailVerified = null; // Require re-verification for new email
     }
 
     // Password change — verify current password first
