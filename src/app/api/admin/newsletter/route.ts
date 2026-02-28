@@ -57,7 +57,22 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    const { subject, html, audience } = parsed.data;
+    const { subject, html: rawHtml, audience } = parsed.data;
+
+    // Sanitise HTML — strip scripts, event handlers, and dangerous tags
+    const html = rawHtml
+      .replace(/<script\b[^<]*(?:(?!<\/script>)<[^<]*)*<\/script>/gi, "")
+      .replace(/<iframe\b[^>]*>.*?<\/iframe>/gi, "")
+      .replace(/<object\b[^>]*>.*?<\/object>/gi, "")
+      .replace(/<embed\b[^>]*\/?>/gi, "")
+      .replace(/<form\b[^>]*>.*?<\/form>/gi, "")
+      .replace(/<input\b[^>]*\/?>/gi, "")
+      .replace(/<textarea\b[^>]*>.*?<\/textarea>/gi, "")
+      .replace(/<button\b[^>]*>.*?<\/button>/gi, "")
+      .replace(/\son\w+\s*=\s*["'][^"']*["']/gi, "")
+      .replace(/\son\w+\s*=\s*[^\s>]*/gi, "")
+      .replace(/javascript\s*:/gi, "")
+      .replace(/vbscript\s*:/gi, "");
 
     // Build query based on audience — exclude unsubscribed users
     const where: Record<string, unknown> = {

@@ -3,10 +3,19 @@ import { requireFeature } from "@/lib/auth-helpers";
 import { prisma } from "@/lib/prisma";
 import * as googleDrive from "@/lib/google-drive";
 import * as oneDrive from "@/lib/onedrive";
+import { rateLimit } from "@/lib/rate-limit";
 
 export async function POST(request: NextRequest) {
   try {
     const user = await requireFeature("cloud_storage");
+
+    const rl = rateLimit(`cloud-folder:${user.id}`, { windowMs: 60 * 1000, maxRequests: 5 });
+    if (rl.limited) {
+      return NextResponse.json(
+        { error: "Too many requests. Try again shortly." },
+        { status: 429, headers: { "Retry-After": String(rl.retryAfterSeconds) } }
+      );
+    }
     const body = await request.json();
     const { provider } = body;
 

@@ -5,6 +5,7 @@ import * as googleDrive from "@/lib/google-drive";
 import * as oneDrive from "@/lib/onedrive";
 import path from "path";
 import fs from "fs/promises";
+import { rateLimit } from "@/lib/rate-limit";
 
 const MAX_FILE_SIZE = 50 * 1024 * 1024; // 50MB
 const ALLOWED_EXTENSIONS = new Set([
@@ -24,9 +25,15 @@ const MAGIC_BYTES: Record<string, (buf: Buffer) => boolean> = {
   docx: (buf) => buf.length >= 2 && buf[0] === 0x50 && buf[1] === 0x4b, // ZIP-based
   stl: (buf) => {
     if (buf.length < 5) return false;
-    // Binary STL starts with 80-byte header; ASCII STL starts with "solid"
-    const header = buf.subarray(0, 80).toString("ascii").toLowerCase();
-    return header.startsWith("solid") || buf.length > 84;
+    // Binary STL: 80-byte header + 4-byte triangle count
+    if (buf.length >= 84) {
+      const numTriangles = buf.readUInt32LE(80);
+      // Sanity check: triangle count should produce a reasonable file size
+      if (numTriangles > 0 && numTriangles < 50_000_000) return true;
+    }
+    // ASCII STL: starts with "solid"
+    const header = buf.subarray(0, 1024).toString("ascii").trimStart().toLowerCase();
+    return header.startsWith("solid");
   },
 };
 
@@ -42,6 +49,15 @@ function getFileType(ext: string): string {
 export async function POST(request: NextRequest) {
   try {
     const user = await requireFeature("cloud_storage");
+
+    const rl = rateLimit(`cloud-import:${user.id}`, { windowMs: 60 * 1000, maxRequests: 10 });
+    if (rl.limited) {
+      return NextResponse.json(
+        { error: "Too many import requests. Try again shortly." },
+        { status: 429, headers: { "Retry-After": String(rl.retryAfterSeconds) } }
+      );
+    }
+
     const body = await request.json();
     const { provider, cloudFileId, cloudFileName, designId } = body;
 
@@ -105,7 +121,7 @@ export async function POST(request: NextRequest) {
     await fs.mkdir(uploadDir, { recursive: true });
 
     const timestamp = Date.now();
-    const safeName = cloudFileName.replace(/[^a-zA-Z0-9._-]/g, "_");
+    const safeName = cloudFileName.replace(/[^a-zA-Z0-9._-]/g, "_").slice(0, 200);
     const filename = `${timestamp}-${safeName}`;
     const filePath = path.join(uploadDir, filename);
 

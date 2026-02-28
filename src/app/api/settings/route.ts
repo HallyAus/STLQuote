@@ -36,7 +36,14 @@ const updateSettingsSchema = z.object({
   businessAbn: z.string().nullable().optional(),
   businessPhone: z.string().nullable().optional(),
   businessEmail: z.string().email("Invalid email address").nullable().optional(),
-  businessLogoUrl: z.string().max(200000).nullable().optional(),
+  businessLogoUrl: z.string().max(200000).nullable().optional().refine(
+    (val) => {
+      if (!val) return true;
+      // Allow data: URIs (base64 images) or https: URLs only
+      return val.startsWith("data:image/") || val.startsWith("https://");
+    },
+    { message: "Logo must be a base64 data URI or HTTPS URL" }
+  ),
   bankName: z.string().nullable().optional(),
   bankBsb: z.string().nullable().optional(),
   bankAccountNumber: z.string().nullable().optional(),

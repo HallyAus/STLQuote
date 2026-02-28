@@ -4,10 +4,16 @@ import QRCode from "qrcode";
 import { prisma } from "@/lib/prisma";
 import { requireAuth } from "@/lib/auth-helpers";
 import { encrypt } from "@/lib/encryption";
+import { rateLimit } from "@/lib/rate-limit";
 
 export async function POST() {
   try {
     const user = await requireAuth();
+
+    const rl = rateLimit(`2fa-setup:${user.id}`, { windowMs: 15 * 60 * 1000, maxRequests: 5 });
+    if (rl.limited) {
+      return NextResponse.json({ error: "Too many attempts. Try again later." }, { status: 429 });
+    }
 
     const totp = new OTPAuth.TOTP({
       issuer: "Printforge",
@@ -28,6 +34,7 @@ export async function POST() {
 
     return NextResponse.json({
       qrCode,
+      secret: totp.secret.base32,
       uri: totp.toString(),
     });
   } catch (error) {

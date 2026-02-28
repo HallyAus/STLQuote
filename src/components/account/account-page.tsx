@@ -269,7 +269,7 @@ export function AccountPage() {
         return;
       }
       setTwoFaQr(data.qrCode);
-      setTwoFaSecret(data.secret);
+      setTwoFaSecret(data.secret ?? "");
       setTwoFaStep("setup");
     } catch {
       setTwoFaMsg({ type: "error", text: "Something went wrong" });
@@ -289,7 +289,7 @@ export function AccountPage() {
       const res = await fetch("/api/auth/2fa/enable", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ secret: twoFaSecret, code: twoFaCode }),
+        body: JSON.stringify({ code: twoFaCode }),
       });
       const data = await res.json();
       if (!res.ok) {

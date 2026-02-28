@@ -39,14 +39,9 @@ export async function getSessionUser(): Promise<SessionUser | null> {
 
     // Verify HMAC-signed impersonation cookie (format: adminId:targetId:hmac)
     let impersonateId: string | null = null;
-    if (rawCookie) {
-      // Support both signed (adminId:targetId:hmac) and legacy (plain userId) formats
-      if (rawCookie.includes(":")) {
-        const { verifyImpersonation } = await import("@/lib/impersonation");
-        impersonateId = verifyImpersonation(rawCookie, realUserId);
-      } else {
-        impersonateId = rawCookie; // Legacy plain cookie — will be re-signed on next impersonation
-      }
+    if (rawCookie && rawCookie.includes(":")) {
+      const { verifyImpersonation } = await import("@/lib/impersonation");
+      impersonateId = verifyImpersonation(rawCookie, realUserId);
     }
 
     if (impersonateId && impersonateId !== realUserId) {

@@ -6,6 +6,7 @@ import crypto from "crypto";
 import { prisma } from "@/lib/prisma";
 import { requireAuth } from "@/lib/auth-helpers";
 import { encrypt, decrypt } from "@/lib/encryption";
+import { rateLimit } from "@/lib/rate-limit";
 
 const schema = z.object({
   code: z.string().length(6, "Code must be 6 digits"),
@@ -14,6 +15,11 @@ const schema = z.object({
 export async function POST(request: NextRequest) {
   try {
     const user = await requireAuth();
+
+    const rl = rateLimit(`2fa-enable:${user.id}`, { windowMs: 15 * 60 * 1000, maxRequests: 5 });
+    if (rl.limited) {
+      return NextResponse.json({ error: "Too many attempts. Try again later." }, { status: 429 });
+    }
 
     const body = await request.json();
     const parsed = schema.safeParse(body);

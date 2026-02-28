@@ -1,10 +1,19 @@
 import { NextResponse } from "next/server";
 import { requireFeature } from "@/lib/auth-helpers";
 import { prisma } from "@/lib/prisma";
+import { rateLimit } from "@/lib/rate-limit";
 
 export async function GET() {
   try {
     const user = await requireFeature("cloud_storage");
+
+    const rl = rateLimit(`cloud-status:${user.id}`, { windowMs: 60 * 1000, maxRequests: 30 });
+    if (rl.limited) {
+      return NextResponse.json(
+        { error: "Too many requests. Try again shortly." },
+        { status: 429, headers: { "Retry-After": String(rl.retryAfterSeconds) } }
+      );
+    }
 
     const connections = await prisma.cloudConnection.findMany({
       where: { userId: user.id },

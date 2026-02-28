@@ -4,6 +4,7 @@ import { z } from "zod";
 import { prisma } from "@/lib/prisma";
 import { getSessionUser } from "@/lib/auth-helpers";
 import { getStripe, getStripePrices } from "@/lib/stripe";
+import { rateLimit } from "@/lib/rate-limit";
 
 const checkoutSchema = z.object({
   interval: z.enum(["month", "year"]),
@@ -13,6 +14,14 @@ export async function POST(request: NextRequest) {
   try {
     const user = await getSessionUser();
     if (!user) return NextResponse.json({ error: "Unauthorised" }, { status: 401 });
+
+    const rl = rateLimit(`checkout:${user.id}`, { windowMs: 15 * 60 * 1000, maxRequests: 5 });
+    if (rl.limited) {
+      return NextResponse.json(
+        { error: "Too many checkout attempts. Try again later." },
+        { status: 429, headers: { "Retry-After": String(rl.retryAfterSeconds) } }
+      );
+    }
 
     const body = await request.json();
     const parsed = checkoutSchema.safeParse(body);
@@ -63,16 +72,10 @@ export async function POST(request: NextRequest) {
 
     return NextResponse.json({ url: session.url });
   } catch (error) {
-    const stripeMsg = error instanceof Stripe.errors.StripeError
-      ? error.message
-      : error instanceof Error ? error.message : String(error);
-    console.error("Failed to create checkout session:", stripeMsg, error);
+    if (error instanceof Response) return error;
+    console.error("Failed to create checkout session:", error);
     return NextResponse.json(
-      {
-        error: process.env.NODE_ENV === "development"
-          ? `Checkout failed: ${stripeMsg}`
-          : "Failed to create checkout session",
-      },
+      { error: "Failed to create checkout session" },
       { status: 500 }
     );
   }

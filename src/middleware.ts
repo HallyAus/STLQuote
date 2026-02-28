@@ -134,7 +134,12 @@ export default auth(async (req) => {
       if (parts.length === 3) {
         const [cookieUserId, ts, sig] = parts;
         if (cookieUserId === userId && /^\d+$/.test(ts) && /^[0-9a-f]{64}$/.test(sig)) {
-          isVerified = await verifyHmac(cookieUserId, ts, sig);
+          // Expire 2FA cookie after 7 days
+          const cookieAge = Date.now() - parseInt(ts, 10);
+          const maxAge = 7 * 24 * 60 * 60 * 1000;
+          if (cookieAge >= 0 && cookieAge < maxAge) {
+            isVerified = await verifyHmac(cookieUserId, ts, sig);
+          }
         }
       }
     }

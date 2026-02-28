@@ -1,6 +1,6 @@
 import crypto from "crypto";
 import { prisma } from "@/lib/prisma";
-import { isPrivateUrl } from "@/lib/url-safety";
+import { isPrivateUrlStrict } from "@/lib/url-safety";
 import { decryptOrPlaintext } from "@/lib/encryption";
 
 /**
@@ -24,9 +24,11 @@ export async function fireWebhooks(
 
     const body = JSON.stringify({ event, timestamp: new Date().toISOString(), data: payload });
 
-    // Fire all webhooks concurrently (skip private URLs)
+    // Fire all webhooks concurrently (DNS-resolved SSRF check per URL)
     await Promise.allSettled(
-      matching.filter((w) => !isPrivateUrl(w.url)).map(async (webhook) => {
+      matching.map(async (webhook) => {
+        // Async DNS resolution check prevents DNS rebinding attacks
+        if (await isPrivateUrlStrict(webhook.url)) return;
         try {
           const decryptedSecret = decryptOrPlaintext(webhook.secret);
           const signature = crypto

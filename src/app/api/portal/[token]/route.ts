@@ -1,14 +1,25 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
+import { rateLimit } from "@/lib/rate-limit";
 
 type RouteContext = { params: Promise<{ token: string }> };
 
 export async function GET(
-  _request: NextRequest,
+  request: NextRequest,
   context: RouteContext
 ) {
   try {
     const { token } = await context.params;
+
+    // Rate limit by IP to prevent token enumeration
+    const ip = request.headers.get("x-forwarded-for")?.split(",")[0]?.trim() || "unknown";
+    const rl = rateLimit(`portal:${ip}`, { windowMs: 15 * 60 * 1000, maxRequests: 30 });
+    if (rl.limited) {
+      return NextResponse.json(
+        { error: "Too many requests. Try again later." },
+        { status: 429, headers: { "Retry-After": String(rl.retryAfterSeconds) } }
+      );
+    }
 
     const quote = await prisma.quote.findUnique({
       where: { portalToken: token },

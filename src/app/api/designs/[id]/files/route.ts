@@ -127,7 +127,7 @@ export async function POST(
 
     // Generate unique filename
     const timestamp = Date.now();
-    const safeName = file.name.replace(/[^a-zA-Z0-9._-]/g, "_");
+    const safeName = file.name.replace(/[^a-zA-Z0-9._-]/g, "_").slice(0, 200);
     const filename = `${timestamp}-${safeName}`;
     const filePath = path.join(uploadDir, filename);
 

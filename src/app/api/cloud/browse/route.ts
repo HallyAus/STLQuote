@@ -2,10 +2,19 @@ import { NextRequest, NextResponse } from "next/server";
 import { requireFeature } from "@/lib/auth-helpers";
 import * as googleDrive from "@/lib/google-drive";
 import * as oneDrive from "@/lib/onedrive";
+import { rateLimit } from "@/lib/rate-limit";
 
 export async function GET(request: NextRequest) {
   try {
     const user = await requireFeature("cloud_storage");
+
+    const rl = rateLimit(`cloud-browse:${user.id}`, { windowMs: 60 * 1000, maxRequests: 30 });
+    if (rl.limited) {
+      return NextResponse.json(
+        { error: "Too many requests. Try again shortly." },
+        { status: 429, headers: { "Retry-After": String(rl.retryAfterSeconds) } }
+      );
+    }
     const { searchParams } = new URL(request.url);
     const provider = searchParams.get("provider");
     const folderId = searchParams.get("folderId") || undefined;
