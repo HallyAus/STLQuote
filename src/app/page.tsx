@@ -36,6 +36,7 @@ import {
   Cloud,
   PenTool,
   Mail,
+  Ruler,
 } from "lucide-react";
 import { CalculatorDemo } from "@/components/landing/calculator-demo";
 
@@ -106,7 +107,7 @@ const FEATURES = [
     icon: Bot,
     title: "AI Quote Assistant",
     description:
-      "Describe a print job in plain English — or upload a reference image. Claude generates structured line items with material selection, cost estimates, and feasibility notes. Pro feature.",
+      "Describe a print job in plain English — or upload a reference image. Claude generates structured line items with material selection, cost estimates, and feasibility notes.",
     badge: "Pro",
   },
   {
@@ -114,7 +115,7 @@ const FEATURES = [
     title: "Professional Quotes",
     description:
       "Numbered quotes with line items, markup, terms, and expiry dates. Track from draft through sent to accepted. Save templates for repeat jobs.",
-    badge: null,
+    badge: "Core",
   },
   {
     icon: Receipt,
@@ -128,35 +129,35 @@ const FEATURES = [
     title: "Job Tracking",
     description:
       "Kanban board with 7 stages — queued through to shipped. Print farm calendar with weekly Gantt view. Drag-and-drop scheduling across printers.",
-    badge: null,
+    badge: "Core",
   },
   {
     icon: Palette,
     title: "Material & Inventory",
     description:
       "Track filament and resin stock levels, costs per gram, and low-stock alerts. Manage suppliers with part numbers and reorder thresholds.",
-    badge: null,
+    badge: "Core",
   },
   {
     icon: Users,
     title: "Client Management",
     description:
       "Full client database with tags, payment terms, and interaction timeline (calls, emails, meetings). Auto-created from Shopify orders.",
-    badge: null,
+    badge: "Core",
   },
   {
     icon: Link2,
     title: "Customer Upload Links",
     description:
-      "Create shareable links for customers to upload 3D files directly. Uploaded files land in your quote request queue with customer details — ready to review and quote.",
-    badge: null,
+      "Create shareable links for customers to upload STL, 3MF, G-code, and PDF files directly. Uploaded files land in your quote request queue — ready to review and quote.",
+    badge: "Core",
   },
   {
     icon: FileDown,
     title: "PDF Export",
     description:
       "Print-ready quote and invoice PDFs with your business logo, line item breakdown, terms, and payment details. Multi-currency support (AUD, USD, EUR, GBP).",
-    badge: null,
+    badge: "Core",
   },
   {
     icon: BarChart3,
@@ -170,14 +171,21 @@ const FEATURES = [
     title: "STL & G-code Upload",
     description:
       "Upload slicer files to auto-fill print time, weight, and material. Supports Bambu Studio, OrcaSlicer, PrusaSlicer, and Cura metadata.",
-    badge: null,
+    badge: "Core",
   },
   {
     icon: CalendarDays,
     title: "Print Farm Calendar",
     description:
       "Weekly Gantt grid view — printer rows, hour columns. Native drag-to-reschedule. Unscheduled jobs sidebar. Built for multi-printer farms.",
-    badge: null,
+    badge: "Core",
+  },
+  {
+    icon: Ruler,
+    title: "Part Drawings",
+    description:
+      "Generate technical engineering drawings from STL files. Front, side, top, and isometric views with dimension annotations. Export as landscape A4 PDF with title block.",
+    badge: "Pro",
   },
   {
     icon: Wrench,
@@ -197,7 +205,7 @@ const FEATURES = [
     icon: Cloud,
     title: "Cloud Storage",
     description:
-      "Sync design files, quotes, and invoices to Google Drive or OneDrive. Auto-creates organised folder structure. Connect via OAuth in seconds.",
+      "Sync design files, quotes, and invoices to Google Drive or OneDrive. One-click master backup of all data. Auto-creates organised folder structure.",
     badge: "Pro",
   },
 ];
@@ -318,7 +326,9 @@ const PRO_FEATURES = [
   "Job photos",
   "Bulk actions",
   "Design Studio with AI",
+  "Part Drawings with dimensions",
   "Cloud Storage (Google Drive, OneDrive)",
+  "Master backup to OneDrive",
 ];
 
 interface PricingFeature {
@@ -351,6 +361,7 @@ const PRICING_COMPARE: PricingFeature[] = [
   { name: "Job photos", free: false, pro: true },
   { name: "Bulk actions", free: false, pro: true },
   { name: "Design Studio", free: false, pro: true },
+  { name: "Part Drawings", free: false, pro: true },
   { name: "Cloud Storage", free: false, pro: true },
 ];
 
