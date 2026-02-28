@@ -142,7 +142,31 @@ export default function PublicUploadPage() {
   }
 
   const maxMB = Math.round(linkInfo.maxFileSize / 1024 / 1024);
-  const allowedExts = linkInfo.allowedTypes.split(",").map((t) => `.${t.trim()}`).join(", ");
+  const allowedTypes = linkInfo.allowedTypes.split(",").map((t) => t.trim());
+  const allowedExtsDisplay = allowedTypes.map((t) => `.${t}`).join(", ");
+
+  // Build accept string with both extensions and MIME types so mobile file pickers work.
+  // Mobile browsers (iOS especially) hide files with unknown extensions like .stl.
+  const MIME_MAP: Record<string, string[]> = {
+    stl: [".stl", "model/stl", "application/vnd.ms-pki.stl", "application/sla"],
+    "3mf": [".3mf", "application/vnd.ms-package.3dmanufacturing-3dmodel+xml", "model/3mf"],
+    step: [".step", ".stp", "application/step", "model/step"],
+    stp: [".stp", ".step"],
+    obj: [".obj", "model/obj"],
+    gcode: [".gcode", ".gco", ".g", "text/x-gcode"],
+    gco: [".gco"],
+    g: [".g"],
+    pdf: [".pdf", "application/pdf"],
+  };
+  const acceptParts = new Set<string>();
+  for (const t of allowedTypes) {
+    const mimes = MIME_MAP[t];
+    if (mimes) mimes.forEach((m) => acceptParts.add(m));
+    else acceptParts.add(`.${t}`);
+  }
+  // Always include octet-stream so mobile "Browse" shows unrecognised binary files
+  acceptParts.add("application/octet-stream");
+  const acceptAttr = Array.from(acceptParts).join(",");
 
   return (
     <div className="flex min-h-screen items-center justify-center bg-neutral-50 dark:bg-neutral-950 p-4">
@@ -194,7 +218,7 @@ export default function PublicUploadPage() {
             <input
               ref={inputRef}
               type="file"
-              accept={allowedExts}
+              accept={acceptAttr}
               className="hidden"
               onChange={(e) => {
                 const f = e.target.files?.[0];
@@ -217,7 +241,7 @@ export default function PublicUploadPage() {
                   Drop your file here or click to browse
                 </p>
                 <p className="mt-1 text-xs text-neutral-500 dark:text-neutral-400">
-                  {allowedExts} — max {maxMB}MB
+                  {allowedExtsDisplay} — max {maxMB}MB
                 </p>
               </div>
             )}
