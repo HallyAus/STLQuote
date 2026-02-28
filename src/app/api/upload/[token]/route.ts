@@ -7,7 +7,7 @@ import crypto from "crypto";
 import { sendEmail, escapeHtml } from "@/lib/email";
 import { createQuoteRequestTask } from "@/lib/asana";
 
-const ALLOWED_EXTENSIONS = new Set(["stl", "3mf", "step", "stp", "obj", "gcode", "gco", "g"]);
+const ALLOWED_EXTENSIONS = new Set(["stl", "3mf", "step", "stp", "obj", "gcode", "gco", "g", "pdf"]);
 const MAX_FILE_SIZE = 50 * 1024 * 1024; // 50MB
 
 /** Validate file content matches claimed extension (magic bytes / structure check) */
@@ -24,10 +24,11 @@ function validateFileContent(buffer: Buffer, ext: string): string | null {
           return null;
         }
       }
-      // ASCII STL: must have "solid" header AND "endsolid" footer
-      const text = buffer.toString("ascii");
+      // ASCII STL: must start with "solid" (don't require "endsolid" — some exporters
+      // omit it or it may be beyond the buffer read window for large files)
+      const text = buffer.subarray(0, 1024).toString("ascii");
       const trimmed = text.trimStart();
-      if (trimmed.startsWith("solid") && /endsolid/i.test(text)) return null;
+      if (trimmed.startsWith("solid")) return null;
       return "File content does not match STL format";
     }
 
@@ -61,6 +62,11 @@ function validateFileContent(buffer: Buffer, ext: string): string | null {
       if (/^;/m.test(gcodeHead) && /\n[GM]\d/m.test(gcodeHead)) return null;
       return "File content does not match G-code format";
     }
+
+    case "pdf":
+      // PDF magic bytes: %PDF-
+      if (buffer.length >= 5 && buffer.subarray(0, 5).toString("ascii") === "%PDF-") return null;
+      return "File content does not match PDF format";
 
     default:
       return null;

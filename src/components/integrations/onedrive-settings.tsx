@@ -7,6 +7,7 @@ import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { BANNER } from "@/lib/status-colours";
 import { Loader2, Unlink, Check, ExternalLink, Cloud, FolderPlus } from "lucide-react";
+import { MasterBackupButton } from "@/components/cloud/master-backup-button";
 
 interface ConnectionStatus {
   connected: boolean;
@@ -167,7 +168,7 @@ export function OneDriveSettings() {
               </div>
             </div>
 
-            <div className="flex gap-3">
+            <div className="flex flex-wrap gap-3">
               {!status?.rootFolderId && (
                 <Button onClick={handleFolderSetup} disabled={settingUp} variant="secondary">
                   {settingUp ? (
@@ -177,6 +178,7 @@ export function OneDriveSettings() {
                   )}
                 </Button>
               )}
+              {status?.rootFolderId && <MasterBackupButton />}
               <Button onClick={handleDisconnect} disabled={disconnecting} variant="ghost" className="text-destructive-foreground">
                 {disconnecting ? (
                   <><Loader2 className="mr-2 h-4 w-4 animate-spin" />Disconnecting...</>

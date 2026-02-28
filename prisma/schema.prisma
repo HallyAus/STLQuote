@@ -753,7 +753,7 @@ model UploadLink {
   active      Boolean   @default(true)
   expiresAt   DateTime?
   maxFileSize Int       @default(52428800) // 50MB in bytes
-  allowedTypes String   @default("stl,3mf,step,obj,gcode") // comma-separated
+  allowedTypes String   @default("stl,3mf,step,obj,gcode,pdf") // comma-separated
   createdAt   DateTime  @default(now())
   updatedAt   DateTime  @updatedAt
 

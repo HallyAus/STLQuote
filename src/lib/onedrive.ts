@@ -236,6 +236,102 @@ export async function uploadFile(
   return res.json() as Promise<DriveItem>;
 }
 
+/**
+ * Upload a large file to OneDrive using a resumable upload session.
+ * Required for files > 4MB. Uploads in 5MB chunks with Content-Range headers.
+ */
+export async function uploadLargeFile(
+  accessToken: string,
+  name: string,
+  content: Buffer,
+  folderId?: string
+): Promise<DriveItem> {
+  const CHUNK_SIZE = 5 * 1024 * 1024; // 5MB chunks
+
+  // Step 1: Create an upload session
+  const sessionUrl = folderId
+    ? `${MS_GRAPH_API}/me/drive/items/${folderId}:/${encodeURIComponent(name)}:/createUploadSession`
+    : `${MS_GRAPH_API}/me/drive/root:/${encodeURIComponent(name)}:/createUploadSession`;
+
+  const sessionRes = await fetch(sessionUrl, {
+    method: "POST",
+    headers: {
+      Authorization: `Bearer ${accessToken}`,
+      "Content-Type": "application/json",
+    },
+    body: JSON.stringify({
+      item: {
+        "@microsoft.graph.conflictBehavior": "rename",
+        name,
+      },
+    }),
+  });
+
+  if (!sessionRes.ok) {
+    const body = await sessionRes.text();
+    throw new Error(`OneDrive create upload session failed (${sessionRes.status}): ${body}`);
+  }
+
+  const session = await sessionRes.json();
+  const uploadUrl: string = session.uploadUrl;
+  const totalSize = content.length;
+
+  // Step 2: Upload in chunks
+  let offset = 0;
+  let result: DriveItem | null = null;
+
+  while (offset < totalSize) {
+    const end = Math.min(offset + CHUNK_SIZE, totalSize);
+    const chunk = content.subarray(offset, end);
+
+    const chunkRes = await fetch(uploadUrl, {
+      method: "PUT",
+      headers: {
+        "Content-Length": chunk.length.toString(),
+        "Content-Range": `bytes ${offset}-${end - 1}/${totalSize}`,
+      },
+      body: new Uint8Array(chunk),
+    });
+
+    if (chunkRes.status === 200 || chunkRes.status === 201) {
+      // Upload complete — response is the DriveItem
+      result = await chunkRes.json() as DriveItem;
+      break;
+    } else if (chunkRes.status === 202) {
+      // Accepted — more chunks needed, continue
+      offset = end;
+    } else {
+      const body = await chunkRes.text();
+      throw new Error(`OneDrive chunk upload failed (${chunkRes.status}): ${body}`);
+    }
+  }
+
+  if (!result) {
+    throw new Error("OneDrive upload completed without returning item metadata");
+  }
+
+  return result;
+}
+
+/**
+ * Upload a file, automatically choosing simple (≤4MB) or resumable (>4MB) upload.
+ */
+export async function uploadFileAuto(
+  accessToken: string,
+  name: string,
+  mimeType: string,
+  content: Buffer,
+  folderId?: string
+): Promise<DriveItem> {
+  const SIMPLE_UPLOAD_LIMIT = 4 * 1024 * 1024; // 4MB
+
+  if (content.length <= SIMPLE_UPLOAD_LIMIT) {
+    return uploadFile(accessToken, name, mimeType, content, folderId);
+  }
+
+  return uploadLargeFile(accessToken, name, content, folderId);
+}
+
 /** Download a file from OneDrive. Returns the file content as a Buffer. */
 export async function downloadFile(accessToken: string, itemId: string): Promise<Buffer> {
   const res = await fetch(`${MS_GRAPH_API}/me/drive/items/${itemId}/content`, {

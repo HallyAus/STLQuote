@@ -8,6 +8,8 @@
 
 <!-- Claude: add new entries at the top. Remove oldest when >20 entries. -->
 
+- [2026-03-01] v5.10.0 — Master Backup to OneDrive + Fix Customer Upload: (1) Customer upload fix — added PDF to ALLOWED_EXTENSIONS + magic byte validation (%PDF-), relaxed STL ASCII check (accept `solid` without requiring `endsolid`), updated UploadLink.allowedTypes default + migration 0034 for existing links; (2) OneDrive large file support — `uploadLargeFile()` resumable upload sessions with 5MB chunks, `uploadFileAuto()` auto-routing; (3) Master backup API (`/api/cloud/backup`) — SSE streaming, 5 phases (17 JSON data files, quote PDFs, invoice PDFs, design files, job photos), manifest.json, 1/hour rate limit, non-fatal error handling; (4) MasterBackupButton component with Dialog modal showing phase/item/counter/progress bar/warnings/summary; (5) Wired into OneDrive settings card.
+
 - [2026-03-01] v5.8.0 — Part Drawings feature: PartDrawing model (migration 0033), `part_drawings` Pro feature gate, offscreen Three.js renderer (front/side/top/iso orthographic + perspective views as PNG data URIs), CRUD API routes (/api/drawings, /api/drawings/[id]), 4 pages (list/new/detail/pdf), 4 components (drawings-page, new-drawing-form, drawing-detail, drawing-pdf with landscape A4 title block), new "Engineering" sidebar group, global search integration. Upload STL → parse → render 4 views → save → print PDF.
 
 <!-- Claude: add new entries at the top. Remove oldest when >20 entries. -->
