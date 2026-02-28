@@ -7,31 +7,31 @@ export default function sitemap(): MetadataRoute.Sitemap {
   const staticPages: MetadataRoute.Sitemap = [
     {
       url: baseUrl,
-      lastModified: new Date(),
+      lastModified: new Date("2026-02-28"),
       changeFrequency: "weekly",
       priority: 1,
     },
     {
       url: `${baseUrl}/blog`,
-      lastModified: new Date(),
+      lastModified: new Date("2026-02-28"),
       changeFrequency: "weekly",
       priority: 0.9,
     },
     {
       url: `${baseUrl}/register`,
-      lastModified: new Date(),
+      lastModified: new Date("2026-02-28"),
       changeFrequency: "monthly",
       priority: 0.7,
     },
     {
       url: `${baseUrl}/waitlist`,
-      lastModified: new Date(),
+      lastModified: new Date("2026-02-28"),
       changeFrequency: "monthly",
       priority: 0.5,
     },
     {
       url: `${baseUrl}/login`,
-      lastModified: new Date(),
+      lastModified: new Date("2026-02-28"),
       changeFrequency: "monthly",
       priority: 0.3,
     },

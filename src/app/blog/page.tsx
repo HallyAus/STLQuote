@@ -1,12 +1,22 @@
 import type { Metadata } from "next";
 import Link from "next/link";
-import { Printer, ArrowRight, Calendar, Clock, Tag } from "lucide-react";
+import { Printer, ArrowRight, Calendar, Clock } from "lucide-react";
 import { getRecentPosts } from "@/lib/blog-posts";
 
 export const metadata: Metadata = {
-  title: "Blog — Printforge",
+  title: "3D Printing Business Blog — Pricing Guides, Tips & Tutorials | Printforge",
   description:
     "Guides, tips, and insights for 3D print businesses. Learn how to price prints, choose materials, reduce waste, and grow your business.",
+  alternates: {
+    canonical: "https://crm.printforge.com.au/blog",
+  },
+  openGraph: {
+    title: "3D Printing Business Blog — Pricing Guides & Tips | Printforge",
+    description:
+      "Guides, tips, and insights for 3D print businesses. Learn how to price prints, choose materials, reduce waste, and grow your business.",
+    url: "https://crm.printforge.com.au/blog",
+    type: "website",
+  },
 };
 
 export default function BlogPage() {
@@ -61,7 +71,7 @@ export default function BlogPage() {
       <section className="border-b border-border/50 bg-card/30 pt-[57px] md:pt-0">
         <div className="mx-auto max-w-6xl px-6 py-16 text-center">
           <h1 className="text-4xl font-extrabold tracking-tight sm:text-5xl">
-            The Printforge Blog
+            3D Printing Business Guides & Tips
           </h1>
           <p className="mx-auto mt-4 max-w-2xl text-lg text-muted-foreground">
             Guides, tips, and insights for running a successful 3D printing business.

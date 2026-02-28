@@ -4,6 +4,10 @@ import { ArrowLeft } from "lucide-react";
 
 export const metadata: Metadata = {
   title: "Privacy Policy",
+  description: "Privacy Policy for Printforge Quote — how your data is handled in our self-hosted 3D print cost calculator and business management platform.",
+  alternates: {
+    canonical: "https://crm.printforge.com.au/privacy",
+  },
 };
 
 export default function PrivacyPage() {

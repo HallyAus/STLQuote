@@ -226,6 +226,37 @@ export default async function BlogPostPage({ params }: PageProps) {
         </div>
       </footer>
 
+      {/* BreadcrumbList JSON-LD */}
+      <script
+        type="application/ld+json"
+        dangerouslySetInnerHTML={{
+          __html: JSON.stringify({
+            "@context": "https://schema.org",
+            "@type": "BreadcrumbList",
+            itemListElement: [
+              {
+                "@type": "ListItem",
+                position: 1,
+                name: "Home",
+                item: "https://crm.printforge.com.au",
+              },
+              {
+                "@type": "ListItem",
+                position: 2,
+                name: "Blog",
+                item: "https://crm.printforge.com.au/blog",
+              },
+              {
+                "@type": "ListItem",
+                position: 3,
+                name: post.title,
+                item: `https://crm.printforge.com.au/blog/${slug}`,
+              },
+            ],
+          }),
+        }}
+      />
+
       {/* Article JSON-LD */}
       <script
         type="application/ld+json"
@@ -249,8 +280,10 @@ export default async function BlogPostPage({ params }: PageProps) {
               },
             },
             datePublished: post.publishedAt,
+            dateModified: post.updatedAt || post.publishedAt,
             mainEntityOfPage: `https://crm.printforge.com.au/blog/${slug}`,
             keywords: post.tags.join(", "),
+            image: `https://crm.printforge.com.au/blog/${slug}/opengraph-image`,
           }),
         }}
       />

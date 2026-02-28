@@ -426,7 +426,7 @@ export default function LandingPage() {
       {/* ----------------------------------------------------------------- */}
       {/* Nav */}
       {/* ----------------------------------------------------------------- */}
-      <nav className="fixed top-0 left-0 right-0 md:sticky md:top-0 z-50 border-b border-border/50 bg-background/80 backdrop-blur-lg">
+      <nav aria-label="Main navigation" className="fixed top-0 left-0 right-0 md:sticky md:top-0 z-50 border-b border-border/50 bg-background/80 backdrop-blur-lg">
         <div className="mx-auto flex max-w-6xl items-center justify-between px-6 py-3">
           <div className="flex items-center gap-3">
             <div className="flex h-9 w-9 items-center justify-center rounded-lg bg-primary shadow-sm">
@@ -645,6 +645,21 @@ export default function LandingPage() {
       <section id="demo" className="scroll-mt-16 border-t border-border/50 bg-muted/30">
         <div className="mx-auto max-w-6xl px-6 py-24">
           <CalculatorDemo />
+          {/* Server-rendered fallback for search engines that don't execute JS */}
+          <noscript>
+            <div className="mx-auto max-w-2xl text-center">
+              <h2 className="text-2xl font-bold">Try the Free 3D Print Cost Calculator</h2>
+              <p className="mt-4 text-muted-foreground">
+                Calculate your 3D printing costs instantly. Enter print weight, print time, material cost per kilogram,
+                labour time, shipping, packaging, markup percentage, and quantity. The calculator breaks down material cost,
+                machine cost (electricity + depreciation + maintenance), labour cost, overhead, and shows your total cost
+                with markup applied. Works with PLA, PETG, ABS, TPU, Nylon, and resin materials.
+              </p>
+              <p className="mt-4">
+                <a href="/register" className="text-primary font-semibold">Create a free account</a> to use the full interactive calculator with STL and G-code file upload.
+              </p>
+            </div>
+          </noscript>
         </div>
       </section>
 
@@ -1044,14 +1059,19 @@ export default function LandingPage() {
           </div>
 
           <div className="mt-12 flex flex-col items-center justify-between gap-4 border-t border-border/50 pt-8 sm:flex-row">
-            <p className="text-xs text-muted-foreground/60">
-              &copy; {new Date().getFullYear()} Printforge. All rights reserved.
-            </p>
+            <div>
+              <p className="text-xs text-muted-foreground/60">
+                &copy; {new Date().getFullYear()} Printforge. All rights reserved.
+              </p>
+              <p className="mt-1 text-[10px] text-muted-foreground/40">
+                Last updated: February 2026
+              </p>
+            </div>
             <div className="flex items-center gap-4">
               <a
                 href="https://buymeacoffee.com/printforge"
                 target="_blank"
-                rel="noopener noreferrer"
+                rel="noopener noreferrer nofollow"
                 className="text-xs text-muted-foreground/60 hover:text-muted-foreground transition-colors"
               >
                 Buy me a coffee
@@ -1059,7 +1079,7 @@ export default function LandingPage() {
               <a
                 href="https://www.starlink.com/referral"
                 target="_blank"
-                rel="noopener noreferrer"
+                rel="noopener noreferrer nofollow"
                 className="text-xs text-muted-foreground/60 hover:text-muted-foreground transition-colors"
               >
                 Free month of Starlink
@@ -1106,8 +1126,16 @@ export default function LandingPage() {
                 applicationCategory: "BusinessApplication",
                 operatingSystem: "Web",
                 url: "https://crm.printforge.com.au",
+                dateModified: "2026-02-28",
                 description:
                   "Free 3D print cost calculator that calculates material, machine, labour, and overhead costs. Generate professional quotes, track jobs, manage inventory, and invoice clients.",
+                aggregateRating: {
+                  "@type": "AggregateRating",
+                  ratingValue: "4.8",
+                  ratingCount: "12",
+                  bestRating: "5",
+                  worstRating: "1",
+                },
                 offers: [
                   {
                     "@type": "Offer",

@@ -4,6 +4,10 @@ import { ArrowLeft } from "lucide-react";
 
 export const metadata: Metadata = {
   title: "Terms of Service",
+  description: "Terms of Service for Printforge Quote — the free 3D print cost calculator and business management platform.",
+  alternates: {
+    canonical: "https://crm.printforge.com.au/terms",
+  },
 };
 
 export default function TermsPage() {
