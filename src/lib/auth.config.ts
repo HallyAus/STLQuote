@@ -50,7 +50,7 @@ export const authConfig = {
         token.role = (user as any).role as string;
         token.disabled = false;
         token.mustChangePassword = (user as any).mustChangePassword ?? false;
-        token.subscriptionTier = (user as any).subscriptionTier ?? "free";
+        token.subscriptionTier = (user as any).subscriptionTier ?? "hobby";
         token.subscriptionStatus = (user as any).subscriptionStatus ?? "trialing";
         token.trialEndsAt = (user as any).trialEndsAt?.toISOString() ?? null;
         token.createdAt = (user as any).createdAt?.toISOString() ?? null;
@@ -98,7 +98,7 @@ export const authConfig = {
     async session({ session, token }) {
       session.user.id = token.id as string;
       session.user.role = token.role as string;
-      session.user.subscriptionTier = (token.subscriptionTier as string) ?? "free";
+      session.user.subscriptionTier = (token.subscriptionTier as string) ?? "hobby";
       session.user.subscriptionStatus = (token.subscriptionStatus as string) ?? "trialing";
       (session.user as any).trialEndsAt = (token.trialEndsAt as string) ?? null;
       (session.user as any).createdAt = (token.createdAt as string) ?? null;

@@ -21,7 +21,7 @@ interface UserModulesProps {
 
 export function UserModules({ userId }: UserModulesProps) {
   const [features, setFeatures] = useState<FeatureState[]>([]);
-  const [tier, setTier] = useState<string>("free");
+  const [tier, setTier] = useState<string>("hobby");
   const [loading, setLoading] = useState(true);
   const [updating, setUpdating] = useState<string | null>(null);
 

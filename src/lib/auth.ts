@@ -139,7 +139,7 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
         data: {
           emailVerified: new Date(),
           role: isAdmin ? "SUPER_ADMIN" : "USER",
-          subscriptionTier: "pro",
+          subscriptionTier: "hobby",
           subscriptionStatus: "trialing",
           trialEndsAt: trialEnd,
           lastLogin: new Date(),

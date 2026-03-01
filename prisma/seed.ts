@@ -68,7 +68,7 @@ const LOG_MESSAGES: { type: string; level: string; message: string }[] = [
   { type: "xero_sync", level: "error", message: "Xero sync failed — token expired" },
   { type: "auth", level: "info", message: "Password reset requested" },
   { type: "email", level: "info", message: "Newsletter sent — 12 recipients" },
-  { type: "billing", level: "info", message: "Trial started — 14 day Pro trial" },
+  { type: "billing", level: "info", message: "Trial started — 14 day Scale trial" },
   { type: "auth", level: "info", message: "User disabled by admin" },
   { type: "email", level: "info", message: "Welcome email sent" },
   { type: "billing", level: "info", message: "Subscription cancelled" },

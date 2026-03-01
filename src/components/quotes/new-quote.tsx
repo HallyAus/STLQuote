@@ -106,7 +106,7 @@ export function NewQuote() {
   const isPro = user
     ? hasFeature(
         getEffectiveTier({
-          subscriptionTier: user.subscriptionTier ?? "free",
+          subscriptionTier: user.subscriptionTier ?? "hobby",
           subscriptionStatus: user.subscriptionStatus ?? "",
           trialEndsAt: user.trialEndsAt ?? null,
           role: user.role,

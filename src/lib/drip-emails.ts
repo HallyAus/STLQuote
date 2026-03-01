@@ -62,7 +62,7 @@ function integrationsBadges(): string {
 function trialBanner(daysLeft: number): string {
   if (daysLeft <= 0) return "";
   return `<p style="background: #eff6ff; border: 1px solid #bfdbfe; border-radius: 6px; padding: 10px 14px; font-size: 13px; color: #1e40af; margin: 16px 0;">
-    &#x23F3; You have <strong>${daysLeft} day${daysLeft === 1 ? "" : "s"}</strong> left on your free Pro trial. All features are unlocked!
+    &#x23F3; You have <strong>${daysLeft} day${daysLeft === 1 ? "" : "s"}</strong> left on your free Scale trial. All features are unlocked!
   </p>`;
 }
 
@@ -339,8 +339,8 @@ export const DRIP_SEQUENCE: DripEmail[] = [
         </div>
         ${daysLeft > 0 ? `
         <div style="background: #fef3c7; border: 1px solid #fbbf24; border-radius: 8px; padding: 16px; margin: 16px 0;">
-          <p style="margin: 0; font-weight: 600; color: #92400e;">&#x23F3; Your Pro trial ends in ${daysLeft} day${daysLeft === 1 ? "" : "s"}</p>
-          <p style="margin: 8px 0 0; color: #92400e; font-size: 14px;">After your trial, you'll keep access to the calculator, quotes, materials, printers, clients, and jobs on the Free plan. Upgrade to Pro to keep invoicing, integrations, Design Studio, and more.</p>
+          <p style="margin: 0; font-weight: 600; color: #92400e;">&#x23F3; Your Scale trial ends in ${daysLeft} day${daysLeft === 1 ? "" : "s"}</p>
+          <p style="margin: 8px 0 0; color: #92400e; font-size: 14px;">After your trial, you'll keep access to the calculator, quotes, materials, printers, clients, and jobs on the Hobby plan. Upgrade to keep invoicing, integrations, Design Studio, and more.</p>
         </div>` : ""}
         <p><strong>That's the tour!</strong> You've now seen everything Printforge can do. If you have any questions or feature requests, I'm always just a reply away.</p>
         <p style="margin: 24px 0;">

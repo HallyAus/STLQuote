@@ -12,7 +12,10 @@ import {
   getEffectiveTier,
   isTrialActive,
   trialDaysRemaining,
-  PRO_FEATURE_LIST,
+  TIER_LABELS,
+  FEATURE_LIST,
+  TIER_RANK,
+  type Tier,
 } from "@/lib/tier";
 import {
   Check,
@@ -20,6 +23,7 @@ import {
   ExternalLink,
   AlertTriangle,
   Sparkles,
+  Crown,
 } from "lucide-react";
 
 // ---------------------------------------------------------------------------
@@ -27,17 +31,23 @@ import {
 // ---------------------------------------------------------------------------
 
 type BillingInterval = "month" | "year";
+type PaidTier = "starter" | "pro" | "scale";
 
 // ---------------------------------------------------------------------------
 // Constants
 // ---------------------------------------------------------------------------
 
-const MONTHLY_PRICE = 29;
-const ANNUAL_PRICE = 290;
-const ANNUAL_MONTHLY_EQUIVALENT = Math.round((ANNUAL_PRICE / 12) * 100) / 100;
-const ANNUAL_SAVINGS_PCT = Math.round(
-  ((MONTHLY_PRICE * 12 - ANNUAL_PRICE) / (MONTHLY_PRICE * 12)) * 100
-);
+const TIER_PRICING: Record<PaidTier, { monthly: number; annual: number }> = {
+  starter: { monthly: 12, annual: 108 },
+  pro: { monthly: 24, annual: 216 },
+  scale: { monthly: 49, annual: 468 },
+};
+
+const TIER_DESCRIPTIONS: Record<PaidTier, string> = {
+  starter: "Unlimited core + business essentials",
+  pro: "Invoicing, AI, suppliers, webhooks",
+  scale: "Full platform + integrations",
+};
 
 // ---------------------------------------------------------------------------
 // Component
@@ -56,16 +66,15 @@ function BillingSettingsInner() {
   const searchParams = useSearchParams();
   const { toast } = useToast();
 
-  const [interval, setInterval] = useState<BillingInterval>("month");
-  const [checkoutLoading, setCheckoutLoading] = useState(false);
+  const [interval, setInterval] = useState<BillingInterval>("year");
+  const [checkoutLoading, setCheckoutLoading] = useState<PaidTier | null>(null);
   const [portalLoading, setPortalLoading] = useState(false);
 
   // Handle billing=success / billing=cancel URL params
   useEffect(() => {
     const billing = searchParams.get("billing");
     if (billing === "success") {
-      toast("Subscription activated! Welcome to Pro.", "success");
-      // Clean the URL without triggering a full navigation
+      toast("Subscription activated! Welcome aboard.", "success");
       window.history.replaceState({}, "", "/settings");
     } else if (billing === "cancel") {
       toast("Checkout cancelled. No changes made.", "default");
@@ -85,24 +94,20 @@ function BillingSettingsInner() {
   const trialing =
     user.subscriptionStatus === "trialing" && isTrialActive(user.trialEndsAt);
   const daysLeft = trialDaysRemaining(user.trialEndsAt);
-  const isPro = effectiveTier === "pro";
   const isActive = user.subscriptionStatus === "active";
   const isPastDue = user.subscriptionStatus === "past_due";
   const isCancelled = user.subscriptionStatus === "cancelled";
-
-  // User has been through Stripe if they have an active/past_due/cancelled status
   const hasStripeCustomer = isActive || isPastDue || isCancelled;
-
 
   // ---- Handlers ----
 
-  async function handleCheckout() {
+  async function handleCheckout(tier: PaidTier) {
     try {
-      setCheckoutLoading(true);
+      setCheckoutLoading(tier);
       const res = await fetch("/api/billing/checkout", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ interval }),
+        body: JSON.stringify({ tier, interval }),
       });
 
       if (!res.ok) {
@@ -120,7 +125,7 @@ function BillingSettingsInner() {
         "error"
       );
     } finally {
-      setCheckoutLoading(false);
+      setCheckoutLoading(null);
     }
   }
 
@@ -176,20 +181,20 @@ function BillingSettingsInner() {
               <span className="text-sm font-semibold text-foreground">
                 Current plan
               </span>
-              <Badge variant={isPro ? "success" : "default"}>
-                {isPro ? "Pro" : "Free"}
+              <Badge variant={effectiveTier !== "hobby" ? "success" : "default"}>
+                {TIER_LABELS[effectiveTier]}
               </Badge>
             </div>
             <p className="text-xs text-muted-foreground">
               {trialing
                 ? `Trial — ${daysLeft} day${daysLeft !== 1 ? "s" : ""} remaining`
                 : isActive
-                  ? "Your Pro subscription is active"
+                  ? `Your ${TIER_LABELS[effectiveTier]} subscription is active`
                   : isPastDue
                     ? "Payment issue — please update your payment method"
                     : isCancelled
                       ? "Cancelled — access continues until the end of your billing period"
-                      : "Upgrade to unlock all features"}
+                      : "Upgrade to unlock more features"}
             </p>
           </div>
         </div>
@@ -205,22 +210,11 @@ function BillingSettingsInner() {
           </div>
         )}
 
-        {/* Pricing toggle + upgrade (show if not already active Pro) */}
+        {/* Pricing toggle + tier cards (show if not already active paid) */}
         {!isActive && (
           <div className="space-y-4">
             {/* Monthly / Annual toggle */}
             <div className="flex items-center gap-1 rounded-lg bg-muted p-1">
-              <button
-                onClick={() => setInterval("month")}
-                className={cn(
-                  "flex-1 rounded-md px-3 py-1.5 text-sm font-medium transition-colors",
-                  interval === "month"
-                    ? "bg-background text-foreground shadow-sm"
-                    : "text-muted-foreground hover:text-foreground"
-                )}
-              >
-                Monthly
-              </button>
               <button
                 onClick={() => setInterval("year")}
                 className={cn(
@@ -232,37 +226,77 @@ function BillingSettingsInner() {
               >
                 Annual
                 <Badge variant="success" size="sm" className="ml-1.5">
-                  Save {ANNUAL_SAVINGS_PCT}%
+                  Save 25%
                 </Badge>
+              </button>
+              <button
+                onClick={() => setInterval("month")}
+                className={cn(
+                  "flex-1 rounded-md px-3 py-1.5 text-sm font-medium transition-colors",
+                  interval === "month"
+                    ? "bg-background text-foreground shadow-sm"
+                    : "text-muted-foreground hover:text-foreground"
+                )}
+              >
+                Monthly
               </button>
             </div>
 
-            {/* Price display */}
-            <div className="text-center">
-              <div className="flex items-baseline justify-center gap-1">
-                <span className="text-3xl font-bold text-foreground">
-                  ${interval === "month" ? MONTHLY_PRICE : ANNUAL_PRICE}
-                </span>
-                <span className="text-sm text-muted-foreground">
-                  /{interval === "month" ? "mo" : "yr"}
-                </span>
-              </div>
-              {interval === "year" && (
-                <p className="mt-1 text-xs text-muted-foreground">
-                  ${ANNUAL_MONTHLY_EQUIVALENT}/mo billed annually
-                </p>
-              )}
-            </div>
+            {/* Tier cards */}
+            <div className="grid gap-3 sm:grid-cols-3">
+              {(["starter", "pro", "scale"] as PaidTier[]).map((tier) => {
+                const pricing = TIER_PRICING[tier];
+                const price = interval === "month" ? pricing.monthly : pricing.annual;
+                const perMonth = interval === "year"
+                  ? Math.round((pricing.annual / 12) * 100) / 100
+                  : pricing.monthly;
+                const isCurrentTier = effectiveTier === tier && isActive;
+                const isUpgrade = TIER_RANK[tier as Tier] > TIER_RANK[effectiveTier];
+                const isPro = tier === "pro";
 
-            {/* Upgrade button */}
-            <Button
-              className="w-full"
-              onClick={handleCheckout}
-              loading={checkoutLoading}
-            >
-              <CreditCard className="mr-2 h-4 w-4" />
-              Upgrade to Pro
-            </Button>
+                return (
+                  <div
+                    key={tier}
+                    className={cn(
+                      "relative rounded-xl border p-4",
+                      isPro
+                        ? "border-2 border-primary shadow-md"
+                        : "border-border"
+                    )}
+                  >
+                    {isPro && (
+                      <div className="absolute -top-2.5 left-3 inline-flex items-center gap-1 rounded-full bg-primary px-2 py-0.5 text-[9px] font-bold text-primary-foreground">
+                        <Crown className="h-2.5 w-2.5" />
+                        Popular
+                      </div>
+                    )}
+                    <p className="text-sm font-semibold">{TIER_LABELS[tier]}</p>
+                    <div className="mt-2 flex items-baseline gap-1">
+                      <span className="text-2xl font-bold">${perMonth}</span>
+                      <span className="text-xs text-muted-foreground">/mo</span>
+                    </div>
+                    {interval === "year" && (
+                      <p className="text-[11px] text-muted-foreground">
+                        ${price}/yr billed annually
+                      </p>
+                    )}
+                    <p className="mt-2 text-xs text-muted-foreground">
+                      {TIER_DESCRIPTIONS[tier]}
+                    </p>
+                    <Button
+                      size="sm"
+                      variant={isPro ? "primary" : "secondary"}
+                      className="mt-3 w-full"
+                      onClick={() => handleCheckout(tier)}
+                      loading={checkoutLoading === tier}
+                      disabled={isCurrentTier || checkoutLoading !== null}
+                    >
+                      {isCurrentTier ? "Current plan" : isUpgrade ? "Upgrade" : "Switch"}
+                    </Button>
+                  </div>
+                );
+              })}
+            </div>
           </div>
         )}
 
@@ -279,13 +313,15 @@ function BillingSettingsInner() {
           </Button>
         )}
 
-        {/* Feature checklist */}
+        {/* Feature checklist — show features for current tier and above */}
         <div className="space-y-2">
           <h4 className="text-sm font-medium text-foreground">
-            Everything in Pro
+            Features included in {TIER_LABELS[effectiveTier]}
           </h4>
           <ul className="space-y-1.5">
-            {PRO_FEATURE_LIST.map((item) => (
+            {FEATURE_LIST.filter(
+              (item) => TIER_RANK[item.tier] <= TIER_RANK[effectiveTier]
+            ).map((item) => (
               <li
                 key={item.feature}
                 className="flex items-start gap-2 text-sm"
@@ -340,6 +376,6 @@ function StatusBadge({
     case "inactive":
       return <Badge variant="default">Inactive</Badge>;
     default:
-      return <Badge variant="default">Free</Badge>;
+      return <Badge variant="default">Hobby</Badge>;
   }
 }

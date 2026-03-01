@@ -3,10 +3,11 @@ import Stripe from "stripe";
 import { z } from "zod";
 import { prisma } from "@/lib/prisma";
 import { getSessionUser } from "@/lib/auth-helpers";
-import { getStripe, getStripePrices } from "@/lib/stripe";
+import { getStripe, getPriceId } from "@/lib/stripe";
 import { rateLimit } from "@/lib/rate-limit";
 
 const checkoutSchema = z.object({
+  tier: z.enum(["starter", "pro", "scale"]),
   interval: z.enum(["month", "year"]),
 });
 
@@ -33,13 +34,12 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    const { interval } = parsed.data;
-    const prices = getStripePrices();
-    const priceId = interval === "month" ? prices.monthly : prices.annual;
+    const { tier, interval } = parsed.data;
+    const priceId = getPriceId(tier, interval);
 
     if (!priceId) {
       return NextResponse.json(
-        { error: "Stripe price not configured for this interval" },
+        { error: "Stripe price not configured for this tier/interval" },
         { status: 500 }
       );
     }
@@ -58,7 +58,7 @@ export async function POST(request: NextRequest) {
       line_items: [{ price: priceId, quantity: 1 }],
       success_url: `${origin}/settings?billing=success`,
       cancel_url: `${origin}/settings?billing=cancel`,
-      metadata: { userId: user.id },
+      metadata: { userId: user.id, tier },
       allow_promotion_codes: true,
     };
 

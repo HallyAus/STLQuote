@@ -28,7 +28,7 @@ export async function getSessionUser(): Promise<SessionUser | null> {
 
   const realUserId = session.user.id;
   const role = session.user.role;
-  const subscriptionTier = session.user.subscriptionTier ?? "free";
+  const subscriptionTier = session.user.subscriptionTier ?? "hobby";
   const subscriptionStatus = session.user.subscriptionStatus ?? "trialing";
   const trialEndsAt = session.user.trialEndsAt ?? null;
 
@@ -129,8 +129,11 @@ export async function requireFeature(feature: Feature): Promise<SessionUser> {
     });
   }
   if (!hasFeatureWithOverrides(user.effectiveTier, feature, user.moduleOverrides)) {
+    const { getFeatureTier, TIER_LABELS } = await import("@/lib/tier");
+    const requiredTier = getFeatureTier(feature);
+    const tierLabel = requiredTier ? TIER_LABELS[requiredTier] : "a paid";
     throw new Response(
-      JSON.stringify({ error: "This feature requires a Pro subscription", code: "PRO_REQUIRED", feature }),
+      JSON.stringify({ error: `This feature requires a ${tierLabel} subscription or higher`, code: "UPGRADE_REQUIRED", feature, requiredTier }),
       { status: 403, headers: { "Content-Type": "application/json" } }
     );
   }
@@ -154,7 +157,7 @@ export async function requireAdmin(): Promise<SessionUser> {
       headers: { "Content-Type": "application/json" },
     });
   }
-  const tier = session.user.subscriptionTier ?? "free";
+  const tier = session.user.subscriptionTier ?? "hobby";
   const status = session.user.subscriptionStatus ?? "trialing";
   const trial = session.user.trialEndsAt ?? null;
   return {
@@ -188,7 +191,7 @@ export async function requireSuperAdmin(): Promise<SessionUser> {
       headers: { "Content-Type": "application/json" },
     });
   }
-  const tier = session.user.subscriptionTier ?? "free";
+  const tier = session.user.subscriptionTier ?? "hobby";
   const status = session.user.subscriptionStatus ?? "trialing";
   const trial = session.user.trialEndsAt ?? null;
   return {

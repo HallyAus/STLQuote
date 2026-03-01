@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
-import { getStripe } from "@/lib/stripe";
+import { getStripe, tierFromPriceId } from "@/lib/stripe";
 import type Stripe from "stripe";
 
 export async function POST(request: NextRequest) {
@@ -68,6 +68,18 @@ async function handleCheckoutCompleted(session: Stripe.Checkout.Session) {
     return;
   }
 
+  // Read tier from metadata (set during checkout) or fall back to price lookup
+  let tier = session.metadata?.tier;
+  if (!tier && session.subscription) {
+    const stripe = getStripe();
+    const subId = typeof session.subscription === "string" ? session.subscription : session.subscription.id;
+    const sub = await stripe.subscriptions.retrieve(subId);
+    const priceId = sub.items.data[0]?.price?.id;
+    if (priceId) tier = tierFromPriceId(priceId) ?? undefined;
+  }
+  // Default to "pro" if we can't determine (shouldn't happen)
+  if (!tier) tier = "pro";
+
   const stripeCustomerId = typeof session.customer === "string"
     ? session.customer
     : session.customer?.id ?? null;
@@ -79,7 +91,7 @@ async function handleCheckoutCompleted(session: Stripe.Checkout.Session) {
   await prisma.user.update({
     where: { id: userId },
     data: {
-      subscriptionTier: "pro",
+      subscriptionTier: tier,
       subscriptionStatus: "active",
       stripeCustomerId,
       stripeSubscriptionId,
@@ -91,7 +103,7 @@ async function handleCheckoutCompleted(session: Stripe.Checkout.Session) {
     data: {
       userId,
       action: "upgraded",
-      detail: `Checkout completed — subscription ${stripeSubscriptionId}`,
+      detail: `Checkout completed — ${tier} subscription ${stripeSubscriptionId}`,
     },
   });
 }
@@ -124,6 +136,13 @@ async function handleSubscriptionUpdated(subscription: Stripe.Subscription) {
   const updateData: Record<string, unknown> = {
     subscriptionStatus: mappedStatus,
   };
+
+  // Detect tier from the subscription's current price
+  const priceId = subscription.items.data[0]?.price?.id;
+  if (priceId) {
+    const tier = tierFromPriceId(priceId);
+    if (tier) updateData.subscriptionTier = tier;
+  }
 
   // If the subscription is set to cancel at period end, record when it ends
   if (subscription.cancel_at_period_end && subscription.current_period_end) {
@@ -160,7 +179,7 @@ async function handleSubscriptionDeleted(subscription: Stripe.Subscription) {
   await prisma.user.update({
     where: { id: user.id },
     data: {
-      subscriptionTier: "free",
+      subscriptionTier: "hobby",
       subscriptionStatus: "cancelled",
       stripeSubscriptionId: null,
     },

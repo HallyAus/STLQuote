@@ -67,7 +67,7 @@ model User {
   updatedAt     DateTime  @updatedAt
 
   // Subscription
-  subscriptionTier     String    @default("free") // free | pro
+  subscriptionTier     String    @default("hobby") // hobby | starter | pro | scale
   subscriptionStatus   String    @default("trialing") // trialing | active | past_due | cancelled | inactive
   stripeCustomerId     String?   @unique
   stripeSubscriptionId String?   @unique

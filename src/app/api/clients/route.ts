@@ -3,6 +3,7 @@ import { z } from "zod";
 import { prisma } from "@/lib/prisma";
 import { getSessionUser } from "@/lib/auth-helpers";
 import { rateLimit } from "@/lib/rate-limit";
+import { getTierLimits } from "@/lib/tier";
 
 const createClientSchema = z.object({
   name: z.string().min(1, "Name is required"),
@@ -56,6 +57,18 @@ export async function POST(request: NextRequest) {
         { error: "Too many requests. Please try again later." },
         { status: 429, headers: { "Retry-After": String(rl.retryAfterSeconds) } }
       );
+    }
+
+    // Tier quantity limit
+    const limits = getTierLimits(user.effectiveTier);
+    if (limits) {
+      const count = await prisma.client.count({ where: { userId: user.id } });
+      if (count >= limits.clients) {
+        return NextResponse.json(
+          { error: `Client limit reached (${limits.clients}). Upgrade to Starter for unlimited clients.`, code: "TIER_LIMIT" },
+          { status: 403 }
+        );
+      }
     }
 
     const body = await request.json();

@@ -59,7 +59,7 @@ export async function POST(
           emailVerified: new Date(),
           mustChangePassword: true,
           role: "USER",
-          subscriptionTier: "free",
+          subscriptionTier: "hobby",
           subscriptionStatus: "trialing",
           trialEndsAt,
         },
@@ -98,7 +98,7 @@ export async function POST(
         data: {
           userId: user.id,
           action: "trial_started",
-          detail: `14-day Pro trial started via waitlist approval, expires ${trialEndsAt.toISOString()}`,
+          detail: `14-day Scale trial started via waitlist approval, expires ${trialEndsAt.toISOString()}`,
         },
       })
       .catch(() => {});
@@ -123,7 +123,7 @@ export async function POST(
             Sign In Now
           </a>
         </p>
-        <p style="color: #666; font-size: 14px;">Your 14-day Pro trial has started. Enjoy full access to all features!</p>
+        <p style="color: #666; font-size: 14px;">Your 14-day Scale trial has started. Enjoy full access to all features!</p>
         <hr style="border: none; border-top: 1px solid #e5e5e5; margin: 24px 0;" />
         <p style="color: #999; font-size: 12px;">Printforge — 3D Print Cost Calculator</p>
       </div>`,

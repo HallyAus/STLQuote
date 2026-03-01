@@ -60,7 +60,7 @@ export function AdminUsers() {
     email: "",
     role: "USER",
     password: "",
-    grantPro: false,
+    assignTier: "hobby" as string,
   });
   const [editLoading, setEditLoading] = useState(false);
   const [editError, setEditError] = useState("");
@@ -201,7 +201,7 @@ export function AdminUsers() {
       email: user.email || "",
       role: user.role,
       password: "",
-      grantPro: user.subscriptionTier === "pro" && user.subscriptionStatus === "active",
+      assignTier: user.subscriptionTier || "hobby",
     });
     setEditError("");
     setEditSuccess("");
@@ -219,7 +219,7 @@ export function AdminUsers() {
         name: editForm.name,
         email: editForm.email,
         role: editForm.role,
-        grantPro: editForm.grantPro,
+        assignTier: editForm.assignTier,
       };
       if (editForm.password) {
         payload.password = editForm.password;
@@ -244,8 +244,8 @@ export function AdminUsers() {
                 name: editForm.name,
                 email: editForm.email,
                 role: editForm.role,
-                subscriptionTier: editForm.grantPro ? "pro" : u.subscriptionTier === "pro" && !editForm.grantPro ? "free" : u.subscriptionTier,
-                subscriptionStatus: editForm.grantPro ? "active" : u.subscriptionStatus,
+                subscriptionTier: editForm.assignTier,
+                subscriptionStatus: editForm.assignTier !== "hobby" ? "active" : u.subscriptionStatus,
               }
             : u
         )
@@ -399,12 +399,12 @@ export function AdminUsers() {
                         <span
                           className={cn(
                             "inline-flex rounded-full px-2 py-0.5 text-xs font-medium w-fit",
-                            user.subscriptionTier === "pro" || user.subscriptionStatus === "trialing"
+                            user.subscriptionTier !== "hobby" || user.subscriptionStatus === "trialing"
                               ? "bg-primary/10 text-primary"
                               : "bg-muted text-muted-foreground"
                           )}
                         >
-                          {user.subscriptionStatus === "trialing" ? "Trial" : user.subscriptionTier === "pro" ? "Pro" : "Free"}
+                          {user.subscriptionStatus === "trialing" ? "Trial" : user.subscriptionTier.charAt(0).toUpperCase() + user.subscriptionTier.slice(1)}
                         </span>
                         {user.subscriptionStatus === "trialing" && user.trialEndsAt && (
                           <span className="text-[10px] text-muted-foreground">
@@ -721,18 +721,23 @@ export function AdminUsers() {
                   disabled={!isSuperAdmin}
                 />
                 <Input label="New Password (optional)" type="password" value={editForm.password} onChange={(e) => setEditForm((f) => ({ ...f, password: e.target.value }))} placeholder="Leave blank to keep current" minLength={8} />
-                <label className="flex items-center gap-3 rounded-md border border-border p-3 cursor-pointer hover:bg-muted/50 transition-colors">
-                  <input
-                    type="checkbox"
-                    checked={editForm.grantPro}
-                    onChange={(e) => setEditForm((f) => ({ ...f, grantPro: e.target.checked }))}
-                    className="h-4 w-4 rounded border-border"
-                  />
-                  <div>
-                    <span className="text-sm font-medium">Grant Pro access</span>
-                    <p className="text-xs text-muted-foreground">Give this user Pro features without requiring payment</p>
-                  </div>
-                </label>
+                <Select
+                  label="Subscription Tier"
+                  options={[
+                    { value: "hobby", label: "Hobby (Free)" },
+                    { value: "starter", label: "Starter ($12/mo)" },
+                    { value: "pro", label: "Pro ($24/mo)" },
+                    { value: "scale", label: "Scale ($49/mo)" },
+                  ]}
+                  value={editForm.assignTier}
+                  onChange={(e) => setEditForm((f) => ({ ...f, assignTier: e.target.value }))}
+                />
+                {editForm.assignTier !== "hobby" && (
+                  <p className="text-xs text-muted-foreground -mt-2">
+                    This grants {editForm.assignTier.charAt(0).toUpperCase() + editForm.assignTier.slice(1)} access without requiring payment.
+                    {editUser?.subscriptionStatus === "active" && editUser?.subscriptionTier !== editForm.assignTier && " If the user has a Stripe subscription, manage it via Stripe."}
+                  </p>
+                )}
                 <div className="flex gap-2 pt-2">
                   <Button type="button" variant="secondary" className="flex-1" onClick={() => setEditUser(null)}>
                     {editSuccess ? "Done" : "Cancel"}

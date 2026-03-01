@@ -98,7 +98,7 @@ export async function POST(request: NextRequest) {
           email,
           passwordHash,
           role: isAdmin ? "SUPER_ADMIN" : "USER",
-          subscriptionTier: "free",
+          subscriptionTier: "hobby",
           subscriptionStatus: "trialing",
           trialEndsAt,
         },
@@ -116,7 +116,7 @@ export async function POST(request: NextRequest) {
         data: {
           userId: user.id,
           action: "trial_started",
-          detail: `14-day Pro trial started, expires ${trialEndsAt.toISOString()}`,
+          detail: `14-day Scale trial started, expires ${trialEndsAt.toISOString()}`,
         },
       }).catch(() => { /* non-blocking */ });
 

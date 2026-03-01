@@ -4,6 +4,7 @@ import { prisma } from "@/lib/prisma";
 import { getSessionUser } from "@/lib/auth-helpers";
 import { rateLimit } from "@/lib/rate-limit";
 import { log } from "@/lib/logger";
+import { getTierLimits } from "@/lib/tier";
 
 const lineItemSchema = z.object({
   description: z.string().min(1, "Description is required"),
@@ -92,6 +93,18 @@ export async function POST(request: NextRequest) {
         { error: "Too many requests. Please try again later." },
         { status: 429, headers: { "Retry-After": String(rl.retryAfterSeconds) } }
       );
+    }
+
+    // Tier quantity limit
+    const limits = getTierLimits(user.effectiveTier);
+    if (limits) {
+      const count = await prisma.quote.count({ where: { userId: user.id } });
+      if (count >= limits.quotes) {
+        return NextResponse.json(
+          { error: `Quote limit reached (${limits.quotes}). Upgrade to Starter for unlimited quotes.`, code: "TIER_LIMIT" },
+          { status: 403 }
+        );
+      }
     }
 
     const body = await request.json();

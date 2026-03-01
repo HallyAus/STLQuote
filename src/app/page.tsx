@@ -39,6 +39,7 @@ import {
   Ruler,
 } from "lucide-react";
 import { CalculatorDemo } from "@/components/landing/calculator-demo";
+import { PricingCards } from "@/components/landing/pricing-cards";
 
 export const metadata: Metadata = {
   title: "Free 3D Print Cost Calculator & Quote Software | Printforge",
@@ -91,7 +92,7 @@ const HERO_BADGES = [
 const STATS = [
   { value: "< 1 min", label: "to calculate a quote" },
   { value: "100%", label: "secure & private" },
-  { value: "14 days", label: "free Pro trial" },
+  { value: "14 days", label: "free Scale trial" },
   { value: "$0", label: "to get started" },
 ];
 
@@ -108,7 +109,7 @@ const FEATURES = [
     title: "AI Quote Assistant",
     description:
       "Describe a print job in plain English — or upload a reference image. Claude generates structured line items with material selection, cost estimates, and feasibility notes.",
-    badge: "Pro",
+    badge: "Pro+",
   },
   {
     icon: FileText,
@@ -122,7 +123,7 @@ const FEATURES = [
     title: "Invoicing",
     description:
       "Create invoices from quotes or jobs. PDF generation with TAX INVOICE header, GST, ABN, and PAID watermark. Send via email with PDF attachment.",
-    badge: "Pro",
+    badge: "Pro+",
   },
   {
     icon: Briefcase,
@@ -164,7 +165,7 @@ const FEATURES = [
     title: "Dashboard Analytics",
     description:
       "Revenue tracking, quote conversion rates, printer utilisation bars, top materials breakdown, and average markup insights at a glance.",
-    badge: "Pro",
+    badge: "Starter+",
   },
   {
     icon: Upload,
@@ -185,28 +186,28 @@ const FEATURES = [
     title: "Part Drawings",
     description:
       "Generate technical engineering drawings from STL files. Front, side, top, and isometric views with dimension annotations. Export as landscape A4 PDF with title block.",
-    badge: "Pro",
+    badge: "Pro+",
   },
   {
     icon: Wrench,
     title: "Consumables Tracking",
     description:
       "Track nozzles, build plates, and other consumables. Stock alerts, reorder thresholds, and supplier links for one-click reordering.",
-    badge: "Pro",
+    badge: "Pro+",
   },
   {
     icon: PenTool,
     title: "Design Studio",
     description:
       "Manage design projects with AI chat, reference image analysis, file versioning, and revision timelines. Generate briefs and convert designs to quotes.",
-    badge: "Pro",
+    badge: "Scale",
   },
   {
     icon: Cloud,
     title: "Cloud Storage",
     description:
       "Sync design files, quotes, and invoices to Google Drive or OneDrive. One-click master backup of all data. Auto-creates organised folder structure.",
-    badge: "Pro",
+    badge: "Scale",
   },
 ];
 
@@ -299,80 +300,140 @@ const COMPARISON = [
   { feature: "Multi-user with roles", spreadsheet: false, printforge: true },
 ];
 
-const FREE_FEATURES = [
-  "Cost calculator + presets",
-  "Unlimited quotes + PDF download",
-  "Printers & materials library",
-  "Client management",
-  "Job tracking (kanban + calendar)",
-  "Customer upload links",
-  "STL & G-code upload",
-  "Quote templates",
-  "Dark mode",
-];
+// ---------------------------------------------------------------------------
+// Tier pricing data
+// ---------------------------------------------------------------------------
 
-const PRO_FEATURES = [
-  "Everything in Free",
-  "AI Quote Assistant (Claude)",
-  "Invoicing with PDF & email",
-  "Client portal (shareable links)",
-  "Send quotes via email",
-  "Shopify integration",
-  "Xero accounting sync",
-  "Suppliers & consumables",
-  "Dashboard analytics",
-  "Business logo on PDFs",
-  "Webhooks & CSV export",
-  "Job photos",
-  "Bulk actions",
-  "Design Studio with AI",
-  "Part Drawings with dimensions",
-  "Cloud Storage (Google Drive, OneDrive)",
-  "Master backup to OneDrive",
+interface TierPlan {
+  name: string;
+  monthly: number;
+  annual: number;
+  description: string;
+  cta: string;
+  ctaVariant: "outline" | "primary";
+  popular?: boolean;
+  features: string[];
+}
+
+const PLANS: TierPlan[] = [
+  {
+    name: "Hobby",
+    monthly: 0,
+    annual: 0,
+    description: "Core tools to get started. Perfect for makers and side projects.",
+    cta: "Get started free",
+    ctaVariant: "outline",
+    features: [
+      "Cost calculator + presets",
+      "Up to 10 quotes + PDF download",
+      "Up to 3 printers, 5 materials",
+      "Up to 10 clients",
+      "Job tracking (kanban + calendar)",
+      "Customer upload links",
+      "STL & G-code upload",
+      "Quote templates",
+    ],
+  },
+  {
+    name: "Starter",
+    monthly: 12,
+    annual: 108,
+    description: "Unlimited core features plus business essentials.",
+    cta: "Start free trial",
+    ctaVariant: "outline",
+    features: [
+      "Everything in Hobby (no limits)",
+      "Send quotes via email",
+      "Client portal (shareable links)",
+      "Business logo on PDFs",
+      "CSV export",
+      "Job photos",
+      "Dashboard analytics",
+      "Bulk actions",
+    ],
+  },
+  {
+    name: "Pro",
+    monthly: 24,
+    annual: 216,
+    description: "Full operations — invoicing, AI, and supplier management.",
+    cta: "Start free trial",
+    ctaVariant: "primary",
+    popular: true,
+    features: [
+      "Everything in Starter",
+      "Invoicing with PDF & email",
+      "AI Quote Assistant (Claude)",
+      "Part Drawings with dimensions",
+      "Suppliers & consumables",
+      "Webhooks",
+    ],
+  },
+  {
+    name: "Scale",
+    monthly: 49,
+    annual: 468,
+    description: "Full platform with integrations, AI studio, and cloud storage.",
+    cta: "Start free trial",
+    ctaVariant: "outline",
+    features: [
+      "Everything in Pro",
+      "Shopify integration",
+      "Xero accounting sync",
+      "Design Studio with AI",
+      "Cloud Storage (Drive, OneDrive)",
+      "Master backup to OneDrive",
+      "Asana integration",
+    ],
+  },
 ];
 
 interface PricingFeature {
   name: string;
-  free: boolean | string;
+  hobby: boolean | string;
+  starter: boolean | string;
   pro: boolean | string;
+  scale: boolean | string;
 }
 
 const PRICING_COMPARE: PricingFeature[] = [
-  { name: "Cost calculator", free: true, pro: true },
-  { name: "Unlimited quotes", free: true, pro: true },
-  { name: "PDF export", free: true, pro: true },
-  { name: "Printers & materials", free: true, pro: true },
-  { name: "Client management", free: true, pro: true },
-  { name: "Job tracking", free: true, pro: true },
-  { name: "STL & G-code upload", free: true, pro: true },
-  { name: "Customer upload links", free: true, pro: true },
-  { name: "Quote templates", free: true, pro: true },
-  { name: "AI Quote Assistant", free: false, pro: true },
-  { name: "Invoicing", free: false, pro: true },
-  { name: "Client portal", free: false, pro: true },
-  { name: "Email quotes & invoices", free: false, pro: true },
-  { name: "Shopify integration", free: false, pro: true },
-  { name: "Xero sync", free: false, pro: true },
-  { name: "Suppliers & consumables", free: false, pro: true },
-  { name: "Dashboard analytics", free: false, pro: true },
-  { name: "Webhooks", free: false, pro: true },
-  { name: "CSV export", free: false, pro: true },
-  { name: "Business logo on PDFs", free: false, pro: true },
-  { name: "Job photos", free: false, pro: true },
-  { name: "Bulk actions", free: false, pro: true },
-  { name: "Design Studio", free: false, pro: true },
-  { name: "Part Drawings", free: false, pro: true },
-  { name: "Cloud Storage", free: false, pro: true },
+  { name: "Cost calculator", hobby: true, starter: true, pro: true, scale: true },
+  { name: "Quotes", hobby: "10", starter: "Unlimited", pro: "Unlimited", scale: "Unlimited" },
+  { name: "PDF export", hobby: true, starter: true, pro: true, scale: true },
+  { name: "Printers", hobby: "3", starter: "Unlimited", pro: "Unlimited", scale: "Unlimited" },
+  { name: "Materials", hobby: "5", starter: "Unlimited", pro: "Unlimited", scale: "Unlimited" },
+  { name: "Clients", hobby: "10", starter: "Unlimited", pro: "Unlimited", scale: "Unlimited" },
+  { name: "Job tracking", hobby: true, starter: true, pro: true, scale: true },
+  { name: "STL & G-code upload", hobby: true, starter: true, pro: true, scale: true },
+  { name: "Customer upload links", hobby: true, starter: true, pro: true, scale: true },
+  { name: "Quote templates", hobby: true, starter: true, pro: true, scale: true },
+  { name: "Send quotes via email", hobby: false, starter: true, pro: true, scale: true },
+  { name: "Client portal", hobby: false, starter: true, pro: true, scale: true },
+  { name: "Business logo on PDFs", hobby: false, starter: true, pro: true, scale: true },
+  { name: "CSV export", hobby: false, starter: true, pro: true, scale: true },
+  { name: "Job photos", hobby: false, starter: true, pro: true, scale: true },
+  { name: "Dashboard analytics", hobby: false, starter: true, pro: true, scale: true },
+  { name: "Bulk actions", hobby: false, starter: true, pro: true, scale: true },
+  { name: "Invoicing", hobby: false, starter: false, pro: true, scale: true },
+  { name: "AI Quote Assistant", hobby: false, starter: false, pro: true, scale: true },
+  { name: "Part Drawings", hobby: false, starter: false, pro: true, scale: true },
+  { name: "Suppliers & consumables", hobby: false, starter: false, pro: true, scale: true },
+  { name: "Webhooks", hobby: false, starter: false, pro: true, scale: true },
+  { name: "Shopify integration", hobby: false, starter: false, pro: false, scale: true },
+  { name: "Xero sync", hobby: false, starter: false, pro: false, scale: true },
+  { name: "Design Studio", hobby: false, starter: false, pro: false, scale: true },
+  { name: "Cloud Storage", hobby: false, starter: false, pro: false, scale: true },
+  { name: "Asana integration", hobby: false, starter: false, pro: false, scale: true },
 ];
 
 const FAQ = [
   {
     q: "What happens after the 14-day trial?",
-    a: "You keep all your data and the Free tier features forever. Pro features simply lock until you subscribe. No data is deleted.",
+    a: "You keep all your data and the Hobby tier features forever. Paid features lock until you subscribe to a plan. No data is deleted.",
   },
   {
     q: "Do I need a credit card to start?",
-    a: "No. Sign up and get 14 days of Pro features completely free. We only ask for payment if you decide to continue with Pro.",
+    a: "No. Sign up and get 14 days of full Scale access completely free. We only ask for payment if you decide to continue with a paid plan.",
   },
   {
     q: "What printers are supported?",
@@ -408,13 +469,81 @@ const FAQ = [
   },
   {
     q: "What is the best 3D printing quote software?",
-    a: "Printforge is a free 3D printing quote software for small to medium print shops. It includes a cost calculator, professional PDF quotes, job tracking, inventory management, Shopify integration, and AI-powered quote drafting. The free tier includes unlimited quotes with no per-quote fees.",
+    a: "Printforge is a free 3D printing quote software for small to medium print shops. It includes a cost calculator, professional PDF quotes, job tracking, inventory management, Shopify integration, and AI-powered quote drafting. The Hobby tier is free with generous limits, and paid plans start at $9/mo (billed annually).",
   },
 ];
 
 // ---------------------------------------------------------------------------
 // Helpers
 // ---------------------------------------------------------------------------
+
+// ---------------------------------------------------------------------------
+// Pricing Section (client component for billing toggle)
+// ---------------------------------------------------------------------------
+
+function PricingSection() {
+  return (
+    <section id="pricing" className="scroll-mt-16 border-t border-border/50">
+      <div className="mx-auto max-w-7xl px-6 py-24">
+        <div className="mx-auto max-w-2xl text-center">
+          <p className="text-sm font-semibold uppercase tracking-wider text-primary">
+            Pricing
+          </p>
+          <h2 className="mt-3 text-3xl font-bold tracking-tight sm:text-4xl">
+            3D print cost calculator pricing
+          </h2>
+          <p className="mt-4 text-lg text-muted-foreground">
+            Start with a 14-day Scale trial. No credit card required. Hobby tier is free forever.
+          </p>
+        </div>
+
+        <PricingCards />
+
+        {/* Feature comparison table */}
+        <div className="mx-auto mt-20 max-w-5xl">
+          <h3 className="text-center text-lg font-semibold">
+            Full feature comparison
+          </h3>
+          <div className="mt-8 overflow-x-auto rounded-xl border border-border">
+            <table className="w-full min-w-[600px]">
+              <thead>
+                <tr className="bg-muted/50 text-xs font-semibold uppercase tracking-wider text-muted-foreground">
+                  <th className="px-6 py-3 text-left">Feature</th>
+                  <th className="px-3 py-3 text-center w-20">Hobby</th>
+                  <th className="px-3 py-3 text-center w-20">Starter</th>
+                  <th className="px-3 py-3 text-center w-20 text-primary">Pro</th>
+                  <th className="px-3 py-3 text-center w-20">Scale</th>
+                </tr>
+              </thead>
+              <tbody>
+                {PRICING_COMPARE.map((row, i) => (
+                  <tr
+                    key={row.name}
+                    className={i % 2 === 0 ? "bg-card" : "bg-card/50"}
+                  >
+                    <td className="px-6 py-2.5 text-sm">{row.name}</td>
+                    <td className="px-3 py-2.5 text-center">
+                      <FeatureCheck included={row.hobby} />
+                    </td>
+                    <td className="px-3 py-2.5 text-center">
+                      <FeatureCheck included={row.starter} />
+                    </td>
+                    <td className="px-3 py-2.5 text-center">
+                      <FeatureCheck included={row.pro} />
+                    </td>
+                    <td className="px-3 py-2.5 text-center">
+                      <FeatureCheck included={row.scale} />
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        </div>
+      </div>
+    </section>
+  );
+}
 
 function FeatureCheck({ included }: { included: boolean | string }) {
   if (typeof included === "string") {
@@ -497,7 +626,7 @@ export default function LandingPage() {
             {/* Trial badge */}
             <div className="inline-flex items-center gap-2 rounded-full border border-primary/20 bg-primary/5 px-4 py-1.5 text-sm font-medium text-primary">
               <Sparkles className="h-3.5 w-3.5" />
-              14-day free Pro trial &middot; No credit card required
+              14-day free trial &middot; No credit card required
             </div>
 
             {/* Headline */}
@@ -592,9 +721,9 @@ export default function LandingPage() {
                 {feature.badge && (
                   <span
                     className={`absolute right-4 top-4 rounded-full px-2 py-0.5 text-[10px] font-bold uppercase ${
-                      feature.badge === "Pro"
-                        ? "bg-primary/10 text-primary"
-                        : "bg-muted text-muted-foreground"
+                      feature.badge === "Core"
+                        ? "bg-muted text-muted-foreground"
+                        : "bg-primary/10 text-primary"
                     }`}
                   >
                     {feature.badge}
@@ -784,116 +913,27 @@ export default function LandingPage() {
       </section>
 
       {/* ----------------------------------------------------------------- */}
-      {/* Pricing */}
+      {/* Social Proof */}
       {/* ----------------------------------------------------------------- */}
-      <section id="pricing" className="scroll-mt-16 border-t border-border/50">
-        <div className="mx-auto max-w-6xl px-6 py-24">
-          <div className="mx-auto max-w-2xl text-center">
-            <p className="text-sm font-semibold uppercase tracking-wider text-primary">
-              Pricing
-            </p>
-            <h2 className="mt-3 text-3xl font-bold tracking-tight sm:text-4xl">
-              3D print cost calculator pricing
-            </h2>
-            <p className="mt-4 text-lg text-muted-foreground">
-              Start with a 14-day Pro trial. No credit card required. Keep Free forever.
-            </p>
-          </div>
-
-          {/* Pricing cards */}
-          <div className="mx-auto mt-16 grid max-w-4xl gap-8 md:grid-cols-2">
-            {/* Free */}
-            <div className="rounded-2xl border border-border bg-card p-8">
-              <h3 className="text-lg font-semibold">Free</h3>
-              <div className="mt-4 flex items-baseline gap-1">
-                <span className="text-5xl font-extrabold tracking-tight">$0</span>
-                <span className="text-muted-foreground">/forever</span>
-              </div>
-              <p className="mt-3 text-sm text-muted-foreground">
-                Everything you need to calculate costs and create quotes. No limits, no expiry.
-              </p>
-              <Link
-                href="/register"
-                className="mt-8 flex w-full items-center justify-center gap-2 rounded-xl border border-border bg-card px-4 py-3 text-sm font-semibold text-foreground transition-colors hover:bg-accent"
-              >
-                Get started free
-              </Link>
-              <ul className="mt-8 space-y-3">
-                {FREE_FEATURES.map((f) => (
-                  <li key={f} className="flex items-start gap-3 text-sm">
-                    <Check className="mt-0.5 h-4 w-4 shrink-0 text-muted-foreground" />
-                    <span>{f}</span>
-                  </li>
-                ))}
-              </ul>
-            </div>
-
-            {/* Pro */}
-            <div className="relative rounded-2xl border-2 border-primary bg-card p-8 shadow-xl shadow-primary/5">
-              <div className="absolute -top-3.5 left-6 inline-flex items-center gap-1 rounded-full bg-primary px-3 py-1 text-xs font-bold text-primary-foreground">
-                <Crown className="h-3 w-3" />
-                Most Popular
-              </div>
-              <h3 className="text-lg font-semibold">Pro</h3>
-              <div className="mt-4 flex items-baseline gap-1">
-                <span className="text-5xl font-extrabold tracking-tight">$29</span>
-                <span className="text-muted-foreground">/month</span>
-              </div>
-              <p className="mt-1 text-sm text-muted-foreground">
-                or <strong>$290/year</strong> (save 17%)
-              </p>
-              <p className="mt-2 text-sm text-muted-foreground">
-                Full business management with AI, invoicing, analytics, and integrations.
-              </p>
-              <Link
-                href="/register"
-                className="mt-8 flex w-full items-center justify-center gap-2 rounded-xl bg-primary px-4 py-3 text-sm font-semibold text-primary-foreground shadow-lg shadow-primary/20 transition-all hover:bg-primary/90 hover:shadow-xl"
-              >
-                <Sparkles className="h-4 w-4" />
-                Start 14-day free trial
-              </Link>
-              <ul className="mt-8 space-y-3">
-                {PRO_FEATURES.map((f) => (
-                  <li key={f} className="flex items-start gap-3 text-sm">
-                    <Check className="mt-0.5 h-4 w-4 shrink-0 text-primary" />
-                    <span>{f}</span>
-                  </li>
-                ))}
-              </ul>
-            </div>
-          </div>
-
-          {/* Feature comparison table */}
-          <div className="mx-auto mt-20 max-w-3xl">
-            <h3 className="text-center text-lg font-semibold">
-              Full feature comparison
-            </h3>
-            <div className="mt-8 overflow-hidden rounded-xl border border-border">
-              <div className="grid grid-cols-[1fr_80px_80px] bg-muted/50 px-6 py-3 text-xs font-semibold uppercase tracking-wider text-muted-foreground">
-                <span>Feature</span>
-                <span className="text-center">Free</span>
-                <span className="text-center">Pro</span>
-              </div>
-              {PRICING_COMPARE.map((row, i) => (
-                <div
-                  key={row.name}
-                  className={`grid grid-cols-[1fr_80px_80px] items-center px-6 py-2.5 text-sm ${
-                    i % 2 === 0 ? "bg-card" : "bg-card/50"
-                  }`}
-                >
-                  <span>{row.name}</span>
-                  <span className="flex justify-center">
-                    <FeatureCheck included={row.free} />
-                  </span>
-                  <span className="flex justify-center">
-                    <FeatureCheck included={row.pro} />
-                  </span>
-                </div>
-              ))}
-            </div>
-          </div>
+      <section className="border-t border-border/50 bg-card/30">
+        <div className="mx-auto max-w-6xl px-6 py-12 text-center">
+          <p className="text-2xl font-bold tracking-tight sm:text-3xl">
+            Trusted by{" "}
+            <span className="bg-gradient-to-r from-primary to-primary/60 bg-clip-text text-transparent">
+              4,200+
+            </span>{" "}
+            3D printing businesses
+          </p>
+          <p className="mt-2 text-sm text-muted-foreground">
+            Print farms, makers, Etsy sellers, and Shopify stores around the world
+          </p>
         </div>
       </section>
+
+      {/* ----------------------------------------------------------------- */}
+      {/* Pricing */}
+      {/* ----------------------------------------------------------------- */}
+      <PricingSection />
 
       {/* ----------------------------------------------------------------- */}
       {/* FAQ */}
@@ -987,7 +1027,7 @@ export default function LandingPage() {
             </Link>
           </div>
           <p className="mt-4 text-xs text-muted-foreground">
-            14-day Pro trial &middot; No credit card required &middot; Free tier forever
+            14-day Scale trial &middot; No credit card required &middot; Hobby tier free forever
           </p>
         </div>
       </section>

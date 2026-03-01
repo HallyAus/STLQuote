@@ -62,9 +62,9 @@ function roleBadgeVariant(role: string): "info" | "warning" | "default" {
 }
 
 function tierLabel(tier: string, status: string): string {
-  if (tier === "pro" && status === "active") return "Pro";
-  if (status === "trialing") return "Pro Trial";
-  return "Free";
+  if (status === "active" && tier !== "hobby") return tier.charAt(0).toUpperCase() + tier.slice(1);
+  if (status === "trialing") return "Scale Trial";
+  return "Hobby";
 }
 
 function tierBadgeVariant(tier: string): "success" | "default" {
@@ -451,7 +451,7 @@ export function AccountPage() {
                 <div className="mt-3 flex items-center gap-2 rounded-md bg-warning/10 px-3 py-2 text-sm text-warning-foreground">
                   <Crown className="h-4 w-4 shrink-0" />
                   <span>
-                    <strong>{trialDays} day{trialDays !== 1 ? "s" : ""}</strong> remaining on your Pro trial
+                    <strong>{trialDays} day{trialDays !== 1 ? "s" : ""}</strong> remaining on your Scale trial
                   </span>
                 </div>
               )}

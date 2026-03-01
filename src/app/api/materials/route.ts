@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { z } from "zod";
 import { prisma } from "@/lib/prisma";
 import { getSessionUser } from "@/lib/auth-helpers";
+import { getTierLimits } from "@/lib/tier";
 
 const createMaterialSchema = z.object({
   type: z.enum(["filament", "resin"]).default("filament"),
@@ -54,6 +55,18 @@ export async function POST(request: NextRequest) {
         { error: "Validation failed", details: parsed.error.flatten() },
         { status: 400 }
       );
+    }
+
+    // Tier quantity limit
+    const limits = getTierLimits(user.effectiveTier);
+    if (limits) {
+      const count = await prisma.material.count({ where: { userId: user.id } });
+      if (count >= limits.materials) {
+        return NextResponse.json(
+          { error: `Material limit reached (${limits.materials}). Upgrade to Starter for unlimited materials.`, code: "TIER_LIMIT" },
+          { status: 403 }
+        );
+      }
     }
 
     const material = await prisma.material.create({

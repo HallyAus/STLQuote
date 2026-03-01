@@ -12,6 +12,7 @@ const updateUserSchema = z.object({
   disabled: z.boolean().optional(),
   password: z.string().min(8, "Password must be at least 8 characters").max(72, "Password too long").optional(),
   grantPro: z.boolean().optional(),
+  assignTier: z.enum(["hobby", "starter", "pro", "scale"]).optional(),
 });
 
 export async function PUT(
@@ -80,22 +81,37 @@ export async function PUT(
       );
     }
 
-    const { password, grantPro, ...rest } = parsed.data;
+    const { password, grantPro, assignTier, ...rest } = parsed.data;
     const data: Record<string, unknown> = { ...rest };
     if (password) {
       data.passwordHash = await bcrypt.hash(password, 12);
     }
 
-    // Admin can grant or revoke Pro without Stripe
-    if (grantPro === true) {
-      data.subscriptionTier = "pro";
+    // assignTier takes precedence over legacy grantPro
+    if (assignTier) {
+      if (assignTier === "hobby") {
+        // Only revoke if not on a Stripe subscription
+        if (!existing.stripeSubscriptionId) {
+          data.subscriptionTier = "hobby";
+          data.subscriptionStatus = "inactive";
+          data.trialEndsAt = null;
+        }
+      } else {
+        data.subscriptionTier = assignTier;
+        data.subscriptionStatus = "active";
+        data.trialEndsAt = null;
+        data.subscriptionEndsAt = null;
+      }
+    } else if (grantPro === true) {
+      // Legacy: grant Scale
+      data.subscriptionTier = "scale";
       data.subscriptionStatus = "active";
       data.trialEndsAt = null;
       data.subscriptionEndsAt = null;
     } else if (grantPro === false) {
-      // Only revoke if not on a Stripe subscription
+      // Legacy: revoke if not on Stripe
       if (!existing.stripeSubscriptionId) {
-        data.subscriptionTier = "free";
+        data.subscriptionTier = "hobby";
         data.subscriptionStatus = "inactive";
       }
     }
@@ -118,12 +134,20 @@ export async function PUT(
     });
 
     // Log tier change
-    if (grantPro !== undefined) {
+    if (assignTier) {
       await prisma.subscriptionEvent.create({
         data: {
           userId: id,
-          action: grantPro ? "admin_grant_pro" : "admin_revoke_pro",
-          detail: `Admin ${admin.email} ${grantPro ? "granted" : "revoked"} Pro access`,
+          action: assignTier === "hobby" ? "admin_revoke" : "admin_grant",
+          detail: `Admin ${admin.email} set tier to ${assignTier}`,
+        },
+      }).catch(() => {});
+    } else if (grantPro !== undefined) {
+      await prisma.subscriptionEvent.create({
+        data: {
+          userId: id,
+          action: grantPro ? "admin_grant" : "admin_revoke",
+          detail: `Admin ${admin.email} ${grantPro ? "granted Scale" : "revoked"} access`,
         },
       }).catch(() => {});
     }

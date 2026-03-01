@@ -777,14 +777,14 @@ function TrialBanner() {
   if (!session?.user) return null;
 
   const tier = getEffectiveTier({
-    subscriptionTier: session.user.subscriptionTier ?? "free",
+    subscriptionTier: session.user.subscriptionTier ?? "hobby",
     subscriptionStatus: session.user.subscriptionStatus ?? "trialing",
     trialEndsAt: session.user.trialEndsAt ?? null,
     role: session.user.role,
   });
   const isTrialing = session.user.subscriptionStatus === "trialing";
   const daysLeft = trialDaysRemaining(session.user.trialEndsAt ?? null);
-  const isFree = tier === "free";
+  const isFree = tier === "hobby";
 
   if (isTrialing && daysLeft > 0) {
     return (
@@ -792,7 +792,7 @@ function TrialBanner() {
         <div className="flex items-center gap-2">
           <Sparkles className="h-4 w-4 text-amber-500" />
           <p className="text-sm font-medium text-amber-200">
-            Pro trial — {daysLeft} day{daysLeft !== 1 ? "s" : ""} remaining
+            Scale trial — {daysLeft} day{daysLeft !== 1 ? "s" : ""} remaining
           </p>
         </div>
         <Link href="/settings">

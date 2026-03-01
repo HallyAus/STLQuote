@@ -37,6 +37,8 @@ import { cn } from "@/lib/utils";
 import {
   getEffectiveTier,
   hasFeatureWithOverrides,
+  getFeatureTier,
+  TIER_LABELS,
   type Feature,
 } from "@/lib/tier";
 import { OnboardingGuide } from "@/components/onboarding/onboarding-guide";
@@ -162,6 +164,7 @@ function NavLink({
   isActive,
   onClose,
   locked,
+  lockedBadge,
   badge,
   indent,
 }: {
@@ -169,6 +172,7 @@ function NavLink({
   isActive: boolean;
   onClose: () => void;
   locked?: boolean;
+  lockedBadge?: string;
   badge?: number;
   indent?: boolean;
 }) {
@@ -198,7 +202,7 @@ function NavLink({
       <span className="truncate">{item.label}</span>
       {locked && (
         <span className="ml-auto rounded bg-primary/15 px-1.5 py-0.5 text-[9px] font-bold uppercase text-primary">
-          Pro
+          {lockedBadge ?? "Pro"}
         </span>
       )}
       {!locked && badge != null && badge > 0 && (
@@ -221,6 +225,7 @@ function CollapsibleSection({
   pathname,
   onClose,
   isFeatureLocked,
+  getLockedBadge,
   getBadge,
 }: {
   group: CollapsibleGroup;
@@ -229,6 +234,7 @@ function CollapsibleSection({
   pathname: string;
   onClose: () => void;
   isFeatureLocked: (item: NavItem) => boolean;
+  getLockedBadge: (item: NavItem) => string;
   getBadge: (href: string) => number | undefined;
 }) {
   const hasActive = groupHasActiveRoute(group, pathname);
@@ -292,6 +298,7 @@ function CollapsibleSection({
                 isActive={isRouteActive(item.href, pathname)}
                 onClose={onClose}
                 locked={isFeatureLocked(item)}
+                lockedBadge={getLockedBadge(item)}
                 badge={getBadge(item.href)}
                 indent
               />
@@ -319,13 +326,13 @@ export function Sidebar({ open, onClose }: SidebarProps) {
   const isAdmin = role === "ADMIN" || role === "SUPER_ADMIN";
   const effectiveTier = session?.user
     ? getEffectiveTier({
-        subscriptionTier: session.user.subscriptionTier ?? "free",
+        subscriptionTier: session.user.subscriptionTier ?? "hobby",
         subscriptionStatus: session.user.subscriptionStatus ?? "trialing",
         trialEndsAt: session.user.trialEndsAt ?? null,
         role: session.user.role,
       })
-    : "free";
-  const isFree = effectiveTier === "free";
+    : "hobby";
+  const isHobby = effectiveTier === "hobby";
 
   // Module overrides
   const [moduleOverrides, setModuleOverrides] = useState<
@@ -345,25 +352,41 @@ export function Sidebar({ open, onClose }: SidebarProps) {
     };
   }, [session?.user]);
 
+  const featureMap: Record<string, Feature> = {
+    "/invoices": "invoicing",
+    "/suppliers": "suppliers",
+    "/consumables": "consumables",
+    "/purchase-orders": "suppliers",
+    "/integrations": "webhooks",
+    "/designs": "design_studio",
+    "/drawings": "part_drawings",
+  };
+
   const isFeatureLocked = useCallback(
     (item: NavItem): boolean => {
       if (!item.proOnly) return false;
-      const featureMap: Record<string, Feature> = {
-        "/invoices": "invoicing",
-        "/suppliers": "suppliers",
-        "/consumables": "consumables",
-        "/purchase-orders": "suppliers",
-        "/integrations": "webhooks",
-        "/designs": "design_studio",
-        "/drawings": "part_drawings",
-      };
       const feature = featureMap[item.href];
       if (feature) {
         return !hasFeatureWithOverrides(effectiveTier, feature, moduleOverrides);
       }
-      return isFree;
+      return isHobby;
     },
-    [effectiveTier, isFree, moduleOverrides]
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [effectiveTier, isHobby, moduleOverrides]
+  );
+
+  /** Get the tier badge label for a locked feature */
+  const getLockedBadge = useCallback(
+    (item: NavItem): string => {
+      const feature = featureMap[item.href];
+      if (feature) {
+        const tier = getFeatureTier(feature);
+        if (tier) return TIER_LABELS[tier];
+      }
+      return "Starter";
+    },
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    []
   );
 
   // Badge counts
@@ -531,6 +554,7 @@ export function Sidebar({ open, onClose }: SidebarProps) {
                 pathname={pathname}
                 onClose={onClose}
                 isFeatureLocked={isFeatureLocked}
+                getLockedBadge={getLockedBadge}
                 getBadge={getBadge}
               />
             ))}
@@ -549,6 +573,12 @@ export function Sidebar({ open, onClose }: SidebarProps) {
             isActive={isRouteActive("/integrations", pathname)}
             onClose={onClose}
             locked={isFeatureLocked({
+              href: "/integrations",
+              label: "Integrations",
+              icon: Plug,
+              proOnly: true,
+            })}
+            lockedBadge={getLockedBadge({
               href: "/integrations",
               label: "Integrations",
               icon: Plug,

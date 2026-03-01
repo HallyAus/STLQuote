@@ -7,10 +7,16 @@ export async function GET() {
     await requireAdmin();
 
     // Subscription stats
-    const [totalUsers, proUsers, trialUsers, freeUsers] = await Promise.all([
+    const [totalUsers, starterUsers, proUsers, scaleUsers, trialUsers, hobbyUsers] = await Promise.all([
       prisma.user.count(),
       prisma.user.count({
+        where: { subscriptionTier: "starter", subscriptionStatus: "active" },
+      }),
+      prisma.user.count({
         where: { subscriptionTier: "pro", subscriptionStatus: "active" },
+      }),
+      prisma.user.count({
+        where: { subscriptionTier: "scale", subscriptionStatus: "active" },
       }),
       prisma.user.count({
         where: { subscriptionStatus: "trialing" },
@@ -18,7 +24,7 @@ export async function GET() {
       prisma.user.count({
         where: {
           OR: [
-            { subscriptionTier: "free" },
+            { subscriptionTier: "hobby" },
             { subscriptionStatus: "inactive" },
           ],
         },
@@ -55,17 +61,24 @@ export async function GET() {
     const config = {
       stripeSecretKey: !!process.env.STRIPE_SECRET_KEY,
       stripeWebhookSecret: !!process.env.STRIPE_WEBHOOK_SECRET,
-      monthlyPriceId: !!process.env.STRIPE_PRO_MONTHLY_PRICE_ID,
-      annualPriceId: !!process.env.STRIPE_PRO_ANNUAL_PRICE_ID,
+      starterMonthlyPriceId: !!process.env.STRIPE_STARTER_MONTHLY_PRICE_ID,
+      starterAnnualPriceId: !!process.env.STRIPE_STARTER_ANNUAL_PRICE_ID,
+      proMonthlyPriceId: !!process.env.STRIPE_PRO_MONTHLY_PRICE_ID,
+      proAnnualPriceId: !!process.env.STRIPE_PRO_ANNUAL_PRICE_ID,
+      scaleMonthlyPriceId: !!process.env.STRIPE_SCALE_MONTHLY_PRICE_ID,
+      scaleAnnualPriceId: !!process.env.STRIPE_SCALE_ANNUAL_PRICE_ID,
       appUrl: process.env.NEXT_PUBLIC_APP_URL || null,
     };
 
     return NextResponse.json({
       stats: {
         totalUsers,
+        starterUsers,
         proUsers,
+        scaleUsers,
+        paidUsers: starterUsers + proUsers + scaleUsers,
         trialUsers,
-        freeUsers,
+        hobbyUsers,
       },
       stripeSubscribers,
       events,
