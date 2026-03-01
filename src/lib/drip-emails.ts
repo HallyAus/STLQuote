@@ -22,7 +22,7 @@ import { sendEmail, unsubscribeFooter, escapeHtml } from "@/lib/email";
 // Types
 // ---------------------------------------------------------------------------
 
-interface DripEmail {
+export interface DripEmail {
   key: string;
   dayOffset: number; // days after signup
   subject: string;
@@ -70,7 +70,7 @@ function trialBanner(daysLeft: number): string {
 // Email sequence
 // ---------------------------------------------------------------------------
 
-const DRIP_SEQUENCE: DripEmail[] = [
+export const DRIP_SEQUENCE: DripEmail[] = [
   // Day 0 — Personal welcome from Daniel
   {
     key: "day_0",

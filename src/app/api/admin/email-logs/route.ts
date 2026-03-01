@@ -17,7 +17,10 @@ export async function GET(request: NextRequest) {
       where.type = type;
     }
 
-    const [logs, total] = await Promise.all([
+    const todayStart = new Date();
+    todayStart.setHours(0, 0, 0, 0);
+
+    const [logs, total, totalAll, sentToday, failedToday] = await Promise.all([
       prisma.emailLog.findMany({
         where,
         orderBy: { createdAt: "desc" },
@@ -25,6 +28,13 @@ export async function GET(request: NextRequest) {
         take: limit,
       }),
       prisma.emailLog.count({ where }),
+      prisma.emailLog.count(),
+      prisma.emailLog.count({
+        where: { status: "sent", createdAt: { gte: todayStart } },
+      }),
+      prisma.emailLog.count({
+        where: { status: "failed", createdAt: { gte: todayStart } },
+      }),
     ]);
 
     return NextResponse.json({
@@ -34,6 +44,11 @@ export async function GET(request: NextRequest) {
         limit,
         total,
         totalPages: Math.ceil(total / limit),
+      },
+      stats: {
+        totalAll,
+        sentToday,
+        failedToday,
       },
     });
   } catch (error) {

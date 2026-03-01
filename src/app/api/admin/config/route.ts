@@ -15,6 +15,7 @@ const ALLOWED_CONFIG_KEYS = new Set([
   "app_name",
   "announcement_banner",
   "announcement_enabled",
+  "dripEmailsEnabled",
 ]);
 
 const updateSchema = z.object({
