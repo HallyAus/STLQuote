@@ -13,6 +13,7 @@ import { DifficultyBadge } from "@/components/learn/difficulty-badge";
 import { TableOfContents } from "@/components/learn/table-of-contents";
 import { ArticleFeedback } from "@/components/learn/article-feedback";
 import { ArticleCard } from "@/components/learn/article-card";
+import { PublicFooter } from "@/components/layout/public-footer";
 
 interface PageProps {
   params: Promise<{ slug: string }>;
@@ -241,27 +242,7 @@ export default async function LearnArticlePage({ params }: PageProps) {
         </div>
       </section>
 
-      {/* Footer */}
-      <footer className="border-t border-border/50 bg-card/30">
-        <div className="mx-auto max-w-6xl px-6 py-8">
-          <div className="flex flex-col items-center justify-between gap-4 sm:flex-row">
-            <p className="text-xs text-muted-foreground/60">
-              &copy; {new Date().getFullYear()} Printforge. All rights reserved.
-            </p>
-            <div className="flex items-center gap-4">
-              <Link href="/" className="text-xs text-muted-foreground/60 hover:text-muted-foreground transition-colors">
-                Home
-              </Link>
-              <Link href="/blog" className="text-xs text-muted-foreground/60 hover:text-muted-foreground transition-colors">
-                Blog
-              </Link>
-              <Link href="/learn" className="text-xs text-muted-foreground/60 hover:text-muted-foreground transition-colors">
-                Learn
-              </Link>
-            </div>
-          </div>
-        </div>
-      </footer>
+      <PublicFooter />
 
       {/* BreadcrumbList JSON-LD */}
       <script

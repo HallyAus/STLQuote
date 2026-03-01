@@ -153,7 +153,20 @@ function MaterialFormModal({
         <Select
           label="Type"
           value={formData.type}
-          onChange={(e) => setFormData((prev) => ({ ...prev, type: e.target.value }))}
+          onChange={(e) => {
+            const newType = e.target.value;
+            setFormData((prev) => ({
+              ...prev,
+              type: newType,
+              // Auto-switch defaults when changing type
+              ...(newType === "resin" && prev.type !== "resin"
+                ? { spoolWeightG: 1000, materialType: "Resin" }
+                : {}),
+              ...(newType === "filament" && prev.type !== "filament"
+                ? { spoolWeightG: 1000, materialType: "PLA" }
+                : {}),
+            }));
+          }}
           options={[
             { value: "filament", label: "Filament" },
             { value: "resin", label: "Resin" },
@@ -182,7 +195,7 @@ function MaterialFormModal({
           placeholder="e.g. Black, #FF5500"
         />
         <Input
-          label="Spool weight (g)"
+          label={formData.type === "resin" ? "Bottle size (ml)" : "Spool weight (g)"}
           type="number"
           step="1"
           min="1"
@@ -877,7 +890,7 @@ export function MaterialsPage() {
                       Colour
                     </th>
                     <th className="px-4 py-2.5 font-medium text-muted-foreground text-right">
-                      Spool (g)
+                      Size
                     </th>
                     <th className="px-4 py-2.5 font-medium text-muted-foreground text-right">
                       Price
@@ -944,7 +957,7 @@ export function MaterialsPage() {
                           )}
                         </td>
                         <td className="px-4 py-2.5 text-right tabular-nums">
-                          {material.spoolWeightG.toLocaleString()}
+                          {material.spoolWeightG.toLocaleString()}{material.type === "resin" ? "ml" : "g"}
                         </td>
                         <td className="px-4 py-2.5 text-right tabular-nums">
                           ${material.price.toFixed(2)}

@@ -33,6 +33,7 @@ import {
   Ruler,
   PenTool,
   BookOpen,
+  MessageSquare,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import {
@@ -592,6 +593,11 @@ export function Sidebar({ open, onClose }: SidebarProps) {
               badge={undefined}
             />
           )}
+          <NavLink
+            item={{ href: "/support", label: "Support", icon: MessageSquare }}
+            isActive={isRouteActive("/support", pathname)}
+            onClose={onClose}
+          />
           <NavLink
             item={{ href: "/learn", label: "Learning Centre", icon: BookOpen }}
             isActive={isRouteActive("/learn", pathname)}

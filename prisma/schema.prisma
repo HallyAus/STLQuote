@@ -127,6 +127,8 @@ model User {
   cloudConnections   CloudConnection[]
   dripEmails         DripEmailLog[]
   partDrawings       PartDrawing[]
+  supportThreads     SupportThread[]
+  supportMessages    SupportMessage[]
 }
 
 model Settings {
@@ -1017,4 +1019,37 @@ model DripEmailLog {
 
   @@unique([userId, emailKey])
   @@index([userId])
+}
+
+// --- Support Messaging ---
+
+model SupportThread {
+  id           String   @id @default(cuid())
+  userId       String
+  user         User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  subject      String
+  status       String   @default("open")   // open | resolved | closed
+  priority     String   @default("normal") // low | normal | high | urgent
+  lastReplyAt  DateTime @default(now())
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+
+  messages     SupportMessage[]
+
+  @@index([userId])
+  @@index([status])
+  @@index([lastReplyAt])
+}
+
+model SupportMessage {
+  id           String   @id @default(cuid())
+  threadId     String
+  thread       SupportThread @relation(fields: [threadId], references: [id], onDelete: Cascade)
+  authorId     String
+  author       User     @relation(fields: [authorId], references: [id], onDelete: Cascade)
+  content      String   @db.Text
+  isStaffReply Boolean  @default(false)
+  createdAt    DateTime @default(now())
+
+  @@index([threadId])
 }

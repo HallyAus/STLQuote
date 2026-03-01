@@ -3,6 +3,7 @@ import Link from "next/link";
 import { notFound } from "next/navigation";
 import { Printer, ArrowLeft, Calendar, Clock, Tag, ArrowRight } from "lucide-react";
 import { getBlogPost, getRecentPosts, BLOG_POSTS } from "@/lib/blog-posts";
+import { PublicFooter } from "@/components/layout/public-footer";
 
 interface PageProps {
   params: Promise<{ slug: string }>;
@@ -210,24 +211,7 @@ export default async function BlogPostPage({ params }: PageProps) {
         </section>
       )}
 
-      {/* Footer */}
-      <footer className="border-t border-border/50 bg-card/30">
-        <div className="mx-auto max-w-6xl px-6 py-8">
-          <div className="flex flex-col items-center justify-between gap-4 sm:flex-row">
-            <p className="text-xs text-muted-foreground/60">
-              &copy; {new Date().getFullYear()} Printforge. All rights reserved.
-            </p>
-            <div className="flex items-center gap-4">
-              <Link href="/" className="text-xs text-muted-foreground/60 hover:text-muted-foreground transition-colors">
-                Home
-              </Link>
-              <Link href="/blog" className="text-xs text-muted-foreground/60 hover:text-muted-foreground transition-colors">
-                Blog
-              </Link>
-            </div>
-          </div>
-        </div>
-      </footer>
+      <PublicFooter />
 
       {/* BreadcrumbList JSON-LD */}
       <script

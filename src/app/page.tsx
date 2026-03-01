@@ -40,6 +40,7 @@ import {
 } from "lucide-react";
 import { CalculatorDemo } from "@/components/landing/calculator-demo";
 import { PricingCards } from "@/components/landing/pricing-cards";
+import { PublicFooter } from "@/components/layout/public-footer";
 
 export const metadata: Metadata = {
   title: "Free 3D Print Cost Calculator & Quote Software | Printforge",
@@ -1035,113 +1036,7 @@ export default function LandingPage() {
         </div>
       </section>
 
-      {/* ----------------------------------------------------------------- */}
-      {/* Footer */}
-      {/* ----------------------------------------------------------------- */}
-      <footer className="border-t border-border/50 bg-card/30">
-        <div className="mx-auto max-w-6xl px-6 py-12">
-          <div className="grid gap-8 sm:grid-cols-2 md:grid-cols-4">
-            {/* Brand */}
-            <div className="sm:col-span-2 md:col-span-1">
-              <div className="flex items-center gap-2">
-                <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-primary">
-                  <Printer className="h-4 w-4 text-primary-foreground" />
-                </div>
-                <span className="font-bold">Printforge</span>
-              </div>
-              <p className="mt-3 text-sm text-muted-foreground">
-                The complete business platform for 3D print shops.
-              </p>
-            </div>
-
-            {/* Product */}
-            <div>
-              <p className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
-                Product
-              </p>
-              <div className="mt-4 space-y-2.5">
-                <a href="#features" className="block text-sm text-muted-foreground hover:text-foreground transition-colors">
-                  Features
-                </a>
-                <a href="#integrations" className="block text-sm text-muted-foreground hover:text-foreground transition-colors">
-                  Integrations
-                </a>
-                <a href="#pricing" className="block text-sm text-muted-foreground hover:text-foreground transition-colors">
-                  Pricing
-                </a>
-                <a href="#faq" className="block text-sm text-muted-foreground hover:text-foreground transition-colors">
-                  FAQ
-                </a>
-                <Link href="/blog" className="block text-sm text-muted-foreground hover:text-foreground transition-colors">
-                  Blog
-                </Link>
-                <Link href="/learn" className="block text-sm text-muted-foreground hover:text-foreground transition-colors">
-                  Learning Centre
-                </Link>
-              </div>
-            </div>
-
-            {/* Legal */}
-            <div>
-              <p className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
-                Legal
-              </p>
-              <div className="mt-4 space-y-2.5">
-                <Link href="/terms" className="block text-sm text-muted-foreground hover:text-foreground transition-colors">
-                  Terms of Service
-                </Link>
-                <Link href="/privacy" className="block text-sm text-muted-foreground hover:text-foreground transition-colors">
-                  Privacy Policy
-                </Link>
-              </div>
-            </div>
-
-            {/* Support */}
-            <div>
-              <p className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
-                Support
-              </p>
-              <div className="mt-4 space-y-2.5">
-                <Link href="/login" className="block text-sm text-muted-foreground hover:text-foreground transition-colors">
-                  Sign in
-                </Link>
-                <Link href="/register" className="block text-sm text-muted-foreground hover:text-foreground transition-colors">
-                  Create account
-                </Link>
-              </div>
-            </div>
-          </div>
-
-          <div className="mt-12 flex flex-col items-center justify-between gap-4 border-t border-border/50 pt-8 sm:flex-row">
-            <div>
-              <p className="text-xs text-muted-foreground/60">
-                &copy; {new Date().getFullYear()} Printforge. All rights reserved.
-              </p>
-              <p className="mt-1 text-[10px] text-muted-foreground/40">
-                Last updated: February 2026
-              </p>
-            </div>
-            <div className="flex items-center gap-4">
-              <a
-                href="https://buymeacoffee.com/printforge"
-                target="_blank"
-                rel="noopener noreferrer nofollow"
-                className="text-xs text-muted-foreground/60 hover:text-muted-foreground transition-colors"
-              >
-                Buy me a coffee
-              </a>
-              <a
-                href="https://www.starlink.com/referral"
-                target="_blank"
-                rel="noopener noreferrer nofollow"
-                className="text-xs text-muted-foreground/60 hover:text-muted-foreground transition-colors"
-              >
-                Free month of Starlink
-              </a>
-            </div>
-          </div>
-        </div>
-      </footer>
+      <PublicFooter />
 
       {/* JSON-LD Structured Data */}
       <script
