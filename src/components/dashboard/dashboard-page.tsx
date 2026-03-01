@@ -874,7 +874,7 @@ export function DashboardPage() {
   return (
     <div className="space-y-6">
       {/* Header + Quick Actions */}
-      <div className="sticky top-0 z-10 -mx-4 md:-mx-6 px-4 md:px-6 pb-4 bg-background flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+      <div className="-mx-4 md:-mx-6 px-4 md:px-6 pb-4 flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
         <div>
           <h1 className="text-2xl font-bold tracking-tight">Dashboard</h1>
           <p className="text-sm text-muted-foreground">Overview of your 3D printing business</p>

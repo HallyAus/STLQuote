@@ -202,7 +202,7 @@ export function QuotesPage() {
   return (
     <div className="space-y-4">
       {/* Toolbar */}
-      <div className="sticky top-0 z-10 -mx-4 md:-mx-6 px-4 md:px-6 pb-4 bg-background flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+      <div className="-mx-4 md:-mx-6 px-4 md:px-6 pb-4 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
         <div className="flex items-center gap-3">
           <Select
             value={statusFilter}

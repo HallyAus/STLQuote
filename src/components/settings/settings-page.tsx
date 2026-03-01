@@ -293,7 +293,7 @@ export function SettingsPage() {
   return (
     <div className="space-y-0">
       {/* Sticky page header */}
-      <div className="sticky top-0 z-10 -mx-4 md:-mx-6 px-4 md:px-6 pt-0 pb-4 bg-background">
+      <div className="-mx-4 md:-mx-6 px-4 md:px-6 pt-0 pb-4">
         <h2 className="text-lg font-semibold text-foreground">Settings</h2>
         <p className="text-sm text-muted-foreground">
           Configure your business, calculator, and quote defaults.
