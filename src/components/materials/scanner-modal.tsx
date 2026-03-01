@@ -1,7 +1,6 @@
 "use client";
 
 import { useState, useEffect, useRef, useCallback } from "react";
-import { Html5Qrcode } from "html5-qrcode";
 import { Camera, X, Loader2, AlertCircle, ScanLine } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Dialog, DialogHeader, DialogTitle } from "@/components/ui/dialog";
@@ -34,7 +33,8 @@ type ScanState = "initialising" | "scanning" | "processing" | "error" | "not-fou
 export function ScannerModal({ open, onClose, onScanResult }: ScannerModalProps) {
   const [state, setState] = useState<ScanState>("initialising");
   const [error, setError] = useState("");
-  const scannerRef = useRef<Html5Qrcode | null>(null);
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const scannerRef = useRef<any>(null);
   const containerRef = useRef<HTMLDivElement>(null);
   const mountedRef = useRef(true);
 
@@ -109,6 +109,8 @@ export function ScannerModal({ open, onClose, onScanResult }: ScannerModalProps)
       if (!el) return;
 
       try {
+        // Dynamic import to avoid SSR issues — html5-qrcode accesses browser APIs at module level
+        const { Html5Qrcode } = await import("html5-qrcode");
         const scanner = new Html5Qrcode(containerId);
         scannerRef.current = scanner;
 

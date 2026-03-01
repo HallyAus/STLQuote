@@ -66,6 +66,7 @@ export async function GET() {
 
     return NextResponse.json(invoices);
   } catch (error) {
+    if (error instanceof Response) return error;
     console.error("Failed to fetch invoices:", error);
     return NextResponse.json(
       { error: "Failed to fetch invoices" },
@@ -201,6 +202,7 @@ export async function POST(request: NextRequest) {
 
     return NextResponse.json(invoice, { status: 201 });
   } catch (error) {
+    if (error instanceof Response) return error;
     console.error("Failed to create invoice:", error);
     return NextResponse.json(
       { error: "Failed to create invoice" },

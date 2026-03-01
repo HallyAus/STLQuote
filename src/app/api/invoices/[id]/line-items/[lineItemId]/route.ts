@@ -94,6 +94,7 @@ export async function PUT(
 
     return NextResponse.json(lineItem);
   } catch (error) {
+    if (error instanceof Response) return error;
     console.error("Failed to update line item:", error);
     return NextResponse.json(
       { error: "Failed to update line item" },
@@ -142,6 +143,7 @@ export async function DELETE(
 
     return new NextResponse(null, { status: 204 });
   } catch (error) {
+    if (error instanceof Response) return error;
     console.error("Failed to delete line item:", error);
     return NextResponse.json(
       { error: "Failed to delete line item" },

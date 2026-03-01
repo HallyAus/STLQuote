@@ -110,6 +110,7 @@ export async function GET(
       },
     });
   } catch (error) {
+    if (error instanceof Response) return error;
     console.error("Failed to generate PDF:", error);
     return NextResponse.json(
       { error: "Failed to generate PDF" },

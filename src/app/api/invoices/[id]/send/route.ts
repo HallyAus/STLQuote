@@ -238,6 +238,7 @@ export async function POST(
       portalUrl,
     });
   } catch (error) {
+    if (error instanceof Response) return error;
     console.error("Failed to send invoice:", error);
     return NextResponse.json(
       { error: "Failed to send invoice" },

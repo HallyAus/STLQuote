@@ -75,6 +75,7 @@ export async function POST(
 
     return NextResponse.json(lineItem, { status: 201 });
   } catch (error) {
+    if (error instanceof Response) return error;
     console.error("Failed to add line item:", error);
     return NextResponse.json(
       { error: "Failed to add line item" },

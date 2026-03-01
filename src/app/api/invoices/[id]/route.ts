@@ -46,6 +46,7 @@ export async function GET(
 
     return NextResponse.json(invoice);
   } catch (error) {
+    if (error instanceof Response) return error;
     console.error("Failed to fetch invoice:", error);
     return NextResponse.json(
       { error: "Failed to fetch invoice" },
@@ -134,6 +135,7 @@ export async function PUT(
 
     return NextResponse.json(invoice);
   } catch (error) {
+    if (error instanceof Response) return error;
     console.error("Failed to update invoice:", error);
     return NextResponse.json(
       { error: "Failed to update invoice" },
@@ -167,6 +169,7 @@ export async function DELETE(
 
     return new NextResponse(null, { status: 204 });
   } catch (error) {
+    if (error instanceof Response) return error;
     console.error("Failed to delete invoice:", error);
     return NextResponse.json(
       { error: "Failed to delete invoice" },
