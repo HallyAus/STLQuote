@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useCallback } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
 import {
@@ -42,9 +42,16 @@ interface PartDrawing {
   updatedAt: string;
 }
 
+interface Settings {
+  businessName?: string;
+  businessAddress?: string;
+  businessAbn?: string;
+}
+
 export function DrawingDetail({ id }: { id: string }) {
   const router = useRouter();
   const [drawing, setDrawing] = useState<PartDrawing | null>(null);
+  const [settings, setSettings] = useState<Settings>({});
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
@@ -55,13 +62,16 @@ export function DrawingDetail({ id }: { id: string }) {
   const [saving, setSaving] = useState(false);
 
   useEffect(() => {
-    fetch(`/api/drawings/${id}`)
-      .then((res) => {
+    Promise.all([
+      fetch(`/api/drawings/${id}`).then((res) => {
         if (!res.ok) throw new Error("Drawing not found");
         return res.json();
-      })
-      .then((data) => {
+      }),
+      fetch("/api/settings").then((r) => (r.ok ? r.json() : {})),
+    ])
+      .then(([data, settingsData]) => {
         setDrawing(data);
+        setSettings(settingsData);
         setEditTitle(data.title);
         setEditNotes(data.notes || "");
       })
@@ -103,6 +113,240 @@ export function DrawingDetail({ id }: { id: string }) {
     } catch {}
   }
 
+  const handlePrint = useCallback(() => {
+    if (!drawing) return;
+    const businessName = settings.businessName || "Printforge";
+    const filename = `${drawing.drawingNumber} - ${businessName}`;
+
+    const dateStr = new Date(drawing.createdAt).toLocaleDateString("en-AU", {
+      day: "2-digit",
+      month: "short",
+      year: "numeric",
+    });
+
+    const printWindow = window.open("", "_blank");
+    if (!printWindow) return;
+
+    printWindow.document.write(`<!DOCTYPE html>
+<html>
+<head>
+  <title>${filename}</title>
+  <style>
+    @page { size: A3 landscape; margin: 10mm; }
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+      -webkit-print-color-adjust: exact;
+      print-color-adjust: exact;
+      background: white;
+      color: black;
+    }
+    .sheet {
+      width: 100%;
+      max-width: 1580px;
+      margin: 0 auto;
+    }
+    .border {
+      border: 2px solid black;
+      padding: 14px;
+    }
+    .views {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 10px;
+      margin-bottom: 10px;
+    }
+    .view-cell {
+      border: 1px solid #d4d4d8;
+      position: relative;
+    }
+    .view-label {
+      position: absolute;
+      top: 5px;
+      left: 10px;
+      font-size: 11px;
+      font-weight: 600;
+      color: #71717a;
+      text-transform: uppercase;
+      letter-spacing: 0.05em;
+    }
+    .view-dim {
+      position: absolute;
+      bottom: 5px;
+      right: 10px;
+      font-size: 10px;
+      font-family: monospace;
+      color: #71717a;
+    }
+    .view-img-wrap {
+      aspect-ratio: 4/3;
+      padding: 24px 10px 10px;
+    }
+    .view-img-wrap img {
+      width: 100%;
+      height: 100%;
+      object-fit: contain;
+    }
+    .title-block {
+      border: 2px solid black;
+      display: grid;
+      grid-template-columns: 1fr auto;
+    }
+    .tb-left {
+      border-right: 1px solid black;
+      padding: 10px 14px;
+    }
+    .tb-biz {
+      font-size: 16px;
+      font-weight: 700;
+    }
+    .tb-sub {
+      font-size: 10px;
+      color: #71717a;
+      margin-top: 2px;
+    }
+    .tb-notes {
+      font-size: 10px;
+      color: #52525b;
+      margin-top: 6px;
+      border-top: 1px solid #e4e4e7;
+      padding-top: 6px;
+    }
+    .tb-right { min-width: 320px; }
+    .tb-row {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      padding: 7px 14px;
+      border-bottom: 1px solid black;
+    }
+    .tb-row:last-child { border-bottom: none; }
+    .tb-label {
+      font-size: 10px;
+      font-weight: 600;
+      color: #71717a;
+    }
+    .tb-value {
+      font-size: 13px;
+      font-weight: 600;
+      font-family: monospace;
+    }
+    .tb-value-lg {
+      font-size: 16px;
+      font-weight: 700;
+      font-family: monospace;
+    }
+    .tb-grid {
+      display: grid;
+      border-bottom: 1px solid black;
+    }
+    .tb-grid-2 { grid-template-columns: 1fr 1fr; }
+    .tb-grid-3 { grid-template-columns: 1fr 1fr 1fr; }
+    .tb-cell {
+      padding: 5px 14px;
+    }
+    .tb-cell + .tb-cell {
+      border-left: 1px solid black;
+    }
+    .tb-cell-label {
+      font-size: 9px;
+      font-weight: 600;
+      color: #71717a;
+    }
+    .tb-cell-value {
+      font-size: 11px;
+      font-family: monospace;
+    }
+  </style>
+</head>
+<body>
+  <div class="sheet">
+    <div class="border">
+      <div class="views">
+        <div class="view-cell">
+          <div class="view-label">Front View</div>
+          <div class="view-dim">${drawing.dimensionX.toFixed(1)} × ${drawing.dimensionZ.toFixed(1)} mm</div>
+          <div class="view-img-wrap"><img src="${drawing.viewFront}" alt="Front" /></div>
+        </div>
+        <div class="view-cell">
+          <div class="view-label">Side View</div>
+          <div class="view-dim">${drawing.dimensionY.toFixed(1)} × ${drawing.dimensionZ.toFixed(1)} mm</div>
+          <div class="view-img-wrap"><img src="${drawing.viewSide}" alt="Side" /></div>
+        </div>
+        <div class="view-cell">
+          <div class="view-label">Top View</div>
+          <div class="view-dim">${drawing.dimensionX.toFixed(1)} × ${drawing.dimensionY.toFixed(1)} mm</div>
+          <div class="view-img-wrap"><img src="${drawing.viewTop}" alt="Top" /></div>
+        </div>
+        <div class="view-cell">
+          <div class="view-label">Isometric View</div>
+          <div class="view-img-wrap"><img src="${drawing.viewIso}" alt="Isometric" /></div>
+        </div>
+      </div>
+
+      <div class="title-block">
+        <div class="tb-left">
+          <div class="tb-biz">${businessName}</div>
+          ${settings.businessAddress ? `<div class="tb-sub">${settings.businessAddress}</div>` : ""}
+          ${settings.businessAbn ? `<div class="tb-sub">ABN: ${settings.businessAbn}</div>` : ""}
+          ${drawing.notes ? `<div class="tb-notes">${drawing.notes}</div>` : ""}
+        </div>
+        <div class="tb-right">
+          <div class="tb-row">
+            <span class="tb-label">DRAWING NO.</span>
+            <span class="tb-value-lg">${drawing.drawingNumber}</span>
+          </div>
+          <div class="tb-row">
+            <span class="tb-label">TITLE</span>
+            <span class="tb-value">${drawing.title}</span>
+          </div>
+          <div class="tb-grid tb-grid-2">
+            <div class="tb-cell">
+              <div class="tb-cell-label">DATE</div>
+              <div class="tb-cell-value">${dateStr}</div>
+            </div>
+            <div class="tb-cell">
+              <div class="tb-cell-label">SCALE</div>
+              <div class="tb-cell-value">N.T.S.</div>
+            </div>
+          </div>
+          <div class="tb-grid tb-grid-3">
+            <div class="tb-cell">
+              <div class="tb-cell-label">X (mm)</div>
+              <div class="tb-cell-value">${drawing.dimensionX.toFixed(1)}</div>
+            </div>
+            <div class="tb-cell">
+              <div class="tb-cell-label">Y (mm)</div>
+              <div class="tb-cell-value">${drawing.dimensionY.toFixed(1)}</div>
+            </div>
+            <div class="tb-cell">
+              <div class="tb-cell-label">Z (mm)</div>
+              <div class="tb-cell-value">${drawing.dimensionZ.toFixed(1)}</div>
+            </div>
+          </div>
+          <div class="tb-grid tb-grid-2">
+            <div class="tb-cell">
+              <div class="tb-cell-label">VOLUME</div>
+              <div class="tb-cell-value">${drawing.volumeCm3.toFixed(2)} cm³</div>
+            </div>
+            <div class="tb-cell">
+              <div class="tb-cell-label">FILE</div>
+              <div class="tb-cell-value" style="overflow:hidden;text-overflow:ellipsis;white-space:nowrap;max-width:140px">${drawing.sourceFilename}</div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+  <script>
+    document.title = ${JSON.stringify(filename)};
+    window.onload = function() { window.print(); };
+  </script>
+</body>
+</html>`);
+    printWindow.document.close();
+  }, [drawing, settings]);
+
   if (loading) {
     return (
       <div className="flex items-center justify-center py-20">
@@ -142,12 +386,10 @@ export function DrawingDetail({ id }: { id: string }) {
           </div>
         </div>
         <div className="flex items-center gap-2">
-          <Link href={`/drawings/${id}/pdf`}>
-            <Button variant="secondary">
-              <PrinterIcon className="mr-2 h-4 w-4" />
-              Print / PDF
-            </Button>
-          </Link>
+          <Button variant="secondary" onClick={handlePrint}>
+            <PrinterIcon className="mr-2 h-4 w-4" />
+            Export PDF
+          </Button>
           <Button variant="destructive" size="icon" onClick={handleDelete}>
             <Trash2 className="h-4 w-4" />
           </Button>
