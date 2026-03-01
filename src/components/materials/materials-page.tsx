@@ -10,9 +10,12 @@ import { Textarea } from "@/components/ui/textarea";
 import { Badge } from "@/components/ui/badge";
 import { Dialog, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
 import { SkeletonListPage } from "@/components/ui/skeleton";
-import { Plus, Minus, Pencil, Trash2, Package, Loader2, History, TrendingUp, TrendingDown, Upload } from "lucide-react";
+import { Plus, Minus, Pencil, Trash2, Package, Loader2, History, TrendingUp, TrendingDown, Upload, ScanLine, QrCode } from "lucide-react";
 import { MATERIAL_PRESETS } from "@/lib/presets";
 import { InvoiceImportModal } from "./invoice-import-modal";
+import { ScannerModal, type ScannedMaterial } from "./scanner-modal";
+import { ScanResultPanel } from "./scan-result-panel";
+import { QrLabelModal } from "./qr-label-modal";
 
 // ---------------------------------------------------------------------------
 // Stock Transaction Types
@@ -55,6 +58,7 @@ interface Material {
   lowStockThreshold: number;
   supplier: string | null;
   notes: string | null;
+  barcode: string | null;
 }
 
 interface MaterialFormData {
@@ -69,6 +73,7 @@ interface MaterialFormData {
   lowStockThreshold: number;
   supplier: string;
   notes: string;
+  barcode: string;
 }
 
 const EMPTY_FORM: MaterialFormData = {
@@ -83,6 +88,7 @@ const EMPTY_FORM: MaterialFormData = {
   lowStockThreshold: 2,
   supplier: "",
   notes: "",
+  barcode: "",
 };
 
 const MATERIAL_TYPES = [
@@ -246,6 +252,14 @@ function MaterialFormModal({
           }
           placeholder="Optional"
         />
+        <Input
+          label="Barcode / QR code"
+          value={formData.barcode}
+          onChange={(e) =>
+            setFormData((prev) => ({ ...prev, barcode: e.target.value }))
+          }
+          placeholder="Manufacturer barcode or leave blank for auto"
+        />
         <div className="sm:col-span-2">
           <Textarea
             label="Notes"
@@ -285,6 +299,7 @@ function MaterialCard({
   onDelete,
   onStockAdjust,
   onHistory,
+  onQrLabel,
   adjustingId,
 }: {
   material: Material;
@@ -292,6 +307,7 @@ function MaterialCard({
   onDelete: () => void;
   onStockAdjust: (adjustment: number) => void;
   onHistory: () => void;
+  onQrLabel: () => void;
   adjustingId: string | null;
 }) {
   const status = stockStatus(material.stockQty, material.lowStockThreshold);
@@ -369,6 +385,10 @@ function MaterialCard({
           <span className="font-medium">${(material.price * material.stockQty).toFixed(2)}</span>
         </div>
         <div className="mt-3 flex justify-end gap-2">
+          <Button variant="ghost" size="sm" onClick={onQrLabel}>
+            <QrCode className="mr-1 h-3.5 w-3.5" />
+            QR
+          </Button>
           <Button variant="ghost" size="sm" onClick={onHistory}>
             <History className="mr-1 h-3.5 w-3.5" />
             History
@@ -562,6 +582,9 @@ export function MaterialsPage() {
   const [adjustingId, setAdjustingId] = useState<string | null>(null);
   const [historyMaterial, setHistoryMaterial] = useState<Material | null>(null);
   const [showInvoiceImport, setShowInvoiceImport] = useState(false);
+  const [showScanner, setShowScanner] = useState(false);
+  const [scannedMaterial, setScannedMaterial] = useState<ScannedMaterial | null>(null);
+  const [qrLabelMaterial, setQrLabelMaterial] = useState<Material | null>(null);
 
   // Preset dropdown state
   const [presetOpen, setPresetOpen] = useState(false);
@@ -626,6 +649,7 @@ export function MaterialsPage() {
       lowStockThreshold: material.lowStockThreshold,
       supplier: material.supplier ?? "",
       notes: material.notes ?? "",
+      barcode: material.barcode ?? "",
     });
     setShowForm(true);
   }
@@ -651,6 +675,7 @@ export function MaterialsPage() {
       lowStockThreshold: formData.lowStockThreshold,
       supplier: formData.supplier || null,
       notes: formData.notes || null,
+      barcode: formData.barcode || null,
     };
 
     try {
@@ -970,6 +995,14 @@ export function MaterialsPage() {
                             <Button
                               variant="ghost"
                               size="icon"
+                              onClick={() => setQrLabelMaterial(material)}
+                              title="QR label"
+                            >
+                              <QrCode className="h-4 w-4" />
+                            </Button>
+                            <Button
+                              variant="ghost"
+                              size="icon"
                               onClick={() => setHistoryMaterial(material)}
                               title="Stock history"
                             >
@@ -1014,6 +1047,7 @@ export function MaterialsPage() {
               onDelete={() => handleDelete(material.id)}
               onStockAdjust={(adj) => handleStockAdjust(material.id, adj)}
               onHistory={() => setHistoryMaterial(material)}
+              onQrLabel={() => setQrLabelMaterial(material)}
               adjustingId={adjustingId}
             />
           ))}
@@ -1048,6 +1082,53 @@ export function MaterialsPage() {
           existingMaterials={materials}
         />
       )}
+
+      {/* Scanner modal */}
+      <ScannerModal
+        open={showScanner}
+        onClose={() => setShowScanner(false)}
+        onScanResult={(material) => {
+          setShowScanner(false);
+          setScannedMaterial(material);
+        }}
+      />
+
+      {/* Scan result panel */}
+      {scannedMaterial && (
+        <ScanResultPanel
+          material={scannedMaterial}
+          onClose={() => setScannedMaterial(null)}
+          onStockAdjust={(id, adj) => {
+            handleStockAdjust(id, adj);
+            // Update scanned material stock locally
+            setScannedMaterial((prev) =>
+              prev ? { ...prev, stockQty: Math.max(0, prev.stockQty + adj) } : null
+            );
+          }}
+          onViewHistory={(m) => {
+            setScannedMaterial(null);
+            setHistoryMaterial(m as unknown as Material);
+          }}
+          onRefresh={fetchMaterials}
+        />
+      )}
+
+      {/* QR label modal */}
+      {qrLabelMaterial && (
+        <QrLabelModal
+          material={qrLabelMaterial}
+          onClose={() => setQrLabelMaterial(null)}
+        />
+      )}
+
+      {/* Floating scan button */}
+      <button
+        onClick={() => setShowScanner(true)}
+        className="fixed bottom-6 right-6 z-40 flex h-14 w-14 items-center justify-center rounded-full bg-primary text-primary-foreground shadow-lg transition-transform hover:scale-105 active:scale-95 md:bottom-8 md:right-8"
+        title="Scan spool"
+      >
+        <ScanLine className="h-6 w-6" />
+      </button>
     </div>
   );
 }

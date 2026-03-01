@@ -15,6 +15,7 @@ const createMaterialSchema = z.object({
   lowStockThreshold: z.number().int().nonnegative("Threshold must be zero or positive").default(2),
   supplier: z.string().optional().nullable(),
   notes: z.string().optional().nullable(),
+  barcode: z.string().max(500).optional().nullable(),
 });
 
 export async function GET() {

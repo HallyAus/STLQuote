@@ -186,6 +186,7 @@ model Printer {
 
   quoteLineItems QuoteLineItem[]
   jobs           Job[]
+  printerLoads   PrinterLoad[]
   consumables    Consumable[]
 
   @@index([userId])
@@ -204,6 +205,7 @@ model Material {
   density            Float?   // g/cm³
   stockQty           Int      @default(0)
   lowStockThreshold  Int      @default(2)
+  barcode            String?  // manufacturer barcode (scanned from spool label)
   supplier           String?
   supplierId         String?
   supplierRef        Supplier? @relation(fields: [supplierId], references: [id], onDelete: SetNull)
@@ -213,6 +215,7 @@ model Material {
 
   quoteLineItems     QuoteLineItem[]
   jobs               Job[]
+  printerLoads       PrinterLoad[]
   supplierItems      SupplierItem[]
   stockTransactions  StockTransaction[]
   purchaseOrderItems PurchaseOrderItem[]
@@ -950,6 +953,27 @@ model PartDrawing {
 
   @@unique([userId, drawingNumber])
   @@index([userId])
+}
+
+// --- Printer Load (material ↔ printer assignment) ---
+
+model PrinterLoad {
+  id          String    @id @default(cuid())
+  userId      String
+  printerId   String
+  printer     Printer   @relation(fields: [printerId], references: [id], onDelete: Cascade)
+  materialId  String
+  material    Material  @relation(fields: [materialId], references: [id], onDelete: Cascade)
+  loadedAt    DateTime  @default(now())
+  unloadedAt  DateTime?
+  weightLoadedG  Float?   // weight on spool when loaded (optional, from scale)
+  weightUsedG    Float?   // grams consumed while loaded (updated on unload/job complete)
+  notes       String?
+
+  @@index([userId])
+  @@index([printerId])
+  @@index([materialId])
+  @@index([userId, unloadedAt]) // null = currently loaded
 }
 
 // --- Cloud Storage ---

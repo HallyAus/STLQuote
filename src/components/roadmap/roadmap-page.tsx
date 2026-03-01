@@ -32,6 +32,7 @@ import {
   PenTool,
   Mail,
   HardDrive,
+  ScanLine,
 } from "lucide-react";
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
@@ -95,6 +96,7 @@ const PHASES: RoadmapPhase[] = [
       { title: "Onboarding Guide", description: "Guided checklist for new users — 5 data-driven steps that auto-complete. Shown in sidebar for 14 days.", icon: Rocket, status: "shipped", version: "4.5" },
       { title: "Design Studio", description: "Manage design projects with AI chat, reference image analysis, file versioning, revision timelines, and design briefs. Convert designs to quotes.", icon: PenTool, status: "shipped", version: "5.0", pro: true },
       { title: "Onboarding Emails", description: "8-email drip sequence introducing new users to key features over their first week. Unsubscribe support and admin toggle.", icon: Mail, status: "shipped", version: "5.3" },
+      { title: "Spool Scanning", description: "Scan QR codes or manufacturer barcodes to identify materials instantly. Assign to printers, adjust stock, view history. Generate printable QR labels.", icon: ScanLine, status: "shipped", version: "5.16" },
     ],
   },
   {

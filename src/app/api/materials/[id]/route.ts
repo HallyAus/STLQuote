@@ -15,6 +15,7 @@ const updateMaterialSchema = z.object({
   lowStockThreshold: z.number().int().nonnegative("Threshold must be zero or positive").optional(),
   supplier: z.string().optional().nullable(),
   notes: z.string().optional().nullable(),
+  barcode: z.string().max(500).optional().nullable(),
 });
 
 type RouteContext = { params: Promise<{ id: string }> };

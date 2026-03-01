@@ -1,6 +1,6 @@
 {
   "name": "printforge-quote",
-  "version": "5.15.2",
+  "version": "5.16.0",
   "private": true,
   "scripts": {
     "dev": "next dev",
@@ -42,6 +42,7 @@
     "stripe": "^17.0.0",
     "tailwind-merge": "^2.5.0",
     "three": "^0.170.0",
+    "html5-qrcode": "^2.3.8",
     "zod": "^3.23.0"
   },
   "pnpm": {
