@@ -160,7 +160,7 @@ export async function POST(request: NextRequest) {
     response.cookies.set("__2fa_verified", cookieValue, {
       httpOnly: true,
       secure: process.env.NODE_ENV === "production",
-      sameSite: "strict",
+      sameSite: "lax",
       maxAge: 7 * 24 * 60 * 60, // 7 days
       path: "/",
     });

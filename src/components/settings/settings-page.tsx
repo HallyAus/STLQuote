@@ -292,14 +292,6 @@ export function SettingsPage() {
 
   return (
     <div className="space-y-0">
-      {/* Sticky page header */}
-      <div className="sticky top-0 z-10 bg-background -mx-4 md:-mx-6 -mt-4 md:-mt-6 px-4 md:px-6 pt-4 md:pt-6 pb-4">
-        <h2 className="text-lg font-semibold text-foreground">Settings</h2>
-        <p className="text-sm text-muted-foreground">
-          Configure your business, calculator, and quote defaults.
-        </p>
-      </div>
-
       {/* Tab bar */}
       <div className="-mx-4 md:-mx-6 px-4 md:px-6 border-b border-border">
         <nav className="-mb-px flex gap-1 overflow-x-auto scrollbar-none">

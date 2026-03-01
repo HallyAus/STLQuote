@@ -27,7 +27,6 @@ import {
   CreditCard,
   Zap,
   Shield,
-  Map,
   BookTemplate,
   Cloud,
   PenTool,
@@ -214,21 +213,6 @@ export function RoadmapPage() {
 
   return (
     <div className="space-y-8">
-      {/* Header */}
-      <div className="sticky top-0 z-10 bg-background -mx-4 md:-mx-6 -mt-4 md:-mt-6 px-4 md:px-6 pt-4 md:pt-6 pb-4">
-        <div className="flex items-center gap-3">
-          <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-primary/10">
-            <Map className="h-5 w-5 text-primary" />
-          </div>
-          <div>
-            <h2 className="text-lg font-semibold text-foreground">Roadmap</h2>
-            <p className="text-sm text-muted-foreground">
-              What we&apos;ve built, what&apos;s next, and where we&apos;re headed
-            </p>
-          </div>
-        </div>
-      </div>
-
       {/* Stats bar */}
       <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
         <Card>

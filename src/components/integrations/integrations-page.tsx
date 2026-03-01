@@ -41,14 +41,6 @@ const comingSoon = [
 export function IntegrationsPage() {
   return (
     <div className="space-y-6">
-      {/* Header */}
-      <div className="sticky top-0 z-10 bg-background -mx-4 md:-mx-6 -mt-4 md:-mt-6 px-4 md:px-6 pt-4 md:pt-6 pb-4">
-        <h2 className="text-lg font-semibold text-foreground">Integrations</h2>
-        <p className="text-sm text-muted-foreground">
-          Connect your favourite tools
-        </p>
-      </div>
-
       {/* Active integrations */}
       <div className="grid gap-4 lg:grid-cols-2">
         <Suspense fallback={null}>

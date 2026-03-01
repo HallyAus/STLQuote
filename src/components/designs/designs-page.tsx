@@ -65,12 +65,8 @@ export function DesignsPage() {
 
   return (
     <div className="space-y-6">
-      {/* Header */}
-      <div className="sticky top-0 z-10 bg-background -mx-4 md:-mx-6 -mt-4 md:-mt-6 px-4 md:px-6 pt-4 md:pt-6 pb-4 flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
-        <div>
-          <h1 className="text-2xl font-bold">Design Studio</h1>
-          <p className="text-sm text-muted-foreground">Plan and brainstorm 3D printed product designs</p>
-        </div>
+      {/* Actions */}
+      <div className="flex justify-end">
         <Button onClick={() => router.push("/designs/new")}>
           <Plus className="mr-2 h-4 w-4" />
           New Design
