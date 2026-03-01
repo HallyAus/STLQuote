@@ -105,20 +105,6 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
           return "/login?error=AccountDisabled";
         }
 
-        // Check waitlist mode for new users
-        if (!existingUser) {
-          try {
-            const waitlistMode = await prisma.systemConfig.findUnique({
-              where: { key: "waitlistMode" },
-              select: { value: true },
-            });
-            if (waitlistMode?.value === "true") {
-              return "/login?error=WaitlistMode";
-            }
-          } catch {
-            // SystemConfig table may not exist yet — allow sign-in
-          }
-        }
       }
 
       return true;

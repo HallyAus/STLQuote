@@ -51,7 +51,7 @@ interface RoadmapItem {
   icon: LucideIcon;
   status: Status;
   version?: string;
-  pro?: boolean;
+  tier?: "starter" | "pro" | "scale";
 }
 
 interface RoadmapPhase {
@@ -87,14 +87,15 @@ const PHASES: RoadmapPhase[] = [
     label: "Business Tools",
     tagline: "Professional features for growing shops",
     items: [
-      { title: "Invoicing", description: "Full invoice lifecycle: DRAFT → SENT → PAID/OVERDUE/VOID. Create from quotes or jobs, email with PDF attachment.", icon: Receipt, status: "shipped", version: "3.0", pro: true },
-      { title: "Suppliers & Consumables", description: "Supplier database with contact info and supplied items. Consumable tracking with stock alerts and printer assignment.", icon: Package, status: "shipped", version: "3.0", pro: true },
-      { title: "Bulk Actions", description: "Select multiple quotes or invoices, change status, export CSV, or delete in bulk. Floating action bar.", icon: Zap, status: "shipped", version: "4.1", pro: true },
-      { title: "AI Quote Assistant", description: "Describe a job in plain English — AI generates structured line items with material and printer selection.", icon: Bot, status: "shipped", version: "4.2", pro: true },
+      { title: "Invoicing", description: "Full invoice lifecycle: DRAFT → SENT → PAID/OVERDUE/VOID. Create from quotes or jobs, email with PDF attachment.", icon: Receipt, status: "shipped", version: "3.0", tier: "pro" },
+      { title: "Suppliers & Consumables", description: "Supplier database with contact info and supplied items. Consumable tracking with stock alerts and printer assignment.", icon: Package, status: "shipped", version: "3.0", tier: "pro" },
+      { title: "Bulk Actions", description: "Select multiple quotes or invoices, change status, export CSV, or delete in bulk. Floating action bar.", icon: Zap, status: "shipped", version: "4.1", tier: "starter" },
+      { title: "AI Quote Assistant", description: "Describe a job in plain English — AI generates structured line items with material and printer selection.", icon: Bot, status: "shipped", version: "4.2", tier: "pro" },
       { title: "STL & G-code Upload", description: "Upload STL files for dimension analysis, or G-code files for auto-extracted print settings from Bambu/Prusa/Cura.", icon: Upload, status: "shipped", version: "1.0" },
-      { title: "Job Photo Gallery", description: "Upload progress and completion photos to jobs. Lightbox viewer, auth-checked serving.", icon: Briefcase, status: "shipped", version: "3.0" },
+      { title: "Job Photo Gallery", description: "Upload progress and completion photos to jobs. Lightbox viewer, auth-checked serving.", icon: Briefcase, status: "shipped", version: "3.0", tier: "starter" },
       { title: "Onboarding Guide", description: "Guided checklist for new users — 5 data-driven steps that auto-complete. Shown in sidebar for 14 days.", icon: Rocket, status: "shipped", version: "4.5" },
-      { title: "Design Studio", description: "Manage design projects with AI chat, reference image analysis, file versioning, revision timelines, and design briefs. Convert designs to quotes.", icon: PenTool, status: "shipped", version: "5.0", pro: true },
+      { title: "Design Studio", description: "Manage design projects with AI chat, reference image analysis, file versioning, revision timelines, and design briefs. Convert designs to quotes.", icon: PenTool, status: "shipped", version: "5.0", tier: "scale" },
+      { title: "Part Drawings", description: "Generate technical drawings from STL files with orthographic views, dimension annotations, and A3 landscape PDF export.", icon: FileText, status: "shipped", version: "5.8", tier: "pro" },
       { title: "Onboarding Emails", description: "8-email drip sequence introducing new users to key features over their first week. Unsubscribe support and admin toggle.", icon: Mail, status: "shipped", version: "5.3" },
       { title: "Spool Scanning", description: "Scan QR codes or manufacturer barcodes to identify materials instantly. Assign to printers, adjust stock, view history. Generate printable QR labels.", icon: ScanLine, status: "shipped", version: "5.16" },
     ],
@@ -103,13 +104,14 @@ const PHASES: RoadmapPhase[] = [
     label: "Integrations",
     tagline: "Connect your workflow",
     items: [
-      { title: "Shopify Sync", description: "Import unfulfilled orders as jobs, auto-create clients from Shopify customers. Webhook support for real-time order sync.", icon: ShoppingBag, status: "shipped", version: "4.4", pro: true },
-      { title: "Xero Accounting", description: "OAuth2 connection to push invoices and contacts to your Xero account. Automatic sync.", icon: Globe, status: "shipped", version: "4.0", pro: true },
-      { title: "Webhooks", description: "Send real-time notifications to any URL when jobs or quotes change status. Custom payloads.", icon: Plug, status: "shipped", version: "4.0", pro: true },
-      { title: "Cloud Storage", description: "Export design files, quotes, and invoices to Google Drive or OneDrive. Auto-creates organised folder structure. Per-user OAuth.", icon: Cloud, status: "shipped", version: "5.2", pro: true },
-      { title: "Stripe Payments", description: "Accept card payments directly from client-facing invoices and quote portal. \"Pay now\" button.", icon: CreditCard, status: "planned", pro: true },
-      { title: "Etsy Integration", description: "Import orders from your Etsy shop, auto-create jobs and clients. Similar workflow to Shopify sync.", icon: ShoppingBag, status: "exploring", pro: true },
-      { title: "Slack / Discord", description: "Get notified in your team channels when jobs are completed, quotes are accepted, or stock runs low.", icon: MessageSquare, status: "exploring", pro: true },
+      { title: "Shopify Sync", description: "Import unfulfilled orders as jobs, auto-create clients from Shopify customers. Webhook support for real-time order sync.", icon: ShoppingBag, status: "shipped", version: "4.4", tier: "scale" },
+      { title: "Xero Accounting", description: "OAuth2 connection to push invoices and contacts to your Xero account. Automatic sync.", icon: Globe, status: "shipped", version: "4.0", tier: "scale" },
+      { title: "Webhooks", description: "Send real-time notifications to any URL when jobs or quotes change status. Custom payloads.", icon: Plug, status: "shipped", version: "4.0", tier: "pro" },
+      { title: "Cloud Storage", description: "Export design files, quotes, and invoices to Google Drive or OneDrive. Auto-creates organised folder structure. Per-user OAuth.", icon: Cloud, status: "shipped", version: "5.2", tier: "scale" },
+      { title: "Master Backup", description: "Full platform backup to OneDrive — data, quotes, invoices, design files, and job photos with progress tracking and manifest.", icon: HardDrive, status: "shipped", version: "5.10", tier: "scale" },
+      { title: "Stripe Payments", description: "Accept card payments directly from client-facing invoices and quote portal. \"Pay now\" button.", icon: CreditCard, status: "planned", tier: "pro" },
+      { title: "Etsy Integration", description: "Import orders from your Etsy shop, auto-create jobs and clients. Similar workflow to Shopify sync.", icon: ShoppingBag, status: "exploring", tier: "scale" },
+      { title: "Slack / Discord", description: "Get notified in your team channels when jobs are completed, quotes are accepted, or stock runs low.", icon: MessageSquare, status: "exploring", tier: "pro" },
     ],
   },
   {
@@ -119,9 +121,9 @@ const PHASES: RoadmapPhase[] = [
       { title: "Stock Transaction History", description: "Full audit trail of every stock change — received, used, adjusted — with timestamps, user, and reason.", icon: Clock, status: "in-progress" },
       { title: "Purchase Orders", description: "Create POs linked to suppliers, track expected delivery dates, mark as received to auto-increase stock.", icon: Receipt, status: "in-progress" },
       { title: "Consumable Stock Adjustments", description: "Quick +/- stock buttons for consumables, matching the existing material stock adjustment workflow.", icon: Wrench, status: "in-progress" },
-      { title: "Supplier Invoice Upload", description: "Upload PDF or photo receipts, link to materials received, track purchase cost history per material.", icon: Upload, status: "planned", pro: true },
-      { title: "Reorder Suggestions", description: "Dashboard widget that flags materials below safety stock and suggests order quantities based on usage rate.", icon: Sparkles, status: "planned", pro: true },
-      { title: "Material Usage Analytics", description: "Track cost-of-goods per job, consumption trends ($/kg), material profit margins, and waste percentages.", icon: BarChart3, status: "planned", pro: true },
+      { title: "Supplier Invoice Upload", description: "Upload PDF or photo receipts, link to materials received, track purchase cost history per material.", icon: Upload, status: "planned", tier: "pro" },
+      { title: "Reorder Suggestions", description: "Dashboard widget that flags materials below safety stock and suggests order quantities based on usage rate.", icon: Sparkles, status: "planned", tier: "starter" },
+      { title: "Material Usage Analytics", description: "Track cost-of-goods per job, consumption trends ($/kg), material profit margins, and waste percentages.", icon: BarChart3, status: "planned", tier: "starter" },
     ],
   },
   {
@@ -186,10 +188,15 @@ function RoadmapItemCard({ item }: { item: RoadmapItem }) {
               v{item.version}
             </span>
           )}
-          {item.pro && (
-            <span className="inline-flex items-center gap-0.5 rounded bg-primary/10 px-1.5 py-0.5 text-[9px] font-bold uppercase text-primary">
+          {item.tier && (
+            <span className={cn(
+              "inline-flex items-center gap-0.5 rounded px-1.5 py-0.5 text-[9px] font-bold uppercase",
+              item.tier === "starter" && "bg-blue-500/10 text-blue-600 dark:text-blue-400",
+              item.tier === "pro" && "bg-primary/10 text-primary",
+              item.tier === "scale" && "bg-amber-500/10 text-amber-600 dark:text-amber-400",
+            )}>
               <Crown className="h-2.5 w-2.5" />
-              Pro
+              {item.tier === "starter" ? "Starter" : item.tier === "pro" ? "Pro" : "Scale"}
             </span>
           )}
         </div>

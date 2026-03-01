@@ -390,6 +390,12 @@ export async function processDripEmails(userId: string): Promise<number> {
 
   if (!user?.email || user.marketingUnsubscribed) return 0;
 
+  // Wait at least 1 hour after signup before the first drip email
+  const MIN_SIGNUP_DELAY_MS = 60 * 60 * 1000; // 1 hour
+  if (Date.now() - user.createdAt.getTime() < MIN_SIGNUP_DELAY_MS) {
+    return 0;
+  }
+
   // Enforce 24h gap since last drip email
   const lastSent = user.dripEmails[0]?.sentAt;
   if (lastSent && Date.now() - lastSent.getTime() < MIN_GAP_MS) {

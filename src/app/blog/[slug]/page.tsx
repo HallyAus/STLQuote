@@ -76,6 +76,9 @@ export default async function BlogPostPage({ params }: PageProps) {
             <Link href="/blog" className="font-medium text-foreground">
               Blog
             </Link>
+            <Link href="/learn" className="text-muted-foreground transition-colors hover:text-foreground">
+              Learn
+            </Link>
             <Link href="/#pricing" className="text-muted-foreground transition-colors hover:text-foreground">
               Pricing
             </Link>

@@ -1,5 +1,6 @@
 import type { MetadataRoute } from "next";
 import { BLOG_POSTS } from "@/lib/blog-posts";
+import { LEARN_ARTICLES } from "@/lib/learn-articles";
 
 export default function sitemap(): MetadataRoute.Sitemap {
   const baseUrl = "https://crm.printforge.com.au";
@@ -22,12 +23,6 @@ export default function sitemap(): MetadataRoute.Sitemap {
       lastModified: new Date("2026-02-28"),
       changeFrequency: "monthly",
       priority: 0.7,
-    },
-    {
-      url: `${baseUrl}/waitlist`,
-      lastModified: new Date("2026-02-28"),
-      changeFrequency: "monthly",
-      priority: 0.5,
     },
     {
       url: `${baseUrl}/login`,
@@ -56,5 +51,20 @@ export default function sitemap(): MetadataRoute.Sitemap {
     priority: 0.8,
   }));
 
-  return [...staticPages, ...blogPages];
+  const learnPages: MetadataRoute.Sitemap = [
+    {
+      url: `${baseUrl}/learn`,
+      lastModified: new Date("2026-03-01"),
+      changeFrequency: "weekly" as const,
+      priority: 0.9,
+    },
+    ...LEARN_ARTICLES.map((article) => ({
+      url: `${baseUrl}/learn/${article.slug}`,
+      lastModified: new Date(article.updatedAt || article.publishedAt),
+      changeFrequency: "monthly" as const,
+      priority: 0.8,
+    })),
+  ];
+
+  return [...staticPages, ...blogPages, ...learnPages];
 }

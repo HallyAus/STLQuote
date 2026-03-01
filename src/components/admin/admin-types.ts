@@ -25,16 +25,6 @@ export interface AdminUser {
   };
 }
 
-export interface WaitlistEntry {
-  id: string;
-  name: string;
-  email: string;
-  businessName: string | null;
-  status: string;
-  createdAt: string;
-  approvedAt: string | null;
-  approvedBy: string | null;
-}
 
 export interface AnalyticsData {
   overview: {

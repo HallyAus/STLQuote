@@ -9,18 +9,13 @@ _None_
 
 ## Up Next
 
-- [ ] Deploy v5.3.0 — run migrations 0028 + 0029 on production DB
-- [ ] Set cloud storage env vars (Google Drive, OneDrive, CLOUD_ENCRYPTION_KEY)
-- [ ] Test cloud storage end-to-end (connect → browse → import → export)
-- [ ] Verify drip emails trigger for new users on dashboard load
-- [ ] Test Design Studio end-to-end (create → upload → chat → brief → create quote)
-- [ ] Test module override system (admin panel → toggle feature for user)
-- [ ] Design file serving route — `/api/designs/[id]/files/[fileId]/serve` (referenced by UI but not implemented)
-- [ ] Wire UserModules component into admin-users.tsx edit modal
+- [ ] Stripe admin portal — fix subscription collection for 4-tier pricing
+- [ ] Deploy v5.17.0–v5.18.0 — once Stripe is configured (user said don't push until ready)
 - [ ] Roadmap filter — make status counts clickable to filter items
 - [ ] Shopify email — custom Liquid template for CRM launch announcement
-- [ ] Stripe admin portal — fix subscription collection in admin panel
 - [ ] Landing page polish — further improvements (ref: 3dprintdesk.com)
+- [ ] Design file serving route — `/api/designs/[id]/files/[fileId]/serve` (referenced by UI but not implemented)
+- [ ] Wire UserModules component into admin-users.tsx edit modal
 - [ ] CSP header — Content-Security-Policy with nonce-based script allowlist (P4 security)
 - [ ] Session binding — tie 2FA cookie to specific session ID (P4 security)
 
@@ -30,6 +25,9 @@ _None_
 
 ## Done (Recent)
 
+- [x] v5.18.0 — Learning Centre (38 articles, 10 categories, /learn listing + /learn/[slug] detail, search/filter, TOC, OG images, JSON-LD) — 2026-03-01
+- [x] v5.17.1 — Waitlist removal + roadmap tier badges (Starter/Pro/Scale colour-coded) — 2026-03-01
+- [x] v5.17.0 — 4-tier pricing: Hobby/Starter/Pro/Scale — 2026-03-01
 - [x] v5.3.0 — Onboarding drip emails (DripEmailLog model, 8-email sequence, check-on-login trigger, migration 0029) — 2026-02-28
 - [x] v5.2.0 — Cloud Storage (Google Drive + OneDrive, OAuth, encryption, browse/import/export, CloudFilePicker, migration 0028) — 2026-02-28
 - [x] v5.0.0 — Design Studio + Module System (4 models, 10 API routes, 10 UI components, module overrides, migration 0026) — 2026-02-28

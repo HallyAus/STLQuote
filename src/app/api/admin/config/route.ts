@@ -5,7 +5,6 @@ import { z } from "zod";
 
 // Whitelist of allowed system config keys
 const ALLOWED_CONFIG_KEYS = new Set([
-  "waitlist_enabled",
   "maintenance_mode",
   "registration_enabled",
   "max_upload_size",

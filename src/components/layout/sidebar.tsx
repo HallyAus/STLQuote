@@ -32,6 +32,7 @@ import {
   Boxes,
   Ruler,
   PenTool,
+  BookOpen,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import {
@@ -390,7 +391,6 @@ export function Sidebar({ open, onClose }: SidebarProps) {
   );
 
   // Badge counts
-  const [waitlistCount, setWaitlistCount] = useState(0);
   const [queuedJobCount, setQueuedJobCount] = useState(0);
   const [pendingRequestCount, setPendingRequestCount] = useState(0);
   useEffect(() => {
@@ -401,7 +401,6 @@ export function Sidebar({ open, onClose }: SidebarProps) {
         if (!cancelled && data) {
           setQueuedJobCount(data.queuedJobs ?? 0);
           setPendingRequestCount(data.pendingRequests ?? 0);
-          setWaitlistCount(data.pendingWaitlist ?? 0);
         }
       })
       .catch(() => {});
@@ -590,9 +589,14 @@ export function Sidebar({ open, onClose }: SidebarProps) {
               item={{ href: "/admin", label: "Admin", icon: Shield }}
               isActive={isRouteActive("/admin", pathname)}
               onClose={onClose}
-              badge={waitlistCount}
+              badge={undefined}
             />
           )}
+          <NavLink
+            item={{ href: "/learn", label: "Learning Centre", icon: BookOpen }}
+            isActive={isRouteActive("/learn", pathname)}
+            onClose={onClose}
+          />
           <NavLink
             item={{ href: "/roadmap", label: "Roadmap", icon: Map }}
             isActive={isRouteActive("/roadmap", pathname)}

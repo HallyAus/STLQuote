@@ -7,7 +7,7 @@ import Link from "next/link";
 import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
-import { Loader2, CheckCircle2 } from "lucide-react";
+import { Loader2 } from "lucide-react";
 
 export default function RegisterForm() {
   return (
@@ -29,12 +29,9 @@ function RegisterFormInner() {
   const [error, setError] = useState(
     errorParam === "OAuthAccountNotLinked"
       ? "An account with this email already exists. Sign in with your password instead."
-      : errorParam === "WaitlistMode"
-        ? "Registration is currently by invitation only."
-        : ""
+      : ""
   );
   const [loading, setLoading] = useState(false);
-  const [waitlisted, setWaitlisted] = useState(false);
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
@@ -66,13 +63,7 @@ function RegisterFormInner() {
         return;
       }
 
-      // If added to waitlist, show success message instead of auto-login
-      if (data.waitlist) {
-        setWaitlisted(true);
-        return;
-      }
-
-      // Auto sign-in after successful registration (admin only)
+      // Auto sign-in after successful registration
       const result = await signIn("credentials", {
         email,
         password,
@@ -99,32 +90,7 @@ function RegisterFormInner() {
         <CardTitle className="text-center">Create account</CardTitle>
       </CardHeader>
       <CardContent>
-        {waitlisted ? (
-          <div className="space-y-4 text-center py-4">
-            <div className="mx-auto flex h-12 w-12 items-center justify-center rounded-full bg-success/15">
-              <CheckCircle2 className="h-6 w-6 text-success-foreground" />
-            </div>
-            <div>
-              <h3 className="text-lg font-semibold text-foreground">
-                You&apos;re on the list!
-              </h3>
-              <p className="mt-2 text-sm text-muted-foreground">
-                We&apos;ll email you when your spot opens up.
-              </p>
-            </div>
-            <p className="text-sm text-muted-foreground">
-              Already have an account?{" "}
-              <Link
-                href="/login"
-                className="font-medium text-primary hover:underline"
-              >
-                Sign in
-              </Link>
-            </p>
-          </div>
-        ) : (
-          <>
-            <form onSubmit={handleSubmit} className="space-y-4">
+        <form onSubmit={handleSubmit} className="space-y-4">
               {error && (
                 <div className="rounded-md bg-destructive/10 px-3 py-2 text-sm text-destructive-foreground">
                   {error}
@@ -223,8 +189,6 @@ function RegisterFormInner() {
                 Sign in
               </Link>
             </p>
-          </>
-        )}
       </CardContent>
     </Card>
   );

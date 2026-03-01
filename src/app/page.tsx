@@ -593,6 +593,9 @@ export default function LandingPage() {
             <Link href="/blog" className="text-muted-foreground transition-colors hover:text-foreground">
               Blog
             </Link>
+            <Link href="/learn" className="text-muted-foreground transition-colors hover:text-foreground">
+              Learn
+            </Link>
           </div>
           <div className="flex items-center gap-3">
             <Link
@@ -1072,6 +1075,9 @@ export default function LandingPage() {
                 <Link href="/blog" className="block text-sm text-muted-foreground hover:text-foreground transition-colors">
                   Blog
                 </Link>
+                <Link href="/learn" className="block text-sm text-muted-foreground hover:text-foreground transition-colors">
+                  Learning Centre
+                </Link>
               </div>
             </div>
 
@@ -1101,9 +1107,6 @@ export default function LandingPage() {
                 </Link>
                 <Link href="/register" className="block text-sm text-muted-foreground hover:text-foreground transition-colors">
                   Create account
-                </Link>
-                <Link href="/waitlist" className="block text-sm text-muted-foreground hover:text-foreground transition-colors">
-                  Join waitlist
                 </Link>
               </div>
             </div>

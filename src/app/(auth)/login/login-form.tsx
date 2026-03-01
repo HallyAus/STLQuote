@@ -39,9 +39,7 @@ function LoginFormInner() {
           ? "Verification link has expired. Please request a new one."
           : errorParam === "OAuthAccountNotLinked"
             ? "An account with this email already exists. Sign in with your password first."
-            : errorParam === "WaitlistMode"
-              ? "Registration is currently by invitation only."
-              : ""
+            : ""
   );
   const [successBanner] = useState(
     verified

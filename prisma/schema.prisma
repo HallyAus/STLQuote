@@ -615,19 +615,6 @@ model SubscriptionEvent {
   @@index([userId])
 }
 
-// --- Waitlist ---
-
-model Waitlist {
-  id           String    @id @default(cuid())
-  name         String
-  email        String    @unique
-  businessName String?
-  status       String    @default("pending") // pending | approved | rejected
-  createdAt    DateTime  @default(now())
-  approvedAt   DateTime?
-  approvedBy   String?
-}
-
 // --- System Logs ---
 
 model SystemLog {
