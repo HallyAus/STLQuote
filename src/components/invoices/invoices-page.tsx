@@ -38,7 +38,7 @@ interface Invoice {
   sentAt: string | null;
   createdAt: string;
   client: { name: string } | null;
-  lineItems: { id: string }[];
+  _count: { lineItems: number };
 }
 
 // ---------------------------------------------------------------------------
@@ -364,7 +364,7 @@ function InvoiceCard({
         <div className="mt-3 grid grid-cols-3 gap-2 text-sm">
           <div>
             <span className="text-muted-foreground">Items</span>
-            <p className="font-medium">{invoice.lineItems.length}</p>
+            <p className="font-medium">{invoice._count.lineItems}</p>
           </div>
           <div>
             <span className="text-muted-foreground">Total</span>
@@ -659,7 +659,7 @@ export function InvoicesPage() {
                         </Badge>
                       </td>
                       <td className="px-4 py-2.5 text-right tabular-nums">
-                        {invoice.lineItems.length}
+                        {invoice._count.lineItems}
                       </td>
                       <td className="px-4 py-2.5 text-right tabular-nums">
                         {formatCurrency(invoice.total)}

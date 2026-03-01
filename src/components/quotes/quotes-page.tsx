@@ -35,7 +35,7 @@ interface Quote {
     id: string;
     name: string;
   } | null;
-  lineItems: { id: string }[];
+  _count: { lineItems: number };
 }
 
 // ---------------------------------------------------------------------------
@@ -187,7 +187,7 @@ function QuoteCard({
             <div className="mt-3 flex items-center justify-between">
               <div className="flex gap-4 text-sm">
                 <span className="text-muted-foreground">
-                  {quote.lineItems.length} item{quote.lineItems.length !== 1 ? "s" : ""}
+                  {quote._count.lineItems} item{quote._count.lineItems !== 1 ? "s" : ""}
                 </span>
                 <span className="text-muted-foreground">{relativeTime(quote.createdAt)}</span>
                 {expiry && (
@@ -450,7 +450,7 @@ export function QuotesPage() {
                         </Badge>
                       </td>
                       <td className="px-4 py-2.5 text-right tabular-nums">
-                        {quote.lineItems.length}
+                        {quote._count.lineItems}
                       </td>
                       <td className={`px-4 py-2.5 text-right tabular-nums font-medium ${
                         quote.status === "ACCEPTED" ? "text-primary" : ""
