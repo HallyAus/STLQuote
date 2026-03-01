@@ -447,16 +447,26 @@ export function Sidebar({ open, onClose }: SidebarProps) {
     });
   }
 
+  // Lock body scroll when mobile sidebar is open
+  useEffect(() => {
+    if (open) {
+      document.body.style.overflow = "hidden";
+      return () => {
+        document.body.style.overflow = "";
+      };
+    }
+  }, [open]);
+
   // -----------------------------------------------------------------------
   // Render
   // -----------------------------------------------------------------------
 
   return (
     <>
-      {/* Mobile overlay */}
+      {/* Mobile overlay — also blocks background scroll via touch-none + overscroll-none */}
       {open && (
         <div
-          className="fixed inset-0 z-40 bg-black/50 lg:hidden animate-fade-in"
+          className="fixed inset-0 z-40 bg-black/50 lg:hidden animate-fade-in touch-none overscroll-none"
           onClick={onClose}
         />
       )}
