@@ -43,7 +43,7 @@ export async function GET(
         client: { select: { id: true, name: true } },
         quote: { select: { id: true, quoteNumber: true } },
         job: { select: { id: true, status: true } },
-        messages: { orderBy: { createdAt: "asc" } },
+        messages: { orderBy: { createdAt: "asc" }, take: 50, select: { id: true, role: true, content: true, createdAt: true } },
         files: { orderBy: { createdAt: "desc" } },
         revisions: { orderBy: { version: "desc" }, include: { files: true } },
         _count: { select: { messages: true, files: true, revisions: true } },

@@ -58,7 +58,7 @@ export async function GET() {
       where: { userId: user.id },
       include: {
         client: { select: { name: true } },
-        lineItems: { select: { id: true } },
+        _count: { select: { lineItems: true } },
       },
       orderBy: { createdAt: "desc" },
       take: 500,

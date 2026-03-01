@@ -28,7 +28,9 @@ export async function GET() {
       take: 500,
     });
 
-    return NextResponse.json(materials);
+    return NextResponse.json(materials, {
+      headers: { "Cache-Control": "private, max-age=30, stale-while-revalidate=60" },
+    });
   } catch (error) {
     console.error("Failed to fetch materials:", error);
     return NextResponse.json(

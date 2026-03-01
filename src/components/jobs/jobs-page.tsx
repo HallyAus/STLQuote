@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect, useCallback, useRef } from "react";
+import { useState, useEffect, useCallback, useRef, useMemo } from "react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
@@ -1173,13 +1173,22 @@ export function JobsPage() {
     setActiveDragJob(null);
   }
 
-  // ---- Filtered jobs ----
-  const filteredJobs =
+  // ---- Filtered jobs (memoised) ----
+  const filteredJobs = useMemo(() =>
     filter === "ALL"
       ? jobs
       : filter === "ACTIVE"
         ? jobs.filter((j) => j.status !== "COMPLETE")
-        : jobs.filter((j) => j.status === "COMPLETE");
+        : jobs.filter((j) => j.status === "COMPLETE"),
+    [jobs, filter]);
+
+  const jobsByStatus = useMemo(() => {
+    const map: Record<string, typeof jobs> = {};
+    for (const job of filteredJobs) {
+      (map[job.status] ??= []).push(job);
+    }
+    return map;
+  }, [filteredJobs]);
 
   // ---- Loading state ----
   if (loading) {
@@ -1313,7 +1322,7 @@ export function JobsPage() {
                     <KanbanColumn
                       key={status}
                       status={status}
-                      jobs={filteredJobs.filter((j) => j.status === status)}
+                      jobs={jobsByStatus[status] ?? []}
                       onCardClick={(job) => setDetailJob(job)}
                       onMoveNext={handleMoveNext}
                       movingId={movingId}

@@ -13,12 +13,13 @@ import {
   ChevronDown,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
-import { AdminOverview } from "@/components/admin/admin-overview";
-import { AdminUsers } from "@/components/admin/admin-users";
-import { AdminWaitlist } from "@/components/admin/admin-waitlist";
-import { AdminSystem } from "@/components/admin/admin-system";
-import { AdminEmail } from "@/components/admin/admin-email";
-import { AdminBilling } from "@/components/admin/admin-billing";
+import dynamic from "next/dynamic";
+const AdminOverview = dynamic(() => import("@/components/admin/admin-overview").then(m => ({ default: m.AdminOverview })), { ssr: false, loading: () => <div className="h-96 animate-pulse rounded-xl bg-muted" /> });
+const AdminUsers = dynamic(() => import("@/components/admin/admin-users").then(m => ({ default: m.AdminUsers })), { ssr: false, loading: () => <div className="h-96 animate-pulse rounded-xl bg-muted" /> });
+const AdminWaitlist = dynamic(() => import("@/components/admin/admin-waitlist").then(m => ({ default: m.AdminWaitlist })), { ssr: false, loading: () => <div className="h-96 animate-pulse rounded-xl bg-muted" /> });
+const AdminSystem = dynamic(() => import("@/components/admin/admin-system").then(m => ({ default: m.AdminSystem })), { ssr: false, loading: () => <div className="h-96 animate-pulse rounded-xl bg-muted" /> });
+const AdminEmail = dynamic(() => import("@/components/admin/admin-email").then(m => ({ default: m.AdminEmail })), { ssr: false, loading: () => <div className="h-96 animate-pulse rounded-xl bg-muted" /> });
+const AdminBilling = dynamic(() => import("@/components/admin/admin-billing").then(m => ({ default: m.AdminBilling })), { ssr: false, loading: () => <div className="h-96 animate-pulse rounded-xl bg-muted" /> });
 
 type Tab = "overview" | "users" | "waitlist" | "system" | "email" | "billing";
 

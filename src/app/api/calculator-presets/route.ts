@@ -70,7 +70,9 @@ export async function GET() {
       configJson: JSON.parse(preset.configJson),
     }));
 
-    return NextResponse.json(parsed);
+    return NextResponse.json(parsed, {
+      headers: { "Cache-Control": "private, max-age=60, stale-while-revalidate=120" },
+    });
   } catch (error) {
     console.error("Failed to fetch calculator presets:", error);
     return NextResponse.json(

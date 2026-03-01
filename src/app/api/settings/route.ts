@@ -68,13 +68,16 @@ export async function GET() {
     const user = await getSessionUser();
     if (!user) return NextResponse.json({ error: "Unauthorised" }, { status: 401 });
 
-    const settings = await prisma.settings.upsert({
+    let settings = await prisma.settings.findUnique({
       where: { userId: user.id },
-      update: {},
-      create: { userId: user.id },
     });
+    if (!settings) {
+      settings = await prisma.settings.create({ data: { userId: user.id } });
+    }
 
-    return NextResponse.json(settings);
+    return NextResponse.json(settings, {
+      headers: { "Cache-Control": "private, max-age=60, stale-while-revalidate=120" },
+    });
   } catch (error) {
     console.error("Failed to fetch settings:", error);
     return NextResponse.json(

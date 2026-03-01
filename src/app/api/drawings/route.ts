@@ -68,7 +68,7 @@ export async function GET() {
         dimensionZ: true,
         volumeCm3: true,
         triangleCount: true,
-        viewIso: true,
+        // viewIso excluded from list — too large (base64 PNG)
         quoteId: true,
         designId: true,
         quote: { select: { quoteNumber: true } },

@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card";
@@ -57,9 +57,8 @@ export function BatchPricingSettings({
   }
 
   // Sync if parent tiers change
-  if (JSON.stringify(tiers) !== JSON.stringify(localTiers) && tiers !== localTiers) {
-    setLocalTiers(tiers);
-  }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  useEffect(() => { setLocalTiers(tiers); }, [tiers]);
 
   return (
     <Card>

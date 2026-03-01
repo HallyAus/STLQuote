@@ -183,7 +183,7 @@ export async function GET() {
     try {
       const uploadsDir = path.join(process.cwd(), "uploads");
       if (fs.existsSync(uploadsDir)) {
-        uploadsDirSizeBytes = getDirSize(uploadsDir);
+        uploadsDirSizeBytes = await getDirSizeAsync(uploadsDir);
       }
     } catch {
       // Ignore filesystem errors
@@ -286,16 +286,17 @@ export async function GET() {
   }
 }
 
-function getDirSize(dirPath: string): number {
+async function getDirSizeAsync(dirPath: string): Promise<number> {
   let size = 0;
   try {
-    const entries = fs.readdirSync(dirPath, { withFileTypes: true });
+    const entries = await fs.promises.readdir(dirPath, { withFileTypes: true });
     for (const entry of entries) {
       const fullPath = path.join(dirPath, entry.name);
       if (entry.isDirectory()) {
-        size += getDirSize(fullPath);
+        size += await getDirSizeAsync(fullPath);
       } else if (entry.isFile()) {
-        size += fs.statSync(fullPath).size;
+        const stat = await fs.promises.stat(fullPath);
+        size += stat.size;
       }
     }
   } catch {
